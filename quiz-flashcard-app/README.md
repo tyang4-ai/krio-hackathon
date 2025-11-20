@@ -24,7 +24,7 @@ A comprehensive web application that generates quizzes and flashcards from your 
 ### Backend
 - Node.js with Express.js
 - SQLite database (easily upgradable to PostgreSQL)
-- OpenAI API for content generation
+- NVIDIA Nemotron API for content generation (using Llama 3.1 Nemotron 70B)
 - AWS S3 (optional) for file storage
 
 ### Frontend
@@ -60,7 +60,7 @@ quiz-flashcard-app/
 ### Prerequisites
 
 - Node.js 18+ installed
-- OpenAI API key
+- NVIDIA API key (get one at https://build.nvidia.com/)
 
 ### Backend Setup
 
@@ -82,7 +82,7 @@ quiz-flashcard-app/
 4. Edit `.env` and add your configuration:
    ```
    PORT=3001
-   OPENAI_API_KEY=your_openai_api_key_here
+   NVIDIA_API_KEY=your_nvidia_api_key_here
 
    # Optional: AWS S3 configuration
    USE_S3_STORAGE=false
@@ -188,7 +188,7 @@ quiz-flashcard-app/
 The application is designed with a modular architecture for easy maintenance and upgrades:
 
 - **Services Layer**: Business logic separated into individual services
-  - `aiService.js` - AI/OpenAI integration
+  - `aiService.js` - NVIDIA Nemotron AI integration
   - `documentService.js` - Document processing
   - `quizService.js` - Quiz management
   - `flashcardService.js` - Flashcard system
