@@ -24,8 +24,11 @@ function Home() {
     }
   };
 
-  const handleCreateCategory = async (e) => {
-    e.preventDefault();
+  const handleCreateCategory = async () => {
+    if (!newCategory.name.trim()) {
+      alert('Please enter a category name');
+      return;
+    }
     try {
       await categoryApi.create(newCategory);
       setShowModal(false);
@@ -33,6 +36,7 @@ function Home() {
       loadCategories();
     } catch (error) {
       console.error('Error creating category:', error);
+      alert('Error creating category: ' + (error.response?.data?.error || error.message));
     }
   };
 
@@ -139,8 +143,8 @@ function Home() {
 
       {/* Create Category Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowModal(false)}>
+          <div className="bg-white rounded-xl p-6 w-full max-w-md relative z-50" onClick={(e) => e.stopPropagation()}>
             <h2 className="text-xl font-semibold mb-4">Create New Category</h2>
             <form onSubmit={handleCreateCategory}>
               <div className="space-y-4">
@@ -189,7 +193,11 @@ function Home() {
                 >
                   Cancel
                 </button>
-                <button type="submit" className="btn-primary">
+                <button
+                  type="button"
+                  onClick={handleCreateCategory}
+                  className="btn-primary"
+                >
                   Create
                 </button>
               </div>

@@ -66,24 +66,29 @@ const quizController = {
       const { sessionId } = req.params;
       const { answers } = req.body;
 
+      console.log('Submitting quiz:', sessionId, 'with answers:', Object.keys(answers).length);
+
       const results = quizService.submitQuizAnswers(sessionId, answers);
 
       // Add wrong answers to notebook
       const wrongAnswers = results.results.filter(r => !r.is_correct);
       if (wrongAnswers.length > 0) {
         const session = quizService.getQuizSession(sessionId);
-        const entries = wrongAnswers.map(wa => ({
-          category_id: session.category_id,
-          question_id: wa.question_id,
-          quiz_session_id: sessionId,
-          user_answer: wa.user_answer,
-          correct_answer: wa.correct_answer
-        }));
-        notebookService.addBulkEntries(entries);
+        if (session) {
+          const entries = wrongAnswers.map(wa => ({
+            category_id: session.category_id,
+            question_id: wa.question_id,
+            quiz_session_id: sessionId,
+            user_answer: wa.user_answer,
+            correct_answer: wa.correct_answer
+          }));
+          notebookService.addBulkEntries(entries);
+        }
       }
 
       res.json({ success: true, data: results });
     } catch (error) {
+      console.error('Error in submitQuiz:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   },

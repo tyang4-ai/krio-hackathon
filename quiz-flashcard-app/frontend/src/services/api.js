@@ -86,4 +86,26 @@ export const notebookApi = {
     api.delete(`/categories/${categoryId}/notebook/clear`)
 };
 
+// Sample Questions
+export const sampleQuestionApi = {
+  getByCategory: (categoryId) =>
+    api.get(`/categories/${categoryId}/sample-questions`),
+  getById: (id) => api.get(`/sample-questions/${id}`),
+  create: (categoryId, data) =>
+    api.post(`/categories/${categoryId}/sample-questions`, data),
+  createBulk: (categoryId, samples) =>
+    api.post(`/categories/${categoryId}/sample-questions/bulk`, { samples }),
+  uploadFile: (categoryId, file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post(`/categories/${categoryId}/sample-questions/upload`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
+  update: (id, data) => api.put(`/sample-questions/${id}`, data),
+  delete: (id) => api.delete(`/sample-questions/${id}`),
+  getCount: (categoryId) =>
+    api.get(`/categories/${categoryId}/sample-questions/count`)
+};
+
 export default api;

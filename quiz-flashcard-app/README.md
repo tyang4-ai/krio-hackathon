@@ -1,6 +1,6 @@
-# Quiz & Flashcard Generator
+# Scholarly - AI Study Platform
 
-A comprehensive web application that generates quizzes and flashcards from your documents using AI. Perfect for studying and learning material from PDFs, Word documents, and text files.
+An elegant, AI-powered study platform that transforms your documents into interactive quizzes and flashcards. Master any subject with intelligent question generation, spaced repetition, and adaptive learning from PDFs, Word documents, and text files.
 
 ## Features
 

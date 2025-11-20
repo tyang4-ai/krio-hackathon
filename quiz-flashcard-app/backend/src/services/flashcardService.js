@@ -23,30 +23,25 @@ class FlashcardService {
   }
 
   addBulkFlashcards(flashcards, categoryId, documentId = null) {
-    const stmt = db.prepare(`
-      INSERT INTO flashcards (id, category_id, document_id, front_text, back_text, difficulty, tags)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    const insertMany = db.transaction((flashcards) => {
-      const results = [];
-      for (const f of flashcards) {
-        const id = uuidv4();
-        stmt.run(
-          id,
-          categoryId,
-          documentId,
-          f.front_text,
-          f.back_text,
-          f.difficulty || 'medium',
-          JSON.stringify(f.tags || [])
-        );
-        results.push(id);
-      }
-      return results;
-    });
-
-    return insertMany(flashcards);
+    const results = [];
+    for (const f of flashcards) {
+      const id = uuidv4();
+      const stmt = db.prepare(`
+        INSERT INTO flashcards (id, category_id, document_id, front_text, back_text, difficulty, tags)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `);
+      stmt.run(
+        id,
+        categoryId,
+        documentId,
+        f.front_text,
+        f.back_text,
+        f.difficulty || 'medium',
+        JSON.stringify(f.tags || [])
+      );
+      results.push(id);
+    }
+    return results;
   }
 
   getFlashcardById(id) {

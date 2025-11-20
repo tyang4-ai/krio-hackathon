@@ -3,6 +3,7 @@ const storageService = require('../services/storageService');
 const aiService = require('../services/aiService');
 const quizService = require('../services/quizService');
 const flashcardService = require('../services/flashcardService');
+const sampleQuestionService = require('../services/sampleQuestionService');
 const path = require('path');
 
 const documentController = {
@@ -76,10 +77,14 @@ const documentController = {
         });
       }
 
+      // Get sample questions for this category to use as style guide
+      const sampleQuestions = sampleQuestionService.getSampleQuestionsForAI(categoryId);
+
       // Generate questions using AI
       const questions = await aiService.generateQuestions(content, {
         count,
-        difficulty
+        difficulty,
+        sampleQuestions
       });
 
       // Save questions to database
@@ -89,7 +94,8 @@ const documentController = {
         success: true,
         data: {
           generated: questions.length,
-          question_ids: questionIds
+          question_ids: questionIds,
+          used_samples: sampleQuestions.length
         }
       });
     } catch (error) {

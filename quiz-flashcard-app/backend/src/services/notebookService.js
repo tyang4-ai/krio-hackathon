@@ -23,30 +23,25 @@ class NotebookService {
   }
 
   addBulkEntries(entries) {
-    const stmt = db.prepare(`
-      INSERT INTO notebook_entries (id, category_id, question_id, quiz_session_id, user_answer, correct_answer, notes)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    const insertMany = db.transaction((entries) => {
-      const results = [];
-      for (const entry of entries) {
-        const id = uuidv4();
-        stmt.run(
-          id,
-          entry.category_id,
-          entry.question_id,
-          entry.quiz_session_id || null,
-          entry.user_answer,
-          entry.correct_answer,
-          entry.notes || ''
-        );
-        results.push(id);
-      }
-      return results;
-    });
-
-    return insertMany(entries);
+    const results = [];
+    for (const entry of entries) {
+      const id = uuidv4();
+      const stmt = db.prepare(`
+        INSERT INTO notebook_entries (id, category_id, question_id, quiz_session_id, user_answer, correct_answer, notes)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `);
+      stmt.run(
+        id,
+        entry.category_id,
+        entry.question_id,
+        entry.quiz_session_id || null,
+        entry.user_answer,
+        entry.correct_answer,
+        entry.notes || ''
+      );
+      results.push(id);
+    }
+    return results;
   }
 
   getEntryById(id) {

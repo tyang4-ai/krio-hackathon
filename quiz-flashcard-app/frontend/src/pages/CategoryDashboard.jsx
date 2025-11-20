@@ -8,14 +8,18 @@ import {
   ClipboardList,
   Trash2,
   Sparkles,
-  Loader2
+  Loader2,
+  Plus,
+  X,
+  Lightbulb
 } from 'lucide-react';
-import { categoryApi, documentApi } from '../services/api';
+import { categoryApi, documentApi, sampleQuestionApi } from '../services/api';
 
 function CategoryDashboard() {
   const { categoryId } = useParams();
   const [category, setCategory] = useState(null);
   const [documents, setDocuments] = useState([]);
+  const [sampleQuestions, setSampleQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [generating, setGenerating] = useState({ questions: false, flashcards: false });
@@ -24,6 +28,16 @@ function CategoryDashboard() {
     flashcardCount: 10,
     difficulty: 'medium'
   });
+  const [showSampleModal, setShowSampleModal] = useState(false);
+  const [newSample, setNewSample] = useState({
+    question_text: '',
+    question_type: 'multiple_choice',
+    options: ['A) ', 'B) ', 'C) ', 'D) '],
+    correct_answer: 'A',
+    explanation: ''
+  });
+  const [savingSample, setSavingSample] = useState(false);
+  const [uploadingSamples, setUploadingSamples] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -31,12 +45,14 @@ function CategoryDashboard() {
 
   const loadData = async () => {
     try {
-      const [catResponse, docsResponse] = await Promise.all([
+      const [catResponse, docsResponse, samplesResponse] = await Promise.all([
         categoryApi.getById(categoryId),
-        documentApi.getByCategory(categoryId)
+        documentApi.getByCategory(categoryId),
+        sampleQuestionApi.getByCategory(categoryId)
       ]);
       setCategory(catResponse.data.data);
       setDocuments(docsResponse.data.data);
+      setSampleQuestions(samplesResponse.data);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -103,6 +119,67 @@ function CategoryDashboard() {
     } finally {
       setGenerating({ ...generating, flashcards: false });
     }
+  };
+
+  const handleAddSampleQuestion = async () => {
+    if (!newSample.question_text.trim()) {
+      alert('Please enter a question');
+      return;
+    }
+
+    setSavingSample(true);
+    try {
+      await sampleQuestionApi.create(categoryId, newSample);
+      setShowSampleModal(false);
+      setNewSample({
+        question_text: '',
+        question_type: 'multiple_choice',
+        options: ['A) ', 'B) ', 'C) ', 'D) '],
+        correct_answer: 'A',
+        explanation: ''
+      });
+      loadData();
+    } catch (error) {
+      console.error('Error adding sample question:', error);
+      alert('Error adding sample question: ' + (error.response?.data?.error || error.message));
+    } finally {
+      setSavingSample(false);
+    }
+  };
+
+  const handleDeleteSampleQuestion = async (id) => {
+    if (window.confirm('Are you sure you want to delete this sample question?')) {
+      try {
+        await sampleQuestionApi.delete(id);
+        loadData();
+      } catch (error) {
+        console.error('Error deleting sample question:', error);
+      }
+    }
+  };
+
+  const handleSampleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setUploadingSamples(true);
+    try {
+      const response = await sampleQuestionApi.uploadFile(categoryId, file);
+      alert(response.data.message || `Imported ${response.data.samples?.length || 0} sample questions`);
+      loadData();
+    } catch (error) {
+      console.error('Error uploading sample questions:', error);
+      alert('Error uploading file: ' + (error.response?.data?.error || error.message));
+    } finally {
+      setUploadingSamples(false);
+      e.target.value = '';
+    }
+  };
+
+  const updateSampleOption = (index, value) => {
+    const newOptions = [...newSample.options];
+    newOptions[index] = value;
+    setNewSample({ ...newSample, options: newOptions });
   };
 
   if (loading) {
@@ -308,6 +385,188 @@ function CategoryDashboard() {
           )}
         </div>
       </div>
+
+      {/* Sample Questions Section */}
+      <div className="mt-8 card">
+        <div className="flex justify-between items-center mb-4">
+          <div>
+            <h2 className="text-xl font-semibold">Sample Questions</h2>
+            <p className="text-sm text-gray-600 mt-1">
+              Upload example questions to help the AI match your preferred style
+            </p>
+          </div>
+          <div className="flex space-x-2">
+            <label className="btn-secondary cursor-pointer flex items-center space-x-2">
+              {uploadingSamples ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Upload className="h-4 w-4" />
+              )}
+              <span>{uploadingSamples ? 'Uploading...' : 'Upload File'}</span>
+              <input
+                type="file"
+                className="hidden"
+                accept=".json,.csv,.pdf,.docx"
+                onChange={handleSampleFileUpload}
+                disabled={uploadingSamples}
+              />
+            </label>
+            <button
+              onClick={() => setShowSampleModal(true)}
+              className="btn-primary flex items-center space-x-2"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Add Manual</span>
+            </button>
+          </div>
+        </div>
+
+        {sampleQuestions.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            <Lightbulb className="h-12 w-12 mx-auto mb-2 text-gray-400" />
+            <p>No sample questions yet</p>
+            <p className="text-sm">Add examples manually or upload JSON/CSV/PDF/DOCX file</p>
+            <p className="text-xs mt-2 text-gray-400">AI will extract questions from documents and learn your style</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {sampleQuestions.map((sample) => (
+              <div
+                key={sample.id}
+                className="p-4 bg-gray-50 rounded-lg"
+              >
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-900 mb-2">{sample.question_text}</p>
+                    <div className="space-y-1 text-sm text-gray-600">
+                      {sample.options.map((opt, i) => (
+                        <p key={i} className={opt.startsWith(sample.correct_answer + ')') ? 'text-green-600 font-medium' : ''}>
+                          {opt}
+                        </p>
+                      ))}
+                    </div>
+                    {sample.explanation && (
+                      <p className="mt-2 text-sm text-gray-500 italic">
+                        Explanation: {sample.explanation}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => handleDeleteSampleQuestion(sample.id)}
+                    className="ml-4 text-gray-400 hover:text-red-600"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {sampleQuestions.length > 0 && (
+          <p className="text-sm text-gray-500 mt-4">
+            {sampleQuestions.length} sample{sampleQuestions.length !== 1 ? 's' : ''} will be used to guide question generation style
+          </p>
+        )}
+      </div>
+
+      {/* Add Sample Question Modal */}
+      {showSampleModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowSampleModal(false)}>
+          <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Add Sample Question</h3>
+              <button
+                onClick={() => setShowSampleModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Question
+                </label>
+                <textarea
+                  className="input min-h-[80px]"
+                  placeholder="Enter your sample question..."
+                  value={newSample.question_text}
+                  onChange={(e) => setNewSample({ ...newSample, question_text: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Options
+                </label>
+                <div className="space-y-2">
+                  {newSample.options.map((opt, index) => (
+                    <input
+                      key={index}
+                      type="text"
+                      className="input"
+                      placeholder={`Option ${String.fromCharCode(65 + index)}`}
+                      value={opt}
+                      onChange={(e) => updateSampleOption(index, e.target.value)}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Correct Answer
+                </label>
+                <select
+                  className="select"
+                  value={newSample.correct_answer}
+                  onChange={(e) => setNewSample({ ...newSample, correct_answer: e.target.value })}
+                >
+                  <option value="A">A</option>
+                  <option value="B">B</option>
+                  <option value="C">C</option>
+                  <option value="D">D</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Explanation (optional)
+                </label>
+                <textarea
+                  className="input min-h-[60px]"
+                  placeholder="Why is this the correct answer..."
+                  value={newSample.explanation}
+                  onChange={(e) => setNewSample({ ...newSample, explanation: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                onClick={() => setShowSampleModal(false)}
+                className="btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddSampleQuestion}
+                disabled={savingSample}
+                className="btn-primary flex items-center space-x-2"
+              >
+                {savingSample ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4" />
+                )}
+                <span>{savingSample ? 'Saving...' : 'Add Sample'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

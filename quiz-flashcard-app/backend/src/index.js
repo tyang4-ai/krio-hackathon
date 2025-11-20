@@ -21,9 +21,6 @@ const tempDir = path.join(uploadsDir, 'temp');
   }
 });
 
-// Initialize database
-initializeDatabase();
-
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -49,10 +46,21 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-  console.log(`API available at http://localhost:${PORT}/api`);
-});
+// Initialize database and start server
+async function startServer() {
+  try {
+    await initializeDatabase();
+
+    app.listen(PORT, () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+      console.log(`API available at http://localhost:${PORT}/api`);
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+startServer();
 
 module.exports = app;

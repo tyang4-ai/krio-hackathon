@@ -1,16 +1,41 @@
-const Database = require('better-sqlite3');
+const initSqlJs = require('sql.js');
+const fs = require('fs');
 const path = require('path');
 
 const dbPath = path.join(__dirname, '../../data/quiz_flashcard.db');
-const db = new Database(dbPath);
 
-// Enable foreign keys
-db.pragma('foreign_keys = ON');
+let db = null;
+let SQL = null;
 
-// Initialize database tables
-function initializeDatabase() {
+// Initialize database
+async function initializeDatabase() {
+  // Ensure data directory exists
+  const dataDir = path.dirname(dbPath);
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+  }
+
+  // Initialize SQL.js
+  SQL = await initSqlJs();
+
+  // Load existing database or create new one
+  try {
+    if (fs.existsSync(dbPath)) {
+      const fileBuffer = fs.readFileSync(dbPath);
+      db = new SQL.Database(fileBuffer);
+    } else {
+      db = new SQL.Database();
+    }
+  } catch (error) {
+    console.error('Error loading database, creating new one:', error);
+    db = new SQL.Database();
+  }
+
+  // Enable foreign keys
+  db.run('PRAGMA foreign_keys = ON');
+
   // Categories table
-  db.exec(`
+  db.run(`
     CREATE TABLE IF NOT EXISTS categories (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -22,7 +47,7 @@ function initializeDatabase() {
   `);
 
   // Documents table
-  db.exec(`
+  db.run(`
     CREATE TABLE IF NOT EXISTS documents (
       id TEXT PRIMARY KEY,
       category_id TEXT NOT NULL,
@@ -39,7 +64,7 @@ function initializeDatabase() {
   `);
 
   // Questions table (question bank)
-  db.exec(`
+  db.run(`
     CREATE TABLE IF NOT EXISTS questions (
       id TEXT PRIMARY KEY,
       category_id TEXT NOT NULL,
@@ -58,7 +83,7 @@ function initializeDatabase() {
   `);
 
   // Flashcards table
-  db.exec(`
+  db.run(`
     CREATE TABLE IF NOT EXISTS flashcards (
       id TEXT PRIMARY KEY,
       category_id TEXT NOT NULL,
@@ -74,7 +99,7 @@ function initializeDatabase() {
   `);
 
   // Quiz sessions table
-  db.exec(`
+  db.run(`
     CREATE TABLE IF NOT EXISTS quiz_sessions (
       id TEXT PRIMARY KEY,
       category_id TEXT NOT NULL,
@@ -91,7 +116,7 @@ function initializeDatabase() {
   `);
 
   // Notebook entries (wrong answers)
-  db.exec(`
+  db.run(`
     CREATE TABLE IF NOT EXISTS notebook_entries (
       id TEXT PRIMARY KEY,
       category_id TEXT NOT NULL,
@@ -109,7 +134,7 @@ function initializeDatabase() {
   `);
 
   // Flashcard progress tracking
-  db.exec(`
+  db.run(`
     CREATE TABLE IF NOT EXISTS flashcard_progress (
       id TEXT PRIMARY KEY,
       flashcard_id TEXT NOT NULL,
@@ -123,7 +148,109 @@ function initializeDatabase() {
     )
   `);
 
+  // Sample questions table (for AI to learn question style)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS sample_questions (
+      id TEXT PRIMARY KEY,
+      category_id TEXT NOT NULL,
+      question_text TEXT NOT NULL,
+      question_type TEXT DEFAULT 'multiple_choice',
+      options TEXT,
+      correct_answer TEXT NOT NULL,
+      explanation TEXT,
+      tags TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Save database to file
+  saveDatabase();
+
   console.log('Database initialized successfully');
 }
 
-module.exports = { db, initializeDatabase };
+// Save database to file
+function saveDatabase() {
+  if (db) {
+    const data = db.export();
+    const buffer = Buffer.from(data);
+    fs.writeFileSync(dbPath, buffer);
+  }
+}
+
+// Database wrapper to provide better-sqlite3-like interface
+const dbWrapper = {
+  prepare: (sql) => {
+    return {
+      run: (...params) => {
+        try {
+          const stmt = db.prepare(sql);
+          if (params.length > 0) {
+            stmt.bind(params);
+          }
+          stmt.step();
+          stmt.free();
+          saveDatabase();
+          return { changes: db.getRowsModified() };
+        } catch (error) {
+          console.error('SQL Error in run:', error.message, 'SQL:', sql);
+          throw error;
+        }
+      },
+      get: (...params) => {
+        try {
+          const stmt = db.prepare(sql);
+          if (params.length > 0) {
+            stmt.bind(params);
+          }
+          let row = undefined;
+          if (stmt.step()) {
+            row = stmt.getAsObject();
+          }
+          stmt.free();
+          return row;
+        } catch (error) {
+          console.error('SQL Error in get:', error.message, 'SQL:', sql);
+          throw error;
+        }
+      },
+      all: (...params) => {
+        try {
+          const results = [];
+          const stmt = db.prepare(sql);
+          if (params.length > 0) {
+            stmt.bind(params);
+          }
+          while (stmt.step()) {
+            results.push(stmt.getAsObject());
+          }
+          stmt.free();
+          return results;
+        } catch (error) {
+          console.error('SQL Error in all:', error.message, 'SQL:', sql);
+          throw error;
+        }
+      }
+    };
+  },
+  exec: (sql) => {
+    db.run(sql);
+    saveDatabase();
+  },
+  transaction: (fn) => {
+    // For sql.js, we'll just execute the function without explicit transactions
+    // since each operation auto-saves. This provides a compatible interface.
+    return (...args) => {
+      const result = fn(...args);
+      saveDatabase();
+      return result;
+    };
+  },
+  pragma: (pragma) => {
+    db.run(`PRAGMA ${pragma}`);
+  },
+  getRowsModified: () => db.getRowsModified()
+};
+
+module.exports = { db: dbWrapper, initializeDatabase, saveDatabase };

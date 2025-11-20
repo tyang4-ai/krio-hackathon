@@ -7,6 +7,7 @@ const documentController = require('../controllers/documentController');
 const quizController = require('../controllers/quizController');
 const flashcardController = require('../controllers/flashcardController');
 const notebookController = require('../controllers/notebookController');
+const sampleQuestionController = require('../controllers/sampleQuestionController');
 
 const router = express.Router();
 
@@ -31,6 +32,21 @@ const upload = multer({
       cb(null, true);
     } else {
       cb(new Error('Invalid file type. Allowed: PDF, DOC, DOCX, TXT, MD'));
+    }
+  }
+});
+
+// Configure multer for sample questions file upload (JSON/CSV/PDF/DOCX)
+const sampleUpload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['.json', '.csv', '.pdf', '.docx'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowedTypes.includes(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Allowed: JSON, CSV, PDF, DOCX'));
     }
   }
 });
@@ -80,5 +96,15 @@ router.delete('/notebook/:id', notebookController.delete);
 router.get('/categories/:categoryId/notebook/stats', notebookController.getStats);
 router.get('/categories/:categoryId/notebook/most-missed', notebookController.getMostMissed);
 router.delete('/categories/:categoryId/notebook/clear', notebookController.clearCategory);
+
+// ===== Sample Question Routes =====
+router.get('/categories/:categoryId/sample-questions', sampleQuestionController.getByCategory);
+router.get('/sample-questions/:id', sampleQuestionController.getById);
+router.post('/categories/:categoryId/sample-questions', sampleQuestionController.create);
+router.post('/categories/:categoryId/sample-questions/bulk', sampleQuestionController.createBulk);
+router.post('/categories/:categoryId/sample-questions/upload', sampleUpload.single('file'), sampleQuestionController.uploadFile);
+router.put('/sample-questions/:id', sampleQuestionController.update);
+router.delete('/sample-questions/:id', sampleQuestionController.delete);
+router.get('/categories/:categoryId/sample-questions/count', sampleQuestionController.getCount);
 
 module.exports = router;

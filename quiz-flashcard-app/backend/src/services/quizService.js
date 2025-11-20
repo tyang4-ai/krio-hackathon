@@ -27,33 +27,28 @@ class QuizService {
   }
 
   addBulkQuestions(questions, categoryId, documentId = null) {
-    const stmt = db.prepare(`
-      INSERT INTO questions (id, category_id, document_id, question_text, question_type, difficulty, options, correct_answer, explanation, tags)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    const insertMany = db.transaction((questions) => {
-      const results = [];
-      for (const q of questions) {
-        const id = uuidv4();
-        stmt.run(
-          id,
-          categoryId,
-          documentId,
-          q.question_text,
-          q.question_type || 'multiple_choice',
-          q.difficulty || 'medium',
-          JSON.stringify(q.options || []),
-          q.correct_answer,
-          q.explanation || '',
-          JSON.stringify(q.tags || [])
-        );
-        results.push(id);
-      }
-      return results;
-    });
-
-    return insertMany(questions);
+    const results = [];
+    for (const q of questions) {
+      const id = uuidv4();
+      const stmt = db.prepare(`
+        INSERT INTO questions (id, category_id, document_id, question_text, question_type, difficulty, options, correct_answer, explanation, tags)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      stmt.run(
+        id,
+        categoryId,
+        documentId,
+        q.question_text,
+        q.question_type || 'multiple_choice',
+        q.difficulty || 'medium',
+        JSON.stringify(q.options || []),
+        q.correct_answer,
+        q.explanation || '',
+        JSON.stringify(q.tags || [])
+      );
+      results.push(id);
+    }
+    return results;
   }
 
   getQuestionById(id) {
@@ -172,9 +167,13 @@ class QuizService {
     const results = [];
     let correctCount = 0;
 
+    // Ensure answers is an object
+    const safeAnswers = answers || {};
+
     for (const questionId of questionIds) {
       const question = this.getQuestionById(questionId);
-      const userAnswer = answers[questionId];
+      // Handle undefined answers - treat as empty string
+      const userAnswer = safeAnswers[questionId] !== undefined ? safeAnswers[questionId] : '';
       const isCorrect = userAnswer === question.correct_answer;
 
       if (isCorrect) {
@@ -192,13 +191,13 @@ class QuizService {
       });
     }
 
-    // Update session
+    // Update session - ensure we're passing valid data
     const updateStmt = db.prepare(`
       UPDATE quiz_sessions
       SET answers = ?, score = ?, completed = 1, completed_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `);
-    updateStmt.run(JSON.stringify(answers), correctCount, sessionId);
+    updateStmt.run(JSON.stringify(safeAnswers), correctCount, sessionId);
 
     return {
       session_id: sessionId,

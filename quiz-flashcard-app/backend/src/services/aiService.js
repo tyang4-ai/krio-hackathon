@@ -7,14 +7,16 @@ class AIService {
       apiKey: process.env.NVIDIA_API_KEY,
       baseURL: 'https://integrate.api.nvidia.com/v1'
     });
-    this.model = 'nvidia/llama-3.1-nemotron-70b-instruct';
+    // Use the model linked to the API key
+    this.model = 'nvidia/llama-3.3-nemotron-super-49b-v1';
   }
 
   async generateQuestions(content, options = {}) {
     const {
       count = 10,
       difficulty = 'medium',
-      questionTypes = ['multiple_choice']
+      questionTypes = ['multiple_choice'],
+      sampleQuestions = []
     } = options;
 
     const difficultyPrompt = {
@@ -22,6 +24,32 @@ class AIService {
       medium: 'application and analysis',
       hard: 'synthesis, evaluation, and complex problem-solving'
     };
+
+    // Build sample questions section if samples are provided
+    let sampleSection = '';
+    if (sampleQuestions.length > 0) {
+      sampleSection = `
+IMPORTANT - Style Guide from Sample Questions:
+The user has provided the following sample questions. Analyze their characteristics carefully and generate new questions that match:
+- Question phrasing style and tone
+- Option format and length
+- Level of detail in explanations
+- Type of answer choices
+- Overall structure and formatting
+
+Sample Questions to Learn From:
+${sampleQuestions.map((sq, i) => `
+Example ${i + 1}:
+Question: ${sq.question_text}
+Type: ${sq.question_type}
+Options: ${JSON.stringify(sq.options)}
+Correct Answer: ${sq.correct_answer}
+Explanation: ${sq.explanation || 'N/A'}
+`).join('\n')}
+
+Generate new questions that match this style while covering different concepts from the content.
+`;
+    }
 
     const prompt = `Based on the following content, generate ${count} quiz questions.
 
@@ -31,9 +59,9 @@ Requirements:
 - Each question should test different concepts from the content
 - Provide clear, unambiguous questions
 - For multiple choice, provide 4 options (A, B, C, D)
-
+${sampleSection}
 Content:
-${content.substring(0, 8000)}
+${content.substring(0, sampleQuestions.length > 0 ? 6000 : 8000)}
 
 Return the questions in the following JSON format:
 {
@@ -80,7 +108,10 @@ Generate exactly ${count} questions. Respond ONLY with valid JSON, no other text
       return result.questions || [];
     } catch (error) {
       console.error('Error generating questions:', error);
-      throw new Error('Failed to generate questions: ' + error.message);
+      if (error.status === 404) {
+        throw new Error('Failed to generate questions: 404 status code - The API endpoint or model may not be available. Please check your NVIDIA_API_KEY is valid.');
+      }
+      throw new Error('Failed to generate questions: ' + (error.message || `${error.status} status code (no body)`));
     }
   }
 
