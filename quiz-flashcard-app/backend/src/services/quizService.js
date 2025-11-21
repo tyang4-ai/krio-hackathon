@@ -1,5 +1,6 @@
 const { v4: uuidv4 } = require('uuid');
 const { db } = require('../config/database');
+const userPreferencesService = require('./userPreferencesService');
 
 class QuizService {
   // Question Bank Methods
@@ -238,6 +239,9 @@ class QuizService {
       if (isCorrect) {
         correctCount++;
       }
+
+      // Record performance for AI learning
+      userPreferencesService.recordQuestionAnswer(questionId, session.category_id, isCorrect);
 
       results.push({
         question_id: questionId,

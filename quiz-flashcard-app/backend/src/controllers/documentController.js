@@ -4,6 +4,7 @@ const aiService = require('../services/aiService');
 const quizService = require('../services/quizService');
 const flashcardService = require('../services/flashcardService');
 const sampleQuestionService = require('../services/sampleQuestionService');
+const userPreferencesService = require('../services/userPreferencesService');
 const path = require('path');
 
 const documentController = {
@@ -80,13 +81,17 @@ const documentController = {
       // Get sample questions for this category to use as style guide
       const sampleQuestions = sampleQuestionService.getSampleQuestionsForAI(categoryId);
 
+      // Get AI insights for personalized generation
+      const aiInsights = userPreferencesService.getAIInsights(categoryId);
+
       // Generate questions using AI
       const questions = await aiService.generateQuestions(content, {
         count,
         difficulty,
         questionTypes: [questionType],
         sampleQuestions,
-        customDirections
+        customDirections,
+        aiInsights
       });
 
       // Save questions to database
