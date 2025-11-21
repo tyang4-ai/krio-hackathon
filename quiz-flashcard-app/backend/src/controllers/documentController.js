@@ -65,7 +65,7 @@ const documentController = {
   generateQuestions: async (req, res) => {
     try {
       const { categoryId } = req.params;
-      const { count = 10, difficulty = 'medium', customDirections } = req.body;
+      const { count = 10, difficulty = 'medium', questionType = 'multiple_choice', customDirections } = req.body;
 
       // Get combined content from all documents in category
       const content = documentService.getCombinedContentForCategory(categoryId);
@@ -84,6 +84,7 @@ const documentController = {
       const questions = await aiService.generateQuestions(content, {
         count,
         difficulty,
+        questionTypes: [questionType],
         sampleQuestions,
         customDirections
       });

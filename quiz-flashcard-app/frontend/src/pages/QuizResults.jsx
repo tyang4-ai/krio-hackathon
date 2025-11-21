@@ -36,6 +36,7 @@ function QuizResults() {
         return {
           question_id: id,
           question_text: question?.question_text || 'Question not found',
+          question_type: question?.question_type || 'multiple_choice',
           options: question?.options || [],
           user_answer: userAnswer,
           correct_answer: question?.correct_answer,
@@ -132,34 +133,55 @@ function QuizResults() {
                   {index + 1}. {result.question_text}
                 </p>
 
-                <div className="space-y-2 mb-3">
-                  {result.options.map((option, optIndex) => {
-                    const letter = option.charAt(0);
-                    const isUserAnswer = result.user_answer === letter;
-                    const isCorrectAnswer = result.correct_answer === letter;
-
-                    return (
-                      <div
-                        key={optIndex}
-                        className={`p-2 rounded text-sm ${
-                          isCorrectAnswer
-                            ? 'bg-green-100 text-green-800'
-                            : isUserAnswer
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-gray-50 text-gray-600'
-                        }`}
-                      >
-                        {option}
-                        {isCorrectAnswer && ' ✓'}
-                        {isUserAnswer && !isCorrectAnswer && ' (your answer)'}
+                {result.question_type === 'written_answer' ? (
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-xs font-medium text-gray-600 mb-1">Your Answer:</p>
+                      <div className="p-3 bg-gray-50 rounded text-sm text-gray-700">
+                        {result.user_answer || <span className="text-gray-400 italic">No answer provided</span>}
                       </div>
-                    );
-                  })}
-                </div>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-gray-600 mb-1">Model Answer:</p>
+                      <div className="p-3 bg-green-50 rounded text-sm text-green-800">
+                        {result.correct_answer}
+                      </div>
+                    </div>
+                    {result.explanation && (
+                      <div className="bg-blue-50 p-3 rounded text-sm text-blue-800">
+                        <strong>Key Points:</strong> {result.explanation}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-2 mb-3">
+                    {result.options.map((option, optIndex) => {
+                      const letter = option.charAt(0);
+                      const isUserAnswer = result.user_answer === letter;
+                      const isCorrectAnswer = result.correct_answer === letter;
 
-                {result.explanation && (
-                  <div className="bg-blue-50 p-3 rounded text-sm text-blue-800">
-                    <strong>Explanation:</strong> {result.explanation}
+                      return (
+                        <div
+                          key={optIndex}
+                          className={`p-2 rounded text-sm ${
+                            isCorrectAnswer
+                              ? 'bg-green-100 text-green-800'
+                              : isUserAnswer
+                              ? 'bg-red-100 text-red-800'
+                              : 'bg-gray-50 text-gray-600'
+                          }`}
+                        >
+                          {option}
+                          {isCorrectAnswer && ' ✓'}
+                          {isUserAnswer && !isCorrectAnswer && ' (your answer)'}
+                        </div>
+                      );
+                    })}
+                    {result.explanation && (
+                      <div className="bg-blue-50 p-3 rounded text-sm text-blue-800 mt-3">
+                        <strong>Explanation:</strong> {result.explanation}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

@@ -129,26 +129,40 @@ function QuizSession() {
           {currentQuestion.question_text}
         </h2>
 
-        <div className="space-y-3">
-          {currentQuestion.options.map((option, index) => {
-            const letter = option.charAt(0);
-            const isSelected = answers[currentQuestion.id] === letter;
+        {currentQuestion.question_type === 'written_answer' ? (
+          <div>
+            <textarea
+              className="input min-h-[200px]"
+              placeholder="Type your answer here..."
+              value={answers[currentQuestion.id] || ''}
+              onChange={(e) => handleSelectAnswer(currentQuestion.id, e.target.value)}
+            />
+            <p className="text-xs text-gray-500 mt-2">
+              Write a comprehensive answer. You'll see a model answer after submitting.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {currentQuestion.options.map((option, index) => {
+              const letter = option.charAt(0);
+              const isSelected = answers[currentQuestion.id] === letter;
 
-            return (
-              <button
-                key={index}
-                onClick={() => handleSelectAnswer(currentQuestion.id, letter)}
-                className={`w-full text-left p-4 rounded-lg border-2 transition-colors ${
-                  isSelected
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                {option}
-              </button>
-            );
-          })}
-        </div>
+              return (
+                <button
+                  key={index}
+                  onClick={() => handleSelectAnswer(currentQuestion.id, letter)}
+                  className={`w-full text-left p-4 rounded-lg border-2 transition-colors ${
+                    isSelected
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  {option}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Navigation */}

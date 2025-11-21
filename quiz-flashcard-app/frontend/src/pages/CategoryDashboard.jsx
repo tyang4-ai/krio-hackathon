@@ -26,8 +26,8 @@ function CategoryDashboard() {
   const [uploading, setUploading] = useState(false);
   const [generating, setGenerating] = useState({ questions: false, flashcards: false });
   const [generateOptions, setGenerateOptions] = useState({
-    questionCount: 10,
-    flashcardCount: 10,
+    contentType: 'multiple_choice', // 'multiple_choice', 'flashcards', 'true_false', 'written_answer'
+    count: 10,
     difficulty: 'medium',
     customDirections: ''
   });
@@ -91,38 +91,34 @@ function CategoryDashboard() {
     }
   };
 
-  const handleGenerateQuestions = async () => {
-    setGenerating({ ...generating, questions: true });
-    try {
-      const response = await documentApi.generateQuestions(categoryId, {
-        count: generateOptions.questionCount,
-        difficulty: generateOptions.difficulty,
-        customDirections: generateOptions.customDirections
-      });
-      alert(`Generated ${response.data.data.generated} questions!`);
-      loadData();
-    } catch (error) {
-      console.error('Error generating questions:', error);
-      alert('Error generating questions: ' + (error.response?.data?.error || error.message));
-    } finally {
-      setGenerating({ ...generating, questions: false });
-    }
-  };
+  const handleGenerateContent = async () => {
+    const isFlashcards = generateOptions.contentType === 'flashcards';
+    const generatingKey = isFlashcards ? 'flashcards' : 'questions';
 
-  const handleGenerateFlashcards = async () => {
-    setGenerating({ ...generating, flashcards: true });
+    setGenerating({ ...generating, [generatingKey]: true });
     try {
-      const response = await documentApi.generateFlashcards(categoryId, {
-        count: generateOptions.flashcardCount,
-        customDirections: generateOptions.customDirections
-      });
-      alert(`Generated ${response.data.data.generated} flashcards!`);
+      let response;
+      if (isFlashcards) {
+        response = await documentApi.generateFlashcards(categoryId, {
+          count: generateOptions.count,
+          customDirections: generateOptions.customDirections
+        });
+        alert(`Generated ${response.data.data.generated} flashcards!`);
+      } else {
+        response = await documentApi.generateQuestions(categoryId, {
+          count: generateOptions.count,
+          difficulty: generateOptions.difficulty,
+          questionType: generateOptions.contentType,
+          customDirections: generateOptions.customDirections
+        });
+        alert(`Generated ${response.data.data.generated} questions!`);
+      }
       loadData();
     } catch (error) {
-      console.error('Error generating flashcards:', error);
-      alert('Error generating flashcards: ' + (error.response?.data?.error || error.message));
+      console.error('Error generating content:', error);
+      alert('Error generating content: ' + (error.response?.data?.error || error.message));
     } finally {
-      setGenerating({ ...generating, flashcards: false });
+      setGenerating({ ...generating, [generatingKey]: false });
     }
   };
 
@@ -319,6 +315,53 @@ function CategoryDashboard() {
           <div className="space-y-4 mb-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
+                Content Type
+              </label>
+              <select
+                className="select"
+                value={generateOptions.contentType}
+                onChange={(e) => setGenerateOptions({ ...generateOptions, contentType: e.target.value })}
+              >
+                <option value="multiple_choice">Multiple Choice</option>
+                <option value="true_false">True/False</option>
+                <option value="written_answer">Written Answer</option>
+                <option value="flashcards">Flashcards</option>
+              </select>
+            </div>
+
+            {generateOptions.contentType !== 'flashcards' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Difficulty
+                </label>
+                <select
+                  className="select"
+                  value={generateOptions.difficulty}
+                  onChange={(e) => setGenerateOptions({ ...generateOptions, difficulty: e.target.value })}
+                >
+                  <option value="easy">Easy</option>
+                  <option value="medium">Medium</option>
+                  <option value="hard">Hard</option>
+                </select>
+              </div>
+            )}
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Count
+              </label>
+              <input
+                type="number"
+                className="input"
+                min="1"
+                max="50"
+                value={generateOptions.count}
+                onChange={(e) => setGenerateOptions({ ...generateOptions, count: parseInt(e.target.value) })}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Custom Directions (optional)
               </label>
               <textarea
@@ -331,79 +374,25 @@ function CategoryDashboard() {
                 Leave blank to generate using standard settings
               </p>
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Difficulty
-              </label>
-              <select
-                className="select"
-                value={generateOptions.difficulty}
-                onChange={(e) => setGenerateOptions({ ...generateOptions, difficulty: e.target.value })}
-              >
-                <option value="easy">Easy</option>
-                <option value="medium">Medium</option>
-                <option value="hard">Hard</option>
-              </select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Questions
-                </label>
-                <input
-                  type="number"
-                  className="input"
-                  min="1"
-                  max="50"
-                  value={generateOptions.questionCount}
-                  onChange={(e) => setGenerateOptions({ ...generateOptions, questionCount: parseInt(e.target.value) })}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Flashcards
-                </label>
-                <input
-                  type="number"
-                  className="input"
-                  min="1"
-                  max="50"
-                  value={generateOptions.flashcardCount}
-                  onChange={(e) => setGenerateOptions({ ...generateOptions, flashcardCount: parseInt(e.target.value) })}
-                />
-              </div>
-            </div>
           </div>
 
-          <div className="space-y-3">
-            <button
-              onClick={handleGenerateQuestions}
-              disabled={generating.questions || documents.length === 0}
-              className="w-full btn-primary flex items-center justify-center space-x-2"
-            >
-              {generating.questions ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Sparkles className="h-4 w-4" />
-              )}
-              <span>{generating.questions ? 'Generating...' : 'Generate Questions'}</span>
-            </button>
-
-            <button
-              onClick={handleGenerateFlashcards}
-              disabled={generating.flashcards || documents.length === 0}
-              className="w-full btn-secondary flex items-center justify-center space-x-2"
-            >
-              {generating.flashcards ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Sparkles className="h-4 w-4" />
-              )}
-              <span>{generating.flashcards ? 'Generating...' : 'Generate Flashcards'}</span>
-            </button>
-          </div>
+          <button
+            onClick={handleGenerateContent}
+            disabled={generating.questions || generating.flashcards || documents.length === 0}
+            className="w-full btn-primary flex items-center justify-center space-x-2"
+          >
+            {(generating.questions || generating.flashcards) ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="h-4 w-4" />
+            )}
+            <span>
+              {(generating.questions || generating.flashcards)
+                ? 'Generating...'
+                : `Generate ${generateOptions.contentType === 'flashcards' ? 'Flashcards' : 'Questions'}`
+              }
+            </span>
+          </button>
 
           {documents.length === 0 && (
             <p className="text-sm text-gray-500 mt-3 text-center">
