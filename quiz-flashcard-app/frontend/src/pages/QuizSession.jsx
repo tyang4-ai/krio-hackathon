@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Send, Clock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Send, Clock, ArrowLeft } from 'lucide-react';
 import { quizApi } from '../services/api';
 
 function QuizSession() {
@@ -92,6 +92,13 @@ function QuizSession() {
 
   return (
     <div className="max-w-3xl mx-auto">
+      <button
+        onClick={() => navigate(`/category/${categoryId}/quiz`)}
+        className="flex items-center text-gray-600 hover:text-gray-900 mb-4 transition-colors"
+      >
+        <ArrowLeft className="h-5 w-5 mr-2" />
+        Back to Quiz Settings
+      </button>
       {/* Progress Bar */}
       <div className="mb-6">
         <div className="flex justify-between text-sm text-gray-600 mb-2">

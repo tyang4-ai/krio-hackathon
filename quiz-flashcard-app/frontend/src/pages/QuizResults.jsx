@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { CheckCircle, XCircle, ArrowLeft, RotateCcw } from 'lucide-react';
 import { quizApi } from '../services/api';
 
 function QuizResults() {
   const { categoryId, sessionId } = useParams();
+  const navigate = useNavigate();
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -71,6 +72,13 @@ function QuizResults() {
 
   return (
     <div className="max-w-3xl mx-auto">
+      <button
+        onClick={() => navigate(`/category/${categoryId}/quiz`)}
+        className="flex items-center text-gray-600 hover:text-gray-900 mb-4 transition-colors"
+      >
+        <ArrowLeft className="h-5 w-5 mr-2" />
+        Back to Quiz
+      </button>
       {/* Score Summary */}
       <div className="card text-center mb-8">
         <h1 className="text-2xl font-bold text-gray-900 mb-4">Quiz Complete!</h1>
