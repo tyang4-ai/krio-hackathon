@@ -41,7 +41,9 @@ export const quizApi = {
     api.get(`/categories/${categoryId}/questions`, { params: filters }),
   addQuestion: (categoryId, data) =>
     api.post(`/categories/${categoryId}/questions`, data),
+  updateQuestion: (id, data) => api.put(`/questions/${id}`, data),
   deleteQuestion: (id) => api.delete(`/questions/${id}`),
+  rateQuestion: (id, rating) => api.post(`/questions/${id}/rate`, { rating }),
   getStats: (categoryId) =>
     api.get(`/categories/${categoryId}/questions/stats`),
   createSession: (categoryId, settings) =>
@@ -62,6 +64,7 @@ export const flashcardApi = {
     api.post(`/categories/${categoryId}/flashcards`, data),
   update: (id, data) => api.put(`/flashcards/${id}`, data),
   delete: (id) => api.delete(`/flashcards/${id}`),
+  rateFlashcard: (id, rating) => api.post(`/flashcards/${id}/rate`, { rating }),
   getForReview: (categoryId) =>
     api.get(`/categories/${categoryId}/flashcards/review`),
   updateProgress: (id, data) =>
