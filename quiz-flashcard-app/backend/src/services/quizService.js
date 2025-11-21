@@ -331,6 +331,31 @@ class QuizService {
     }
     return shuffled;
   }
+
+  updateQuestion(id, data) {
+    const stmt = db.prepare(`
+      UPDATE questions
+      SET question_text = ?, question_type = ?, difficulty = ?, options = ?, correct_answer = ?, explanation = ?
+      WHERE id = ?
+    `);
+
+    stmt.run(
+      data.question_text,
+      data.question_type,
+      data.difficulty,
+      JSON.stringify(data.options || []),
+      data.correct_answer,
+      data.explanation || '',
+      id
+    );
+
+    return this.getQuestionById(id);
+  }
+
+  rateQuestion(id, rating) {
+    const stmt = db.prepare('UPDATE questions SET rating = ? WHERE id = ?');
+    stmt.run(rating, id);
+  }
 }
 
 module.exports = new QuizService();

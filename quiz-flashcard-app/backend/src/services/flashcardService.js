@@ -184,6 +184,11 @@ class FlashcardService {
     `);
     return stmt.get(categoryId);
   }
+
+  rateFlashcard(id, rating) {
+    const stmt = db.prepare('UPDATE flashcards SET rating = ? WHERE id = ?');
+    stmt.run(rating, id);
+  }
 }
 
 module.exports = new FlashcardService();
