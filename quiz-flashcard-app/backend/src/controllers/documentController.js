@@ -65,7 +65,7 @@ const documentController = {
   generateQuestions: async (req, res) => {
     try {
       const { categoryId } = req.params;
-      const { count = 10, difficulty = 'medium' } = req.body;
+      const { count = 10, difficulty = 'medium', customDirections } = req.body;
 
       // Get combined content from all documents in category
       const content = documentService.getCombinedContentForCategory(categoryId);
@@ -84,7 +84,8 @@ const documentController = {
       const questions = await aiService.generateQuestions(content, {
         count,
         difficulty,
-        sampleQuestions
+        sampleQuestions,
+        customDirections
       });
 
       // Save questions to database
@@ -106,7 +107,7 @@ const documentController = {
   generateFlashcards: async (req, res) => {
     try {
       const { categoryId } = req.params;
-      const { count = 10 } = req.body;
+      const { count = 10, customDirections } = req.body;
 
       // Get combined content from all documents in category
       const content = documentService.getCombinedContentForCategory(categoryId);
@@ -119,7 +120,7 @@ const documentController = {
       }
 
       // Generate flashcards using AI
-      const flashcards = await aiService.generateFlashcards(content, { count });
+      const flashcards = await aiService.generateFlashcards(content, { count, customDirections });
 
       // Save flashcards to database
       const flashcardIds = flashcardService.addBulkFlashcards(flashcards, categoryId);

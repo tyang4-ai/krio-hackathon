@@ -28,7 +28,8 @@ function CategoryDashboard() {
   const [generateOptions, setGenerateOptions] = useState({
     questionCount: 10,
     flashcardCount: 10,
-    difficulty: 'medium'
+    difficulty: 'medium',
+    customDirections: ''
   });
   const [showSampleModal, setShowSampleModal] = useState(false);
   const [newSample, setNewSample] = useState({
@@ -95,7 +96,8 @@ function CategoryDashboard() {
     try {
       const response = await documentApi.generateQuestions(categoryId, {
         count: generateOptions.questionCount,
-        difficulty: generateOptions.difficulty
+        difficulty: generateOptions.difficulty,
+        customDirections: generateOptions.customDirections
       });
       alert(`Generated ${response.data.data.generated} questions!`);
       loadData();
@@ -111,7 +113,8 @@ function CategoryDashboard() {
     setGenerating({ ...generating, flashcards: true });
     try {
       const response = await documentApi.generateFlashcards(categoryId, {
-        count: generateOptions.flashcardCount
+        count: generateOptions.flashcardCount,
+        customDirections: generateOptions.customDirections
       });
       alert(`Generated ${response.data.data.generated} flashcards!`);
       loadData();
@@ -314,6 +317,21 @@ function CategoryDashboard() {
           <h2 className="text-xl font-semibold mb-4">Generate Content</h2>
 
           <div className="space-y-4 mb-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Custom Directions (optional)
+              </label>
+              <textarea
+                className="input min-h-[80px]"
+                placeholder="Add custom instructions for the AI (e.g., 'Focus on practical examples', 'Include historical context', 'Make questions more challenging')..."
+                value={generateOptions.customDirections}
+                onChange={(e) => setGenerateOptions({ ...generateOptions, customDirections: e.target.value })}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Leave blank to generate using standard settings
+              </p>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Difficulty

@@ -192,7 +192,8 @@ class AIService {
       count = 10,
       difficulty = 'medium',
       questionTypes = ['multiple_choice'],
-      sampleQuestions = []
+      sampleQuestions = [],
+      customDirections = ''
     } = options;
 
     const difficultyPrompt = {
@@ -227,6 +228,18 @@ Generate new questions that match this style while covering different concepts f
 `;
     }
 
+    // Build custom directions section if provided
+    let customDirectionsSection = '';
+    if (customDirections && customDirections.trim()) {
+      customDirectionsSection = `
+
+CUSTOM INSTRUCTIONS FROM USER:
+${customDirections.trim()}
+
+Follow these custom instructions carefully while generating the questions.
+`;
+    }
+
     const prompt = `Based on the following content, generate ${count} quiz questions.
 
 Requirements:
@@ -235,7 +248,7 @@ Requirements:
 - Each question should test different concepts from the content
 - Provide clear, unambiguous questions
 - For multiple choice, provide 4 options (A, B, C, D)
-${sampleSection}
+${sampleSection}${customDirectionsSection}
 Content:
 ${content.substring(0, sampleQuestions.length > 0 ? 6000 : 8000)}
 
@@ -306,7 +319,19 @@ Generate exactly ${count} questions. Respond ONLY with valid JSON, no other text
   }
 
   async generateFlashcards(content, options = {}) {
-    const { count = 10 } = options;
+    const { count = 10, customDirections = '' } = options;
+
+    // Build custom directions section if provided
+    let customDirectionsSection = '';
+    if (customDirections && customDirections.trim()) {
+      customDirectionsSection = `
+
+CUSTOM INSTRUCTIONS FROM USER:
+${customDirections.trim()}
+
+Follow these custom instructions carefully while generating the flashcards.
+`;
+    }
 
     const prompt = `Based on the following content, create ${count} flashcards for studying essential concepts.
 
@@ -316,7 +341,7 @@ Requirements:
 - Back of card should be a concise but complete answer
 - Cover different topics from the content
 - Make them suitable for memorization and review
-
+${customDirectionsSection}
 Content:
 ${content.substring(0, 8000)}
 
