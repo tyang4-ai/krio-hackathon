@@ -1,0 +1,1508 @@
+# Scholarly - Quiz & Flashcard Generator - Developer Documentation
+
+## Table of Contents
+1. [Project Overview](#project-overview)
+2. [Architecture](#architecture)
+3. [Technology Stack](#technology-stack)
+4. [Database Schema](#database-schema)
+5. [Backend Services](#backend-services)
+6. [Frontend Components](#frontend-components)
+7. [API Reference](#api-reference)
+8. [AI Integration](#ai-integration)
+9. [Personalization System](#personalization-system)
+10. [Development Setup](#development-setup)
+11. [Deployment](#deployment)
+
+---
+
+## Project Overview
+
+Scholarly is an AI-powered educational platform that generates quiz questions and flashcards from uploaded documents. It features adaptive learning through user performance tracking and content personalization.
+
+### Key Features
+- **Multi-format Document Support**: PDF, TXT, DOCX, MD
+- **AI Content Generation**: Questions (multiple choice, true/false, written answer) and flashcards
+- **Adaptive Learning**: Tracks user performance and preferences
+- **Personalized AI**: Learns from ratings and performance history
+- **Spaced Repetition**: Smart flashcard review scheduling
+- **Multi-Provider AI**: Supports NVIDIA, Groq, Together.ai, Ollama, AWS Bedrock, HuggingFace
+- **Question Bank Management**: Full CRUD with bulk operations
+- **Custom Quiz Configuration**: Mixed or type-specific question selection
+- **Sample Questions**: User-provided examples to guide AI style
+
+---
+
+## Architecture
+
+### High-Level Architecture
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        Frontend (React)                      │
+│  ┌──────────┬──────────┬──────────┬──────────┬──────────┐  │
+│  │   Home   │ Category │   Quiz   │Flashcards│ Question │  │
+│  │          │Dashboard │  Page    │   Page   │   Bank   │  │
+│  └──────────┴──────────┴──────────┴──────────┴──────────┘  │
+└──────────────────────────┬──────────────────────────────────┘
+                           │ REST API
+┌──────────────────────────▼──────────────────────────────────┐
+│                    Backend (Express.js)                      │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │                    Controllers                        │  │
+│  │  Category │ Document │ Quiz │ Flashcard │ Notebook   │  │
+│  └──────────────────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │                     Services                          │  │
+│  │  Category │ Document │ Quiz │ Flashcard │ AI │ Prefs │  │
+│  └──────────────────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │              Database (SQLite + sql.js)               │  │
+│  └──────────────────────────────────────────────────────┘  │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+┌──────────────────────────▼──────────────────────────────────┐
+│                 AI Provider (Multi-Provider)                 │
+│  NVIDIA │ Groq │ Together.ai │ Ollama │ Bedrock │ HuggingFace│
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Directory Structure
+```
+quiz-flashcard-app/
+├── backend/
+│   ├── src/
+│   │   ├── config/
+│   │   │   └── database.js              # Database setup & migrations
+│   │   ├── controllers/
+│   │   │   ├── categoryController.js    # Category CRUD
+│   │   │   ├── documentController.js    # Document upload & AI generation
+│   │   │   ├── flashcardController.js   # Flashcard management
+│   │   │   ├── notebookController.js    # Wrong answer tracking
+│   │   │   ├── quizController.js        # Quiz & questions
+│   │   │   └── sampleQuestionController.js # Sample questions
+│   │   ├── services/
+│   │   │   ├── aiService.js             # Multi-provider AI client
+│   │   │   ├── categoryService.js       # Category business logic
+│   │   │   ├── documentService.js       # Document processing
+│   │   │   ├── flashcardService.js      # Flashcard logic & spaced repetition
+│   │   │   ├── quizService.js           # Quiz sessions & questions
+│   │   │   ├── sampleQuestionService.js # Sample question management
+│   │   │   ├── storageService.js        # File storage
+│   │   │   └── userPreferencesService.js # Performance tracking & AI insights
+│   │   ├── routes/
+│   │   │   └── index.js                 # API route definitions
+│   │   └── server.js                    # Express server entry point
+│   ├── data/                            # SQLite database storage
+│   ├── uploads/                         # Uploaded documents
+│   └── package.json
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── Layout.jsx              # Main layout wrapper
+│   │   │   └── CategoryForm.jsx        # Category creation form
+│   │   ├── pages/
+│   │   │   ├── Home.jsx                # Landing page & category list
+│   │   │   ├── CategoryDashboard.jsx   # Category overview & content generation
+│   │   │   ├── QuizPage.jsx            # Quiz configuration & history
+│   │   │   ├── QuizSession.jsx         # Active quiz interface
+│   │   │   ├── QuizResults.jsx         # Quiz results & review
+│   │   │   ├── QuestionBank.jsx        # Question management (new)
+│   │   │   ├── FlashcardsPage.jsx      # Flashcard study interface
+│   │   │   └── NotebookPage.jsx        # Wrong answer notebook
+│   │   ├── services/
+│   │   │   └── api.js                  # API client with axios
+│   │   ├── App.jsx                     # React Router setup
+│   │   └── index.css                   # Tailwind CSS styles
+│   ├── public/
+│   └── package.json
+├── README.md
+└── DEVDOC.md                           # This file
+```
+
+---
+
+## Technology Stack
+
+### Backend
+- **Runtime**: Node.js 18+
+- **Framework**: Express.js 4.x
+- **Database**: SQLite with sql.js (in-memory for portability)
+- **File Upload**: multer
+- **Document Processing**:
+  - pdf-parse (PDF)
+  - mammoth (DOCX)
+  - markdown-it (Markdown)
+- **AI Client**: OpenAI SDK (compatible with multiple providers)
+- **UUID**: uuid v4
+
+### Frontend
+- **Framework**: React 18+
+- **Routing**: React Router 6
+- **HTTP Client**: Axios
+- **Styling**: Tailwind CSS 3.x
+- **Icons**: Lucide React
+- **Build Tool**: Vite
+
+### AI Providers
+- NVIDIA Nemotron (default)
+- Groq (recommended for production - fast & cheap)
+- Together.ai
+- Ollama (local development)
+- AWS Bedrock (requires AWS SDK)
+- HuggingFace (requires HF SDK)
+
+---
+
+## Database Schema
+
+### Tables Overview
+```sql
+-- Core Tables
+categories          # Subject categories
+documents           # Uploaded files
+questions           # Question bank
+flashcards          # Flashcard bank
+sample_questions    # User-provided style examples
+
+-- Session & Progress Tables
+quiz_sessions       # Quiz attempts
+flashcard_progress  # Spaced repetition tracking
+notebook_entries    # Wrong answers
+
+-- Personalization Tables (New)
+user_preferences    # Key-value preference storage
+question_performance # Answer accuracy tracking
+```
+
+### Detailed Schema
+
+#### categories
+```sql
+CREATE TABLE categories (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  color TEXT DEFAULT '#3B82F6',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+#### documents
+```sql
+CREATE TABLE documents (
+  id TEXT PRIMARY KEY,
+  category_id TEXT NOT NULL,
+  filename TEXT NOT NULL,
+  original_name TEXT NOT NULL,
+  file_type TEXT NOT NULL,        -- pdf, txt, docx, md
+  file_size INTEGER,
+  storage_path TEXT NOT NULL,
+  content_text TEXT,              -- Extracted text content
+  processed BOOLEAN DEFAULT 0,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+);
+```
+
+#### questions
+```sql
+CREATE TABLE questions (
+  id TEXT PRIMARY KEY,
+  category_id TEXT NOT NULL,
+  document_id TEXT,
+  question_text TEXT NOT NULL,
+  question_type TEXT DEFAULT 'multiple_choice', -- multiple_choice, true_false, written_answer
+  difficulty TEXT DEFAULT 'medium',              -- easy, medium, hard
+  options TEXT,                                   -- JSON array for MC/TF
+  correct_answer TEXT NOT NULL,
+  explanation TEXT,
+  tags TEXT,                                      -- JSON array
+  rating INTEGER DEFAULT 0,                       -- 0-5 stars (NEW)
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE,
+  FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE SET NULL
+);
+```
+
+#### flashcards
+```sql
+CREATE TABLE flashcards (
+  id TEXT PRIMARY KEY,
+  category_id TEXT NOT NULL,
+  document_id TEXT,
+  front_text TEXT NOT NULL,
+  back_text TEXT NOT NULL,
+  difficulty TEXT DEFAULT 'medium',
+  tags TEXT,                                      -- JSON array
+  rating INTEGER DEFAULT 0,                       -- 0-5 stars (NEW)
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE,
+  FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE SET NULL
+);
+```
+
+#### quiz_sessions
+```sql
+CREATE TABLE quiz_sessions (
+  id TEXT PRIMARY KEY,
+  category_id TEXT NOT NULL,
+  settings TEXT NOT NULL,          -- JSON: { difficulty, selectionMode, counts }
+  questions TEXT NOT NULL,          -- JSON array of question IDs
+  answers TEXT,                     -- JSON object: { questionId: answer }
+  score INTEGER,
+  total_questions INTEGER,
+  completed BOOLEAN DEFAULT 0,
+  started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  completed_at DATETIME,
+  FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+);
+```
+
+#### flashcard_progress
+```sql
+CREATE TABLE flashcard_progress (
+  id TEXT PRIMARY KEY,
+  flashcard_id TEXT NOT NULL,
+  category_id TEXT NOT NULL,
+  confidence_level INTEGER DEFAULT 0,  -- 0-5 (spaced repetition)
+  times_reviewed INTEGER DEFAULT 0,
+  last_reviewed DATETIME,
+  next_review DATETIME,                -- Calculated: datetime('now', '+N days')
+  FOREIGN KEY (flashcard_id) REFERENCES flashcards(id) ON DELETE CASCADE,
+  FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+);
+```
+
+#### sample_questions
+```sql
+CREATE TABLE sample_questions (
+  id TEXT PRIMARY KEY,
+  category_id TEXT NOT NULL,
+  question_text TEXT NOT NULL,
+  question_type TEXT DEFAULT 'multiple_choice',
+  options TEXT,                         -- JSON array
+  correct_answer TEXT NOT NULL,
+  explanation TEXT,
+  tags TEXT,                            -- JSON array
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+);
+```
+
+#### user_preferences (NEW)
+```sql
+CREATE TABLE user_preferences (
+  id TEXT PRIMARY KEY,
+  category_id TEXT NOT NULL,
+  preference_key TEXT NOT NULL,      -- e.g., "preferred_difficulty", "ai_style"
+  preference_value TEXT,             -- JSON or string value
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE,
+  UNIQUE(category_id, preference_key)
+);
+```
+
+#### question_performance (NEW)
+```sql
+CREATE TABLE question_performance (
+  id TEXT PRIMARY KEY,
+  question_id TEXT NOT NULL,
+  category_id TEXT NOT NULL,
+  times_answered INTEGER DEFAULT 0,
+  times_correct INTEGER DEFAULT 0,
+  last_answered DATETIME,
+  FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE,
+  FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+);
+```
+
+#### notebook_entries
+```sql
+CREATE TABLE notebook_entries (
+  id TEXT PRIMARY KEY,
+  category_id TEXT NOT NULL,
+  question_id TEXT NOT NULL,
+  quiz_session_id TEXT,
+  user_answer TEXT,
+  correct_answer TEXT NOT NULL,
+  notes TEXT,
+  reviewed BOOLEAN DEFAULT 0,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE,
+  FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE,
+  FOREIGN KEY (quiz_session_id) REFERENCES quiz_sessions(id) ON DELETE SET NULL
+);
+```
+
+---
+
+## Backend Services
+
+### 1. aiService.js
+**Purpose**: Multi-provider AI client for content generation
+
+**Key Methods**:
+```javascript
+// Generate quiz questions
+generateQuestions(content, options = {
+  count: 10,
+  difficulty: 'medium',
+  questionTypes: ['multiple_choice'],
+  sampleQuestions: [],
+  customDirections: '',
+  aiInsights: null              // NEW: Personalization data
+})
+
+// Generate flashcards
+generateFlashcards(content, options = {
+  count: 10,
+  customDirections: ''
+})
+
+// Extract key topics
+extractKeyTopics(content)
+
+// Health check
+healthCheck()
+```
+
+**Provider Configuration**:
+```javascript
+// Environment variables
+AI_PROVIDER=nvidia              // Provider name
+AI_MODEL=nvidia/llama-3.3-nemotron-super-49b-v1
+NVIDIA_API_KEY=your_key
+GROQ_API_KEY=your_key
+TOGETHER_API_KEY=your_key
+OLLAMA_BASE_URL=http://localhost:11434/v1
+```
+
+**AI Insights Integration** (NEW):
+The AI service now accepts `aiInsights` parameter containing:
+- `highlyRated`: Questions rated 4-5 stars (style guidance)
+- `poorlyRated`: Questions rated 1-2 stars (patterns to avoid)
+- `weakTopics`: Question types/difficulties with low accuracy
+- `performance`: Overall stats (accuracy, attempts)
+- `preferredTypes`: Question types with highest ratings
+
+### 2. userPreferencesService.js (NEW)
+**Purpose**: Track user performance and generate AI personalization insights
+
+**Key Methods**:
+```javascript
+// Preference Management
+setPreference(categoryId, key, value)
+getPreference(categoryId, key)
+getAllPreferences(categoryId)
+
+// Performance Tracking
+recordQuestionAnswer(questionId, categoryId, isCorrect)
+getWeakQuestions(categoryId, threshold = 0.5)    // Low accuracy
+getStrongQuestions(categoryId, threshold = 0.8)  // High accuracy
+getPerformanceStats(categoryId)
+
+// AI Learning
+getAIInsights(categoryId)  // Returns comprehensive insights for AI
+```
+
+**AI Insights Structure**:
+```javascript
+{
+  highlyRated: [
+    { id, question_text, question_type, difficulty, rating, options, explanation }
+  ],
+  poorlyRated: [
+    { id, question_text, question_type, difficulty, rating }
+  ],
+  weakTopics: [
+    { question_type, difficulty, question_count, avg_accuracy }
+  ],
+  preferredTypes: [
+    { question_type, count, avg_rating }
+  ],
+  preferences: { key: value },
+  performance: {
+    total_questions_attempted,
+    total_answers,
+    total_correct,
+    avg_accuracy
+  }
+}
+```
+
+### 3. quizService.js
+**Purpose**: Quiz session management and question bank operations
+
+**Key Methods**:
+```javascript
+// Question Bank
+addQuestion(questionData)
+addBulkQuestions(questions, categoryId, documentId)
+getQuestionById(id)
+getQuestionsByCategory(categoryId, filters)
+updateQuestion(id, data)          // NEW
+deleteQuestion(id)
+rateQuestion(id, rating)          // NEW
+
+// Quiz Sessions
+createQuizSession(categoryId, settings)
+selectQuestionsForQuiz(categoryId, settings)  // Mixed or custom mode
+submitQuizAnswers(sessionId, answers)         // Auto-records performance
+getQuizSession(sessionId)
+getQuizHistory(categoryId)
+
+// Stats
+getQuestionStats(categoryId)  // Returns by_type counts
+```
+
+**Quiz Settings**:
+```javascript
+{
+  difficulty: 'mixed' | 'easy' | 'medium' | 'hard',
+  selectionMode: 'mixed' | 'custom',
+  // Mixed mode
+  totalQuestions: 10,
+  // Custom mode
+  multipleChoice: 5,
+  trueFalse: 3,
+  writtenAnswer: 2
+}
+```
+
+### 4. flashcardService.js
+**Purpose**: Flashcard management with spaced repetition
+
+**Key Methods**:
+```javascript
+addFlashcard(flashcardData)
+addBulkFlashcards(flashcards, categoryId, documentId)
+getFlashcardById(id)
+getFlashcardsByCategory(categoryId, options)
+updateFlashcard(id, updates)
+deleteFlashcard(id)
+rateFlashcard(id, rating)        // NEW
+
+// Spaced Repetition
+updateProgress(flashcardId, categoryId, confidence)  // 0-5
+getFlashcardsForReview(categoryId)  // Due for review
+getFlashcardStats(categoryId)
+getStudyProgress(categoryId)
+```
+
+**Spaced Repetition Algorithm**:
+```javascript
+// Days until next review = 2^confidence
+// confidence 0: 1 day
+// confidence 1: 2 days
+// confidence 2: 4 days
+// confidence 3: 8 days
+// confidence 4: 16 days
+// confidence 5: 32 days
+```
+
+### 5. documentService.js
+**Purpose**: Document upload and text extraction
+
+**Key Methods**:
+```javascript
+saveDocument(categoryId, file, storagePath, contentText)
+getDocumentsByCategory(categoryId)
+deleteDocument(id)
+processDocument(filePath, fileType)        // Extract text
+getCombinedContentForCategory(categoryId)  // All docs merged
+```
+
+**Supported Formats**:
+- PDF: pdf-parse
+- DOCX: mammoth
+- TXT: direct read
+- MD: markdown-it
+
+### 6. sampleQuestionService.js
+**Purpose**: Manage user-provided style examples
+
+**Key Methods**:
+```javascript
+addSampleQuestion(categoryId, questionData)
+addBulkSampleQuestions(categoryId, questions)
+getSampleQuestionsByCategory(categoryId)
+getSampleQuestionsForAI(categoryId)  // Formatted for AI prompt
+updateSampleQuestion(id, data)
+deleteSampleQuestion(id)
+getSampleQuestionCount(categoryId)
+```
+
+### 7. storageService.js
+**Purpose**: File storage management
+
+**Key Methods**:
+```javascript
+uploadFile(file, categoryId)  // Returns { path, filename }
+```
+
+---
+
+## Frontend Components
+
+### Pages
+
+#### 1. Home.jsx
+**Purpose**: Landing page with category management
+
+**Features**:
+- Create new categories
+- View all categories as cards
+- Color-coded categories
+- Navigate to category dashboard
+- Delete categories
+
+#### 2. CategoryDashboard.jsx
+**Purpose**: Category overview and content generation hub
+
+**Features**:
+- Document upload (PDF, TXT, DOCX, MD)
+- AI content generation (unified interface)
+- Content type selector: Multiple Choice, True/False, Written Answer, Flashcards
+- Difficulty selector (hidden for flashcards)
+- Custom AI directions textarea
+- Sample question upload
+- Quick action cards: Quiz, Flashcards, Question Bank, Notebook
+- Document list with delete
+- Statistics display
+
+**Content Generation**:
+```javascript
+const [generateOptions, setGenerateOptions] = useState({
+  contentType: 'multiple_choice',  // multiple_choice, true_false, written_answer, flashcards
+  count: 10,
+  difficulty: 'medium',
+  customDirections: ''
+});
+```
+
+#### 3. QuizPage.jsx
+**Purpose**: Quiz configuration and history
+
+**Features**:
+- **Selection Mode Toggle**: Mixed vs Custom
+- **Mixed Mode**: Single total questions input, random from all types
+- **Custom Mode**: Individual inputs for each question type (MC, T/F, Written)
+- **Difficulty Filter**: Mixed, Easy, Medium, Hard
+- **Available Questions Display**: By type and difficulty
+- **Quiz History**: Recent attempts with scores and percentages
+- **Start Quiz Button**: Creates session and navigates to quiz
+
+**Settings State**:
+```javascript
+const [settings, setSettings] = useState({
+  difficulty: 'mixed',
+  selectionMode: 'mixed',      // 'mixed' or 'custom'
+  multipleChoice: 5,
+  trueFalse: 3,
+  writtenAnswer: 2,
+  totalQuestions: 10
+});
+```
+
+#### 4. QuizSession.jsx
+**Purpose**: Active quiz interface
+
+**Features**:
+- Question navigation (prev/next)
+- Progress indicator
+- Multiple choice: Radio buttons
+- True/False: Radio buttons
+- Written answer: Textarea
+- Submit button
+- Answer state management
+
+#### 5. QuizResults.jsx
+**Purpose**: Quiz results and review
+
+**Features**:
+- Score display with percentage
+- Color-coded performance (green >70%, yellow >50%, red <50%)
+- Question-by-question breakdown
+- Correct/incorrect indicators
+- Show explanations
+- For written answers: Show user answer vs model answer
+- Retake quiz button
+
+#### 6. QuestionBank.jsx (NEW)
+**Purpose**: Comprehensive question management
+
+**Features**:
+- **View All Questions**: Paginated list
+- **Filter by Type**: All, Multiple Choice, True/False, Written Answer
+- **Filter by Difficulty**: All, Easy, Medium, Hard
+- **Inline Editing**:
+  - Edit mode toggle per question
+  - Edit question text, type, difficulty, options, correct answer, explanation
+  - Save/Cancel buttons
+- **Individual Delete**: Delete button per question
+- **Bulk Selection**: Checkboxes with "Select All"
+- **Bulk Delete**: Delete all selected questions
+- **Bulk Difficulty Change**: Change difficulty for all selected
+- **Star Rating**: 1-5 stars per question (for AI learning)
+- **Question Type Badges**: Color-coded
+- **Difficulty Badges**: Color-coded
+
+**UI Components**:
+```javascript
+const [questions, setQuestions] = useState([]);
+const [editingId, setEditingId] = useState(null);
+const [editForm, setEditForm] = useState({});
+const [selectedQuestions, setSelectedQuestions] = useState(new Set());
+const [filter, setFilter] = useState({ type: 'all', difficulty: 'all' });
+```
+
+#### 7. FlashcardsPage.jsx
+**Purpose**: Flashcard study with spaced repetition
+
+**Features**:
+- Card flip animation (front/back)
+- Confidence rating (0-5)
+- Due for review filtering
+- Progress tracking
+- Statistics display
+
+#### 8. NotebookPage.jsx
+**Purpose**: Wrong answer review
+
+**Features**:
+- View incorrect quiz answers
+- Add notes
+- Mark as reviewed
+- Filter by reviewed status
+
+### Components
+
+#### Layout.jsx
+**Purpose**: Main application wrapper
+
+**Features**:
+- Header with branding
+- Navigation
+- Content area
+- Responsive design
+
+#### CategoryForm.jsx
+**Purpose**: Category creation modal
+
+**Features**:
+- Name input
+- Description textarea
+- Color picker (custom palette)
+- Validation
+
+---
+
+## API Reference
+
+### Categories
+
+```
+GET    /api/categories                  # List all categories
+POST   /api/categories                  # Create category
+GET    /api/categories/:id              # Get category by ID
+PUT    /api/categories/:id              # Update category
+DELETE /api/categories/:id              # Delete category
+```
+
+### Documents
+
+```
+GET    /api/categories/:categoryId/documents              # List documents
+POST   /api/categories/:categoryId/documents              # Upload document (multipart/form-data)
+DELETE /api/documents/:id                                 # Delete document
+POST   /api/categories/:categoryId/generate-questions     # Generate questions from docs
+POST   /api/categories/:categoryId/generate-flashcards    # Generate flashcards from docs
+```
+
+**Generate Questions Body**:
+```json
+{
+  "count": 10,
+  "difficulty": "medium",
+  "questionType": "multiple_choice",
+  "customDirections": "Optional custom instructions"
+}
+```
+
+### Questions
+
+```
+GET    /api/categories/:categoryId/questions              # List questions
+POST   /api/categories/:categoryId/questions              # Add question
+GET    /api/categories/:categoryId/questions/stats        # Question stats
+PUT    /api/questions/:id                                 # Update question (NEW)
+DELETE /api/questions/:id                                 # Delete question
+POST   /api/questions/:id/rate                            # Rate question (NEW)
+```
+
+**Update Question Body**:
+```json
+{
+  "question_text": "Updated question?",
+  "question_type": "multiple_choice",
+  "difficulty": "hard",
+  "options": ["A) Option 1", "B) Option 2", "C) Option 3", "D) Option 4"],
+  "correct_answer": "A",
+  "explanation": "Explanation here"
+}
+```
+
+**Rate Question Body**:
+```json
+{
+  "rating": 5  // 1-5 stars
+}
+```
+
+### Quiz Sessions
+
+```
+POST   /api/categories/:categoryId/quiz                   # Create quiz session
+POST   /api/quiz/:sessionId/submit                        # Submit quiz answers
+GET    /api/quiz/:sessionId                               # Get quiz session
+GET    /api/categories/:categoryId/quiz/history           # Quiz history
+```
+
+**Create Quiz Body**:
+```json
+{
+  "difficulty": "mixed",
+  "selectionMode": "custom",
+  "multipleChoice": 5,
+  "trueFalse": 3,
+  "writtenAnswer": 2
+}
+```
+
+**Submit Answers Body**:
+```json
+{
+  "answers": {
+    "question-id-1": "A",
+    "question-id-2": "B",
+    "question-id-3": "User's written answer..."
+  }
+}
+```
+
+### Flashcards
+
+```
+GET    /api/categories/:categoryId/flashcards             # List flashcards
+POST   /api/categories/:categoryId/flashcards             # Create flashcard
+GET    /api/categories/:categoryId/flashcards/review      # Get due flashcards
+GET    /api/categories/:categoryId/flashcards/stats       # Flashcard stats
+GET    /api/flashcards/:id                                # Get flashcard
+PUT    /api/flashcards/:id                                # Update flashcard
+DELETE /api/flashcards/:id                                # Delete flashcard
+POST   /api/flashcards/:id/rate                           # Rate flashcard (NEW)
+POST   /api/flashcards/:id/progress                       # Update progress
+```
+
+**Rate Flashcard Body**:
+```json
+{
+  "rating": 4  // 1-5 stars
+}
+```
+
+**Update Progress Body**:
+```json
+{
+  "confidence": 3,      // 0-5 (affects next review date)
+  "categoryId": "uuid"
+}
+```
+
+### Sample Questions
+
+```
+GET    /api/categories/:categoryId/sample-questions       # List samples
+POST   /api/categories/:categoryId/sample-questions       # Create sample
+POST   /api/categories/:categoryId/sample-questions/bulk  # Bulk create
+POST   /api/categories/:categoryId/sample-questions/upload # Upload JSON file
+GET    /api/categories/:categoryId/sample-questions/count # Count samples
+GET    /api/sample-questions/:id                          # Get sample
+PUT    /api/sample-questions/:id                          # Update sample
+DELETE /api/sample-questions/:id                          # Delete sample
+```
+
+### Notebook
+
+```
+GET    /api/categories/:categoryId/notebook               # List entries
+GET    /api/notebook/:id                                  # Get entry
+PUT    /api/notebook/:id                                  # Update entry (notes, reviewed)
+DELETE /api/notebook/:id                                  # Delete entry
+```
+
+---
+
+## AI Integration
+
+### Prompt Engineering
+
+#### Question Generation Prompt Structure
+```
+Based on the following content, generate ${count} quiz questions.
+
+Requirements:
+- Difficulty level: ${difficulty}
+- Question type: ${questionType}
+- Type-specific instructions...
+- Each question should test different concepts
+- Provide clear, unambiguous questions
+
+[SAMPLE QUESTIONS SECTION - if provided]
+IMPORTANT - Style Guide from Sample Questions:
+Analyze characteristics and match:
+- Question phrasing style and tone
+- Option format and length
+- Level of detail in explanations
+...
+
+[CUSTOM DIRECTIONS SECTION - if provided]
+CUSTOM INSTRUCTIONS FROM USER:
+${customDirections}
+Follow these carefully...
+
+[AI INSIGHTS SECTION - NEW - if available]
+PERSONALIZATION INSIGHTS:
+
+USER-PREFERRED QUESTION STYLE (Based on 4-5 star ratings):
+- Highly rated examples...
+
+AVOID THESE PATTERNS (Based on 1-2 star ratings):
+- Poorly rated patterns...
+
+USER'S WEAK AREAS (Need more practice):
+- Question types with low accuracy...
+
+USER PERFORMANCE OVERVIEW:
+- Overall accuracy: ${accuracy}%
+- Adaptive suggestions based on performance...
+
+Content:
+${content}
+
+Return JSON format:
+{
+  "questions": [{ question_text, question_type, difficulty, options, correct_answer, explanation, tags }]
+}
+```
+
+### AI Personalization Flow
+
+```
+User Rates Question (1-5 stars)
+        ↓
+Rating Stored in Database
+        ↓
+Quiz Answer Submitted
+        ↓
+Performance Tracked (correct/incorrect, times_answered, accuracy)
+        ↓
+Next Content Generation Request
+        ↓
+userPreferencesService.getAIInsights(categoryId)
+        ↓
+AI Service Receives:
+  - Highly rated questions (style examples)
+  - Poorly rated questions (patterns to avoid)
+  - Weak topics (focus areas)
+  - Performance stats (difficulty adjustment)
+        ↓
+AI Generates Personalized Content
+```
+
+### Provider-Specific Configuration
+
+#### NVIDIA Nemotron (Default)
+```bash
+AI_PROVIDER=nvidia
+AI_MODEL=nvidia/llama-3.3-nemotron-super-49b-v1
+NVIDIA_API_KEY=your_key
+```
+
+#### Groq (Recommended for Production)
+```bash
+AI_PROVIDER=groq
+AI_MODEL=mixtral-8x7b-32768
+GROQ_API_KEY=your_key
+```
+
+#### Together.ai
+```bash
+AI_PROVIDER=together
+AI_MODEL=meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo
+TOGETHER_API_KEY=your_key
+```
+
+#### Ollama (Local)
+```bash
+AI_PROVIDER=ollama
+AI_MODEL=mistral
+OLLAMA_BASE_URL=http://localhost:11434/v1
+```
+
+---
+
+## Personalization System
+
+### Overview
+The personalization system tracks user behavior and adapts AI-generated content over time.
+
+### Components
+
+#### 1. Rating System
+- Users rate questions/flashcards 1-5 stars
+- Ratings stored in `questions.rating` and `flashcards.rating` columns
+- AI learns from highly-rated (4-5) and poorly-rated (1-2) content
+
+#### 2. Performance Tracking
+- Every quiz answer recorded in `question_performance` table
+- Tracks: `times_answered`, `times_correct`, `last_answered`
+- Calculates accuracy per question: `times_correct / times_answered`
+
+#### 3. Strength/Weakness Detection
+- **Strong Questions**: Accuracy ≥ 80% with ≥2 attempts
+- **Weak Questions**: Accuracy < 50% with ≥2 attempts
+- **Weak Topics**: Question types/difficulties with avg accuracy < 60%
+
+#### 4. AI Insights Generation
+```javascript
+const insights = userPreferencesService.getAIInsights(categoryId);
+// Returns comprehensive data for AI personalization
+```
+
+#### 5. Adaptive Content Generation
+AI adjusts based on:
+- **Style**: Mimics highly-rated questions
+- **Avoidance**: Skips poorly-rated patterns
+- **Focus**: Emphasizes weak topic areas
+- **Difficulty**:
+  - <70% accuracy → Easier questions + foundational concepts
+  - 70-85% accuracy → Balanced difficulty
+  - >85% accuracy → More challenging questions
+
+### Performance Metrics
+
+#### Category-Level Stats
+```javascript
+{
+  total_questions_attempted: 50,
+  total_answers: 250,           // Sum of all times_answered
+  total_correct: 180,           // Sum of all times_correct
+  avg_accuracy: 0.72            // 72%
+}
+```
+
+#### Question-Level Stats
+```javascript
+{
+  question_id: "uuid",
+  times_answered: 5,
+  times_correct: 3,
+  accuracy: 0.60                // 60%
+}
+```
+
+### User Preferences Storage
+Flexible key-value storage for future enhancements:
+```javascript
+userPreferencesService.setPreference(categoryId, 'preferred_question_type', 'multiple_choice');
+userPreferencesService.setPreference(categoryId, 'study_schedule', JSON.stringify({ frequency: 'daily', time: '19:00' }));
+```
+
+---
+
+## Development Setup
+
+### Prerequisites
+- Node.js 18+ and npm
+- Text editor (VS Code recommended)
+- API key for AI provider (NVIDIA, Groq, etc.)
+
+### Backend Setup
+```bash
+cd quiz-flashcard-app/backend
+
+# Install dependencies
+npm install
+
+# Create .env file
+cat > .env << EOF
+PORT=5000
+NODE_ENV=development
+AI_PROVIDER=nvidia
+NVIDIA_API_KEY=your_nvidia_api_key_here
+AI_MODEL=nvidia/llama-3.3-nemotron-super-49b-v1
+AI_MAX_RETRIES=3
+AI_RETRY_DELAY=1000
+EOF
+
+# Start development server
+npm run dev
+```
+
+### Frontend Setup
+```bash
+cd quiz-flashcard-app/frontend
+
+# Install dependencies
+npm install
+
+# Create .env file (optional)
+cat > .env << EOF
+VITE_API_URL=http://localhost:5000/api
+EOF
+
+# Start development server
+npm run dev
+```
+
+### Testing the Setup
+1. Open http://localhost:5173 in browser
+2. Create a test category
+3. Upload a sample document (PDF/TXT)
+4. Generate questions
+5. Take a quiz
+6. Check Question Bank
+
+---
+
+## Deployment
+
+### Environment Variables (Production)
+
+#### Backend
+```bash
+PORT=5000
+NODE_ENV=production
+AI_PROVIDER=groq                  # Recommended for production
+GROQ_API_KEY=your_groq_key
+AI_MODEL=mixtral-8x7b-32768
+AI_MAX_RETRIES=5
+AI_RETRY_DELAY=2000
+```
+
+#### Frontend
+```bash
+VITE_API_URL=https://your-backend-domain.com/api
+```
+
+### Deployment Options
+
+#### Option 1: Vercel (Recommended)
+**Frontend**:
+```bash
+cd frontend
+npm install -g vercel
+vercel
+```
+
+**Backend**:
+```bash
+cd backend
+vercel
+# Add environment variables in Vercel dashboard
+```
+
+#### Option 2: Railway
+```bash
+# Install Railway CLI
+npm install -g @railway/cli
+
+# Backend
+cd backend
+railway login
+railway init
+railway up
+
+# Frontend
+cd frontend
+railway init
+railway up
+```
+
+#### Option 3: Docker
+
+**Backend Dockerfile**:
+```dockerfile
+FROM node:18-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+COPY . .
+EXPOSE 5000
+CMD ["node", "src/server.js"]
+```
+
+**Frontend Dockerfile**:
+```dockerfile
+FROM node:18-alpine AS build
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
+FROM nginx:alpine
+COPY --from=build /app/dist /usr/share/nginx/html
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
+```
+
+**docker-compose.yml**:
+```yaml
+version: '3.8'
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=production
+      - AI_PROVIDER=groq
+      - GROQ_API_KEY=${GROQ_API_KEY}
+    volumes:
+      - ./backend/data:/app/data
+      - ./backend/uploads:/app/uploads
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+```
+
+### Production Checklist
+- [ ] Set `NODE_ENV=production`
+- [ ] Use production AI provider (Groq recommended)
+- [ ] Configure CORS for production domain
+- [ ] Set up persistent storage for database and uploads
+- [ ] Enable HTTPS
+- [ ] Set up monitoring (e.g., Sentry)
+- [ ] Configure rate limiting
+- [ ] Set up backups for SQLite database
+- [ ] Add logging (e.g., Winston)
+- [ ] Configure CDN for static assets (optional)
+
+---
+
+## Key Features Implementation Details
+
+### 1. Question Bank Bulk Operations
+**Location**: `frontend/src/pages/QuestionBank.jsx`
+
+**State Management**:
+```javascript
+const [selectedQuestions, setSelectedQuestions] = useState(new Set());
+
+// Select/deselect question
+const handleSelectQuestion = (questionId) => {
+  setSelectedQuestions(prev => {
+    const newSet = new Set(prev);
+    if (newSet.has(questionId)) {
+      newSet.delete(questionId);
+    } else {
+      newSet.add(questionId);
+    }
+    return newSet;
+  });
+};
+
+// Select all
+const handleSelectAll = () => {
+  if (selectedQuestions.size === filteredQuestions.length) {
+    setSelectedQuestions(new Set());
+  } else {
+    setSelectedQuestions(new Set(filteredQuestions.map(q => q.id)));
+  }
+};
+```
+
+**Bulk Delete**:
+```javascript
+const handleBulkDelete = async () => {
+  if (selectedQuestions.size === 0) return;
+  if (window.confirm(`Delete ${selectedQuestions.size} selected questions?`)) {
+    await Promise.all(
+      Array.from(selectedQuestions).map(id => quizApi.deleteQuestion(id))
+    );
+    setSelectedQuestions(new Set());
+    loadData();
+  }
+};
+```
+
+### 2. Multi-Type Quiz Selection
+**Location**: `backend/src/services/quizService.js`
+
+**Mixed Mode** (Random from all types):
+```javascript
+if (selectionMode === 'mixed') {
+  let query = 'SELECT * FROM questions WHERE category_id = ?';
+  const params = [categoryId];
+
+  if (difficulty && difficulty !== 'mixed') {
+    query += ' AND difficulty = ?';
+    params.push(difficulty);
+  }
+
+  query += ' ORDER BY RANDOM() LIMIT ?';
+  params.push(totalQuestions);
+
+  selectedQuestions = stmt.all(...params);
+}
+```
+
+**Custom Mode** (Specific counts per type):
+```javascript
+if (selectionMode === 'custom') {
+  if (multipleChoice > 0) {
+    selectedQuestions.push(...getQuestionsByTypeAndCount(
+      categoryId, 'multiple_choice', multipleChoice, difficulty
+    ));
+  }
+  if (trueFalse > 0) {
+    selectedQuestions.push(...getQuestionsByTypeAndCount(
+      categoryId, 'true_false', trueFalse, difficulty
+    ));
+  }
+  if (writtenAnswer > 0) {
+    selectedQuestions.push(...getQuestionsByTypeAndCount(
+      categoryId, 'written_answer', writtenAnswer, difficulty
+    ));
+  }
+  selectedQuestions = shuffleArray(selectedQuestions);
+}
+```
+
+### 3. Spaced Repetition Algorithm
+**Location**: `backend/src/services/flashcardService.js`
+
+```javascript
+updateProgress(flashcardId, categoryId, confidence) {
+  // confidence: 0-5
+  // Days until next review = 2^confidence
+  const daysUntilNext = Math.pow(2, confidence);
+
+  if (existing) {
+    const stmt = db.prepare(`
+      UPDATE flashcard_progress
+      SET confidence_level = ?,
+          times_reviewed = times_reviewed + 1,
+          last_reviewed = CURRENT_TIMESTAMP,
+          next_review = datetime('now', '+' || ? || ' days')
+      WHERE flashcard_id = ?
+    `);
+    stmt.run(confidence, daysUntilNext, flashcardId);
+  } else {
+    // Insert new progress record
+    stmt.run(id, flashcardId, categoryId, confidence, daysUntilNext);
+  }
+}
+```
+
+**Review Selection**:
+```sql
+SELECT f.*, fp.confidence_level, fp.times_reviewed, fp.last_reviewed
+FROM flashcards f
+LEFT JOIN flashcard_progress fp ON f.id = fp.flashcard_id
+WHERE f.category_id = ?
+  AND (fp.next_review IS NULL OR fp.next_review <= datetime('now'))
+ORDER BY fp.confidence_level ASC NULLS FIRST, RANDOM()
+```
+
+### 4. Performance Tracking
+**Location**: `backend/src/services/quizService.js:submitQuizAnswers`
+
+```javascript
+for (const questionId of questionIds) {
+  const question = this.getQuestionById(questionId);
+  const userAnswer = safeAnswers[questionId] || '';
+  const isCorrect = userAnswer === question.correct_answer;
+
+  // Record performance for AI learning
+  userPreferencesService.recordQuestionAnswer(
+    questionId,
+    session.category_id,
+    isCorrect
+  );
+
+  results.push({
+    question_id: questionId,
+    is_correct: isCorrect,
+    // ...
+  });
+}
+```
+
+### 5. AI Style Learning from Samples
+**Location**: `backend/src/services/aiService.js`
+
+```javascript
+if (sampleQuestions.length > 0) {
+  sampleSection = `
+IMPORTANT - Style Guide from Sample Questions:
+Analyze their characteristics carefully and match:
+- Question phrasing style and tone
+- Option format and length
+- Level of detail in explanations
+
+Sample Questions to Learn From:
+${sampleQuestions.map((sq, i) => `
+Example ${i + 1}:
+Question: ${sq.question_text}
+Type: ${sq.question_type}
+Options: ${JSON.stringify(sq.options)}
+Correct Answer: ${sq.correct_answer}
+Explanation: ${sq.explanation || 'N/A'}
+`).join('\n')}
+
+Generate new questions that match this style while covering different concepts.
+`;
+}
+```
+
+---
+
+## Troubleshooting
+
+### Common Issues
+
+#### 1. Database Connection Errors
+**Symptom**: "Cannot read property 'prepare' of null"
+**Solution**: Ensure database is initialized before use
+```javascript
+// In server.js
+const { initializeDatabase } = require('./config/database');
+await initializeDatabase();
+```
+
+#### 2. AI Generation Fails
+**Symptom**: "Failed to generate questions: 404 status code"
+**Solutions**:
+- Check AI_PROVIDER and AI_MODEL in .env
+- Verify API key is valid
+- Check provider endpoint availability
+- Review error logs for specific provider issues
+
+#### 3. File Upload Errors
+**Symptom**: "No file uploaded" or "ENOENT: no such file or directory"
+**Solutions**:
+- Ensure uploads directory exists: `mkdir -p backend/uploads`
+- Check file size limits in multer config
+- Verify multipart/form-data content type
+
+#### 4. Quiz Session Not Found
+**Symptom**: "Quiz session not found"
+**Solutions**:
+- Database may have been reset
+- Check session ID in URL
+- Ensure database persists between restarts
+
+#### 5. Performance Tracking Not Working
+**Symptom**: AI insights empty despite taking quizzes
+**Solutions**:
+- Ensure migrations ran successfully (rating columns added)
+- Check that submitQuizAnswers calls recordQuestionAnswer
+- Verify question_performance table exists
+
+---
+
+## Future Enhancements
+
+### Planned Features
+1. **User Authentication**: Multi-user support with JWT
+2. **Collaborative Learning**: Share categories and questions
+3. **Advanced Analytics**:
+   - Learning curves
+   - Time spent per question
+   - Retention rates
+4. **Export/Import**: JSON/CSV export of questions and results
+5. **Mobile App**: React Native version
+6. **Gamification**:
+   - Achievements
+   - Streaks
+   - Leaderboards
+7. **Advanced AI Features**:
+   - Automatic difficulty adjustment
+   - Learning path recommendations
+   - Concept gap detection
+8. **Rich Text Editor**: Format questions with images/code
+9. **Voice Mode**: Audio questions and answers
+10. **Offline Mode**: PWA with service worker
+
+### Technical Debt
+- [ ] Add comprehensive unit tests (Jest)
+- [ ] Add integration tests (Supertest)
+- [ ] Implement proper error boundaries in React
+- [ ] Add TypeScript for type safety
+- [ ] Optimize database queries with indexes
+- [ ] Implement caching layer (Redis)
+- [ ] Add request validation with Joi/Zod
+- [ ] Set up CI/CD pipeline
+- [ ] Add API documentation with Swagger
+- [ ] Implement rate limiting per user
+
+---
+
+## Contributing
+
+### Code Style
+- **Backend**: Standard JavaScript, async/await
+- **Frontend**: React functional components with hooks
+- **Naming**: camelCase for variables, PascalCase for components
+- **Comments**: JSDoc for functions, inline for complex logic
+
+### Git Workflow
+```bash
+# Create feature branch
+git checkout -b feature/your-feature-name
+
+# Make changes and commit
+git add .
+git commit -m "Add your feature description"
+
+# Push and create PR
+git push origin feature/your-feature-name
+```
+
+### Testing Checklist
+- [ ] Test on Chrome, Firefox, Safari
+- [ ] Test mobile responsiveness
+- [ ] Test with empty states (no docs, no questions)
+- [ ] Test error handling (invalid files, AI failures)
+- [ ] Test bulk operations with 10+ items
+- [ ] Test different question types in quiz
+- [ ] Verify rating system updates AI behavior
+- [ ] Check performance with large datasets
+
+---
+
+## License
+
+MIT License - See LICENSE file for details
+
+---
+
+## Support
+
+For issues, questions, or contributions:
+- GitHub Issues: [Project Repository]
+- Email: support@scholarly.example.com
+- Documentation: This file
+
+---
+
+**Last Updated**: 2025-01-20
+**Version**: 2.0.0 (Personalization System Release)
