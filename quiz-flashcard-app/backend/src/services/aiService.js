@@ -193,7 +193,8 @@ class AIService {
       difficulty = 'medium',
       questionTypes = ['multiple_choice'],
       sampleQuestions = [],
-      customDirections = ''
+      customDirections = '',
+      aiInsights = null
     } = options;
 
     const difficultyPrompt = {
@@ -238,6 +239,60 @@ ${customDirections.trim()}
 
 Follow these custom instructions carefully while generating the questions.
 `;
+    }
+
+    // Build AI insights section for personalized generation
+    let aiInsightsSection = '';
+    if (aiInsights) {
+      const insights = [];
+
+      // Add info about highly rated questions
+      if (aiInsights.highlyRated && aiInsights.highlyRated.length > 0) {
+        insights.push(`USER-PREFERRED QUESTION STYLE (Based on 4-5 star ratings):
+The user has highly rated these types of questions. Try to match their characteristics:
+${aiInsights.highlyRated.slice(0, 3).map(q =>
+  `- "${q.question_text}" (${q.question_type}, ${q.difficulty}, rating: ${q.rating}/5)`
+).join('\n')}`);
+      }
+
+      // Add info about poorly rated questions to avoid
+      if (aiInsights.poorlyRated && aiInsights.poorlyRated.length > 0) {
+        insights.push(`AVOID THESE PATTERNS (Based on 1-2 star ratings):
+The user has given low ratings to questions like:
+${aiInsights.poorlyRated.slice(0, 2).map(q =>
+  `- Type: ${q.question_type}, Difficulty: ${q.difficulty} (rating: ${q.rating}/5)`
+).join('\n')}
+Try to avoid similar patterns.`);
+      }
+
+      // Add info about weak topics that need more practice
+      if (aiInsights.weakTopics && aiInsights.weakTopics.length > 0) {
+        insights.push(`USER'S WEAK AREAS (Need more practice):
+The user struggles with:
+${aiInsights.weakTopics.map(wt =>
+  `- ${wt.question_type} questions at ${wt.difficulty} level (accuracy: ${Math.round(wt.avg_accuracy * 100)}%)`
+).join('\n')}
+Consider generating more questions in these areas for practice.`);
+      }
+
+      // Add performance stats
+      if (aiInsights.performance && aiInsights.performance.total_answers > 0) {
+        const avgAccuracy = Math.round(aiInsights.performance.avg_accuracy * 100);
+        insights.push(`USER PERFORMANCE OVERVIEW:
+- Questions attempted: ${aiInsights.performance.total_questions_attempted}
+- Overall accuracy: ${avgAccuracy}%
+${avgAccuracy < 70 ? '- Suggestion: Focus on reinforcing foundational concepts' :
+  avgAccuracy > 85 ? '- Suggestion: User is doing well, consider adding more challenging questions' :
+  '- Suggestion: Balance difficulty to maintain engagement'}`);
+      }
+
+      if (insights.length > 0) {
+        aiInsightsSection = `
+
+PERSONALIZATION INSIGHTS:
+${insights.join('\n\n')}
+`;
+      }
     }
 
     // Build question type specific instructions
@@ -288,7 +343,7 @@ Requirements:
 ${typeInstructions}
 - Each question should test different concepts from the content
 - Provide clear, unambiguous questions
-${sampleSection}${customDirectionsSection}
+${sampleSection}${customDirectionsSection}${aiInsightsSection}
 Content:
 ${content.substring(0, sampleQuestions.length > 0 ? 6000 : 8000)}
 

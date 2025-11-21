@@ -164,6 +164,57 @@ async function initializeDatabase() {
     )
   `);
 
+  // User preferences table (for AI personalization)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS user_preferences (
+      id TEXT PRIMARY KEY,
+      category_id TEXT NOT NULL,
+      preference_key TEXT NOT NULL,
+      preference_value TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE,
+      UNIQUE(category_id, preference_key)
+    )
+  `);
+
+  // Question performance tracking (for identifying strengths/weaknesses)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS question_performance (
+      id TEXT PRIMARY KEY,
+      question_id TEXT NOT NULL,
+      category_id TEXT NOT NULL,
+      times_answered INTEGER DEFAULT 0,
+      times_correct INTEGER DEFAULT 0,
+      last_answered DATETIME,
+      FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE,
+      FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Run migrations to add rating column if it doesn't exist
+  try {
+    // Check if rating column exists in questions table
+    const questionsInfo = db.exec("PRAGMA table_info(questions)");
+    const hasQuestionRating = questionsInfo[0]?.values.some(col => col[1] === 'rating');
+
+    if (!hasQuestionRating) {
+      db.run('ALTER TABLE questions ADD COLUMN rating INTEGER DEFAULT 0');
+      console.log('Added rating column to questions table');
+    }
+
+    // Check if rating column exists in flashcards table
+    const flashcardsInfo = db.exec("PRAGMA table_info(flashcards)");
+    const hasFlashcardRating = flashcardsInfo[0]?.values.some(col => col[1] === 'rating');
+
+    if (!hasFlashcardRating) {
+      db.run('ALTER TABLE flashcards ADD COLUMN rating INTEGER DEFAULT 0');
+      console.log('Added rating column to flashcards table');
+    }
+  } catch (error) {
+    console.error('Error running migrations:', error);
+  }
+
   // Save database to file
   saveDatabase();
 
