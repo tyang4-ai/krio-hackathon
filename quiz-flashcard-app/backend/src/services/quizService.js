@@ -126,26 +126,85 @@ class QuizService {
 
   selectQuestionsForQuiz(categoryId, settings) {
     const {
-      questionCount = 10,
       difficulty = null,
-      questionTypes = ['multiple_choice']
+      selectionMode = 'mixed',
+      multipleChoice = 0,
+      trueFalse = 0,
+      writtenAnswer = 0,
+      totalQuestions = 10
     } = settings;
 
-    let query = 'SELECT * FROM questions WHERE category_id = ?';
-    const params = [categoryId];
+    let selectedQuestions = [];
+
+    if (selectionMode === 'custom') {
+      // Custom mode: get specific counts of each type
+      if (multipleChoice > 0) {
+        const mcQuestions = this.getQuestionsByTypeAndCount(
+          categoryId,
+          'multiple_choice',
+          multipleChoice,
+          difficulty
+        );
+        selectedQuestions.push(...mcQuestions);
+      }
+
+      if (trueFalse > 0) {
+        const tfQuestions = this.getQuestionsByTypeAndCount(
+          categoryId,
+          'true_false',
+          trueFalse,
+          difficulty
+        );
+        selectedQuestions.push(...tfQuestions);
+      }
+
+      if (writtenAnswer > 0) {
+        const waQuestions = this.getQuestionsByTypeAndCount(
+          categoryId,
+          'written_answer',
+          writtenAnswer,
+          difficulty
+        );
+        selectedQuestions.push(...waQuestions);
+      }
+
+      // Shuffle the combined array
+      selectedQuestions = this.shuffleArray(selectedQuestions);
+    } else {
+      // Mixed mode: get random questions from all types
+      let query = 'SELECT * FROM questions WHERE category_id = ?';
+      const params = [categoryId];
+
+      if (difficulty && difficulty !== 'mixed') {
+        query += ' AND difficulty = ?';
+        params.push(difficulty);
+      }
+
+      query += ' ORDER BY RANDOM() LIMIT ?';
+      params.push(totalQuestions);
+
+      const stmt = db.prepare(query);
+      selectedQuestions = stmt.all(...params);
+    }
+
+    return selectedQuestions.map(q => ({
+      ...q,
+      options: typeof q.options === 'string' ? JSON.parse(q.options) : q.options,
+      tags: typeof q.tags === 'string' ? JSON.parse(q.tags) : q.tags
+    }));
+  }
+
+  getQuestionsByTypeAndCount(categoryId, questionType, count, difficulty) {
+    let query = 'SELECT * FROM questions WHERE category_id = ? AND question_type = ?';
+    const params = [categoryId, questionType];
 
     if (difficulty && difficulty !== 'mixed') {
       query += ' AND difficulty = ?';
       params.push(difficulty);
     }
 
-    if (questionTypes && questionTypes.length > 0) {
-      query += ' AND question_type IN (' + questionTypes.map(() => '?').join(',') + ')';
-      params.push(...questionTypes);
-    }
-
     query += ' ORDER BY RANDOM() LIMIT ?';
-    params.push(questionCount);
+    params.push(count);
 
     const stmt = db.prepare(query);
     const questions = stmt.all(...params);
@@ -241,11 +300,36 @@ class QuizService {
         COUNT(*) as total,
         SUM(CASE WHEN difficulty = 'easy' THEN 1 ELSE 0 END) as easy,
         SUM(CASE WHEN difficulty = 'medium' THEN 1 ELSE 0 END) as medium,
-        SUM(CASE WHEN difficulty = 'hard' THEN 1 ELSE 0 END) as hard
+        SUM(CASE WHEN difficulty = 'hard' THEN 1 ELSE 0 END) as hard,
+        SUM(CASE WHEN question_type = 'multiple_choice' THEN 1 ELSE 0 END) as multiple_choice,
+        SUM(CASE WHEN question_type = 'true_false' THEN 1 ELSE 0 END) as true_false,
+        SUM(CASE WHEN question_type = 'written_answer' THEN 1 ELSE 0 END) as written_answer
       FROM questions
       WHERE category_id = ?
     `);
-    return stmt.get(categoryId);
+    const stats = stmt.get(categoryId);
+
+    // Format with by_type object
+    return {
+      total: stats.total,
+      easy: stats.easy,
+      medium: stats.medium,
+      hard: stats.hard,
+      by_type: {
+        multiple_choice: stats.multiple_choice,
+        true_false: stats.true_false,
+        written_answer: stats.written_answer
+      }
+    };
+  }
+
+  shuffleArray(array) {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
   }
 }
 
