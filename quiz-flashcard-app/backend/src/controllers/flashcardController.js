@@ -90,6 +90,17 @@ const flashcardController = {
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
     }
+  },
+
+  rateFlashcard: (req, res) => {
+    try {
+      const { id } = req.params;
+      const { rating } = req.body;
+      flashcardService.rateFlashcard(id, rating);
+      res.json({ success: true, message: 'Flashcard rated successfully' });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
   }
 };
 
