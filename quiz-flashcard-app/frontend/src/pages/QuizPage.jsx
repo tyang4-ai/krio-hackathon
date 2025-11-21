@@ -11,9 +11,12 @@ function QuizPage() {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState({
-    questionCount: 10,
     difficulty: 'mixed',
-    questionTypes: ['multiple_choice']
+    selectionMode: 'mixed', // 'mixed' or 'custom'
+    multipleChoice: 5,
+    trueFalse: 3,
+    writtenAnswer: 2,
+    totalQuestions: 10
   });
 
   useEffect(() => {
@@ -78,20 +81,95 @@ function QuizPage() {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Number of Questions
+                Question Selection
               </label>
-              <input
-                type="number"
-                className="input"
-                min="1"
-                max={stats?.total || 50}
-                value={settings.questionCount}
-                onChange={(e) => setSettings({ ...settings, questionCount: parseInt(e.target.value) })}
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Available: {stats?.total || 0} questions
-              </p>
+              <select
+                className="select"
+                value={settings.selectionMode}
+                onChange={(e) => setSettings({ ...settings, selectionMode: e.target.value })}
+              >
+                <option value="mixed">Mixed & Randomized (All Types)</option>
+                <option value="custom">Custom Selection</option>
+              </select>
             </div>
+
+            {settings.selectionMode === 'mixed' ? (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Total Questions
+                </label>
+                <input
+                  type="number"
+                  className="input"
+                  min="1"
+                  max={stats?.total || 50}
+                  value={settings.totalQuestions}
+                  onChange={(e) => setSettings({ ...settings, totalQuestions: parseInt(e.target.value) })}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Available: {stats?.total || 0} questions (all types)
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Multiple Choice Questions
+                  </label>
+                  <input
+                    type="number"
+                    className="input"
+                    min="0"
+                    max={stats?.by_type?.multiple_choice || 0}
+                    value={settings.multipleChoice}
+                    onChange={(e) => setSettings({ ...settings, multipleChoice: parseInt(e.target.value) })}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Available: {stats?.by_type?.multiple_choice || 0}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    True/False Questions
+                  </label>
+                  <input
+                    type="number"
+                    className="input"
+                    min="0"
+                    max={stats?.by_type?.true_false || 0}
+                    value={settings.trueFalse}
+                    onChange={(e) => setSettings({ ...settings, trueFalse: parseInt(e.target.value) })}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Available: {stats?.by_type?.true_false || 0}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Written Answer Questions
+                  </label>
+                  <input
+                    type="number"
+                    className="input"
+                    min="0"
+                    max={stats?.by_type?.written_answer || 0}
+                    value={settings.writtenAnswer}
+                    onChange={(e) => setSettings({ ...settings, writtenAnswer: parseInt(e.target.value) })}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Available: {stats?.by_type?.written_answer || 0}
+                  </p>
+                </div>
+
+                <div className="pt-2 border-t border-gray-200">
+                  <p className="text-sm font-medium text-gray-700">
+                    Total: {settings.multipleChoice + settings.trueFalse + settings.writtenAnswer} questions
+                  </p>
+                </div>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
