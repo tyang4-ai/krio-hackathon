@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   Upload,
   FileText,
@@ -11,12 +11,14 @@ import {
   Loader2,
   Plus,
   X,
-  Lightbulb
+  Lightbulb,
+  ArrowLeft
 } from 'lucide-react';
 import { categoryApi, documentApi, sampleQuestionApi } from '../services/api';
 
 function CategoryDashboard() {
   const { categoryId } = useParams();
+  const navigate = useNavigate();
   const [category, setCategory] = useState(null);
   const [documents, setDocuments] = useState([]);
   const [sampleQuestions, setSampleQuestions] = useState([]);
@@ -197,6 +199,13 @@ function CategoryDashboard() {
   return (
     <div>
       <div className="mb-8">
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center text-gray-600 hover:text-gray-900 mb-4 transition-colors"
+        >
+          <ArrowLeft className="h-5 w-5 mr-2" />
+          Back
+        </button>
         <h1 className="text-3xl font-bold text-gray-900">{category.name}</h1>
         <p className="text-gray-600 mt-1">{category.description || 'No description'}</p>
       </div>

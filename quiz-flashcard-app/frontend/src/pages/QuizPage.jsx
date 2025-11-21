@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Play, History, Settings } from 'lucide-react';
+import { Play, History, Settings, ArrowLeft } from 'lucide-react';
 import { quizApi, categoryApi } from '../services/api';
 
 function QuizPage() {
@@ -57,6 +57,13 @@ function QuizPage() {
 
   return (
     <div>
+      <button
+        onClick={() => navigate(-1)}
+        className="flex items-center text-gray-600 hover:text-gray-900 mb-4 transition-colors"
+      >
+        <ArrowLeft className="h-5 w-5 mr-2" />
+        Back
+      </button>
       <h1 className="text-3xl font-bold text-gray-900 mb-2">Quiz - {category?.name}</h1>
       <p className="text-gray-600 mb-8">Test your knowledge with customized quizzes</p>
 

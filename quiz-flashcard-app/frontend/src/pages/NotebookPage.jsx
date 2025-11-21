@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import { CheckCircle, Trash2, AlertTriangle, Filter } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { CheckCircle, Trash2, AlertTriangle, Filter, ArrowLeft } from 'lucide-react';
 import { notebookApi, categoryApi } from '../services/api';
 
 function NotebookPage() {
   const { categoryId } = useParams();
+  const navigate = useNavigate();
   const [category, setCategory] = useState(null);
   const [entries, setEntries] = useState([]);
   const [mostMissed, setMostMissed] = useState([]);
@@ -82,6 +83,13 @@ function NotebookPage() {
 
   return (
     <div>
+      <button
+        onClick={() => navigate(-1)}
+        className="flex items-center text-gray-600 hover:text-gray-900 mb-4 transition-colors"
+      >
+        <ArrowLeft className="h-5 w-5 mr-2" />
+        Back
+      </button>
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Notebook - {category?.name}</h1>
