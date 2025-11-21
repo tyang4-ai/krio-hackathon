@@ -187,7 +187,7 @@ function CategoryDashboard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
       </div>
     );
   }
@@ -216,8 +216,8 @@ function CategoryDashboard() {
           to={`/category/${categoryId}/quiz`}
           className="card hover:shadow-md transition-shadow flex items-center space-x-4"
         >
-          <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-            <HelpCircle className="h-6 w-6 text-blue-600" />
+          <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center">
+            <HelpCircle className="h-6 w-6 text-primary-600" />
           </div>
           <div>
             <h3 className="font-semibold text-gray-900">Take Quiz</h3>
@@ -229,8 +229,8 @@ function CategoryDashboard() {
           to={`/category/${categoryId}/flashcards`}
           className="card hover:shadow-md transition-shadow flex items-center space-x-4"
         >
-          <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-            <BookOpen className="h-6 w-6 text-green-600" />
+          <div className="w-12 h-12 bg-gold-100 rounded-lg flex items-center justify-center">
+            <BookOpen className="h-6 w-6 text-gold-700" />
           </div>
           <div>
             <h3 className="font-semibold text-gray-900">Study Flashcards</h3>
@@ -242,8 +242,8 @@ function CategoryDashboard() {
           to={`/category/${categoryId}/notebook`}
           className="card hover:shadow-md transition-shadow flex items-center space-x-4"
         >
-          <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-            <ClipboardList className="h-6 w-6 text-orange-600" />
+          <div className="w-12 h-12 bg-accent-100 rounded-lg flex items-center justify-center">
+            <ClipboardList className="h-6 w-6 text-accent-600" />
           </div>
           <div>
             <h3 className="font-semibold text-gray-900">View Notebook</h3>
@@ -299,7 +299,7 @@ function CategoryDashboard() {
                   </div>
                   <button
                     onClick={() => handleDeleteDocument(doc.id)}
-                    className="text-gray-400 hover:text-red-600"
+                    className="text-gray-400 hover:text-accent-600"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -449,7 +449,7 @@ function CategoryDashboard() {
                     <p className="font-medium text-gray-900 mb-2">{sample.question_text}</p>
                     <div className="space-y-1 text-sm text-gray-600">
                       {sample.options.map((opt, i) => (
-                        <p key={i} className={opt.startsWith(sample.correct_answer + ')') ? 'text-green-600 font-medium' : ''}>
+                        <p key={i} className={opt.startsWith(sample.correct_answer + ')') ? 'text-primary-600 font-medium' : ''}>
                           {opt}
                         </p>
                       ))}

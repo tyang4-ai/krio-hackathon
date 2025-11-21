@@ -78,7 +78,7 @@ function QuizSession() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
       </div>
     );
   }
@@ -107,7 +107,7 @@ function QuizSession() {
         </div>
         <div className="w-full bg-gray-200 rounded-full h-2">
           <div
-            className="bg-blue-600 h-2 rounded-full transition-all"
+            className="bg-primary-500 h-2 rounded-full transition-all"
             style={{ width: `${((currentIndex + 1) / quiz.questions.length) * 100}%` }}
           />
         </div>
@@ -169,7 +169,7 @@ function QuizSession() {
               onClick={() => setCurrentIndex(index)}
               className={`w-8 h-8 rounded-full text-sm font-medium ${
                 index === currentIndex
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-primary-500 text-white'
                   : answers[quiz.questions[index].id]
                   ? 'bg-green-100 text-green-700'
                   : 'bg-gray-200 text-gray-600'

@@ -50,7 +50,7 @@ function QuizPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
       </div>
     );
   }
@@ -119,7 +119,7 @@ function QuizPage() {
             </button>
 
             {!stats?.total && (
-              <p className="text-sm text-red-500 text-center">
+              <p className="text-sm text-accent-500 text-center">
                 No questions available. Generate questions from your documents first.
               </p>
             )}
@@ -158,10 +158,10 @@ function QuizPage() {
                     </div>
                     <div className={`text-lg font-bold ${
                       (quiz.score / quiz.total_questions) >= 0.7
-                        ? 'text-green-600'
+                        ? 'text-primary-600'
                         : (quiz.score / quiz.total_questions) >= 0.5
-                        ? 'text-yellow-600'
-                        : 'text-red-600'
+                        ? 'text-gold-600'
+                        : 'text-accent-600'
                     }`}>
                       {Math.round((quiz.score / quiz.total_questions) * 100)}%
                     </div>

@@ -61,7 +61,7 @@ function QuizResults() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
       </div>
     );
   }
@@ -83,9 +83,9 @@ function QuizResults() {
       <div className="card text-center mb-8">
         <h1 className="text-2xl font-bold text-gray-900 mb-4">Quiz Complete!</h1>
         <div className={`text-6xl font-bold mb-2 ${
-          results.percentage >= 70 ? 'text-green-600' :
-          results.percentage >= 50 ? 'text-yellow-600' :
-          'text-red-600'
+          results.percentage >= 70 ? 'text-primary-600' :
+          results.percentage >= 50 ? 'text-gold-600' :
+          'text-accent-600'
         }`}>
           {results.percentage}%
         </div>

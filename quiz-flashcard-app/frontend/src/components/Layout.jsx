@@ -10,8 +10,8 @@ function Layout({ children }) {
           <div className="flex justify-between h-16">
             <div className="flex items-center">
               <Link to="/" className="flex items-center space-x-2">
-                <BookOpen className="h-8 w-8 text-blue-600" />
-                <span className="text-xl font-bold text-gray-900">
+                <BookOpen className="h-8 w-8 text-primary-500" />
+                <span className="text-xl font-bold text-primary-700">
                   Scholarly
                 </span>
               </Link>
@@ -19,7 +19,7 @@ function Layout({ children }) {
             <div className="flex items-center">
               <Link
                 to="/"
-                className="flex items-center space-x-1 text-gray-600 hover:text-blue-600"
+                className="flex items-center space-x-1 text-gray-600 hover:text-primary-500"
               >
                 <Home className="h-5 w-5" />
                 <span>Home</span>

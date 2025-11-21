@@ -7,7 +7,7 @@ function Home() {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [newCategory, setNewCategory] = useState({ name: '', description: '', color: '#3B82F6' });
+  const [newCategory, setNewCategory] = useState({ name: '', description: '', color: '#033B4C' });
 
   useEffect(() => {
     loadCategories();
@@ -32,7 +32,7 @@ function Home() {
     try {
       await categoryApi.create(newCategory);
       setShowModal(false);
-      setNewCategory({ name: '', description: '', color: '#3B82F6' });
+      setNewCategory({ name: '', description: '', color: '#033B4C' });
       loadCategories();
     } catch (error) {
       console.error('Error creating category:', error);
@@ -56,7 +56,7 @@ function Home() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
       </div>
     );
   }
