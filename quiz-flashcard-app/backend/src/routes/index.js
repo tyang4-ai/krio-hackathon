@@ -68,7 +68,9 @@ router.post('/categories/:categoryId/generate-flashcards', documentController.ge
 // ===== Quiz Routes =====
 router.get('/categories/:categoryId/questions', quizController.getQuestions);
 router.post('/categories/:categoryId/questions', quizController.addQuestion);
+router.put('/questions/:id', quizController.updateQuestion);
 router.delete('/questions/:id', quizController.deleteQuestion);
+router.post('/questions/:id/rate', quizController.rateQuestion);
 router.get('/categories/:categoryId/questions/stats', quizController.getQuestionStats);
 
 // Quiz Sessions
@@ -83,6 +85,7 @@ router.get('/flashcards/:id', flashcardController.getById);
 router.post('/categories/:categoryId/flashcards', flashcardController.create);
 router.put('/flashcards/:id', flashcardController.update);
 router.delete('/flashcards/:id', flashcardController.delete);
+router.post('/flashcards/:id/rate', flashcardController.rateFlashcard);
 router.get('/categories/:categoryId/flashcards/review', flashcardController.getForReview);
 router.post('/flashcards/:id/progress', flashcardController.updateProgress);
 router.get('/categories/:categoryId/flashcards/stats', flashcardController.getStats);

@@ -112,6 +112,27 @@ const quizController = {
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
     }
+  },
+
+  updateQuestion: (req, res) => {
+    try {
+      const { id } = req.params;
+      const updated = quizService.updateQuestion(id, req.body);
+      res.json({ success: true, data: updated });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  },
+
+  rateQuestion: (req, res) => {
+    try {
+      const { id } = req.params;
+      const { rating } = req.body;
+      quizService.rateQuestion(id, rating);
+      res.json({ success: true, message: 'Question rated successfully' });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
   }
 };
 

@@ -12,7 +12,8 @@ import {
   Plus,
   X,
   Lightbulb,
-  ArrowLeft
+  ArrowLeft,
+  Database
 } from 'lucide-react';
 import { categoryApi, documentApi, sampleQuestionApi } from '../services/api';
 
@@ -210,7 +211,7 @@ function CategoryDashboard() {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <Link
           to={`/category/${categoryId}/quiz`}
           className="card hover:shadow-md transition-shadow flex items-center space-x-4"
@@ -221,6 +222,19 @@ function CategoryDashboard() {
           <div>
             <h3 className="font-semibold text-gray-900">Take Quiz</h3>
             <p className="text-sm text-gray-600">{category.stats?.questions || 0} questions</p>
+          </div>
+        </Link>
+
+        <Link
+          to={`/category/${categoryId}/question-bank`}
+          className="card hover:shadow-md transition-shadow flex items-center space-x-4"
+        >
+          <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center">
+            <Database className="h-6 w-6 text-primary-600" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-gray-900">Question Bank</h3>
+            <p className="text-sm text-gray-600">Manage questions</p>
           </div>
         </Link>
 
