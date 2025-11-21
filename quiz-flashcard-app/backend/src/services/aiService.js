@@ -240,14 +240,54 @@ Follow these custom instructions carefully while generating the questions.
 `;
     }
 
+    // Build question type specific instructions
+    const questionType = questionTypes[0] || 'multiple_choice';
+    let typeInstructions = '';
+    let exampleFormat = {};
+
+    if (questionType === 'multiple_choice') {
+      typeInstructions = '- Provide 4 options (A, B, C, D) with only one correct answer';
+      exampleFormat = {
+        question_text: "The question here",
+        question_type: "multiple_choice",
+        difficulty: difficulty,
+        options: ["A) Option 1", "B) Option 2", "C) Option 3", "D) Option 4"],
+        correct_answer: "A",
+        explanation: "Brief explanation of why this is correct",
+        tags: ["topic1", "topic2"]
+      };
+    } else if (questionType === 'true_false') {
+      typeInstructions = '- Provide 2 options: True and False\n- Make statements that are definitively true or false based on the content';
+      exampleFormat = {
+        question_text: "Statement to evaluate as true or false",
+        question_type: "true_false",
+        difficulty: difficulty,
+        options: ["A) True", "B) False"],
+        correct_answer: "A",
+        explanation: "Brief explanation of why this is true/false",
+        tags: ["topic1", "topic2"]
+      };
+    } else if (questionType === 'written_answer') {
+      typeInstructions = '- No options needed for written answer questions\n- Provide a model answer that students can compare against\n- Questions should require thoughtful, paragraph-length responses';
+      exampleFormat = {
+        question_text: "Open-ended question requiring a written response",
+        question_type: "written_answer",
+        difficulty: difficulty,
+        options: [],
+        correct_answer: "Model answer: A comprehensive answer that demonstrates full understanding...",
+        explanation: "Key points that should be included in the answer",
+        tags: ["topic1", "topic2"]
+      };
+    }
+
     const prompt = `Based on the following content, generate ${count} quiz questions.
 
 Requirements:
 - Difficulty level: ${difficulty} (${difficultyPrompt[difficulty]})
-- Question types: ${questionTypes.join(', ')}
+- Question type: ${questionType}
+${typeInstructions}
 - Each question should test different concepts from the content
 - Provide clear, unambiguous questions
-- For multiple choice, provide 4 options (A, B, C, D)
 ${sampleSection}${customDirectionsSection}
 Content:
 ${content.substring(0, sampleQuestions.length > 0 ? 6000 : 8000)}
@@ -255,15 +295,7 @@ ${content.substring(0, sampleQuestions.length > 0 ? 6000 : 8000)}
 Return the questions in the following JSON format:
 {
   "questions": [
-    {
-      "question_text": "The question here",
-      "question_type": "multiple_choice",
-      "difficulty": "${difficulty}",
-      "options": ["A) Option 1", "B) Option 2", "C) Option 3", "D) Option 4"],
-      "correct_answer": "A",
-      "explanation": "Brief explanation of why this is correct",
-      "tags": ["topic1", "topic2"]
-    }
+    ${JSON.stringify(exampleFormat, null, 2)}
   ]
 }
 
