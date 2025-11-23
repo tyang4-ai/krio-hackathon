@@ -5,7 +5,7 @@ import React, { useState, useRef } from 'react';
  * Features:
  * - Toggle buttons for superscript/subscript formatting
  * - Auto-convert ^ to superscripts (e.g., x^2 → x²)
- * - Auto-convert / to fractions (e.g., 1/2 → ½)
+ * - Auto-convert / to fractions with superscript numerator and subscript denominator
  * - Arrows and Greek letters for scientific notation
  * Perfect for chemistry, physics, math, and other scientific subjects
  */
@@ -18,20 +18,21 @@ function ScientificInput({ value, onChange, placeholder = "Enter your answer..."
     '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴',
     '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹',
     '+': '⁺', '-': '⁻', '=': '⁼', '(': '⁽', ')': '⁾',
-    'n': 'ⁿ'
+    'n': 'ⁿ', 'a': 'ᵃ', 'b': 'ᵇ', 'c': 'ᶜ', 'd': 'ᵈ',
+    'e': 'ᵉ', 'f': 'ᶠ', 'g': 'ᵍ', 'h': 'ʰ', 'i': 'ⁱ',
+    'j': 'ʲ', 'k': 'ᵏ', 'l': 'ˡ', 'm': 'ᵐ', 'o': 'ᵒ',
+    'p': 'ᵖ', 'r': 'ʳ', 's': 'ˢ', 't': 'ᵗ', 'u': 'ᵘ',
+    'v': 'ᵛ', 'w': 'ʷ', 'x': 'ˣ', 'y': 'ʸ', 'z': 'ᶻ'
   };
 
   const normalToSubscript = {
     '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄',
     '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉',
-    '+': '₊', '-': '₋', '=': '₌', '(': '₍', ')': '₎'
-  };
-
-  const fractionMap = {
-    '1/2': '½', '1/3': '⅓', '2/3': '⅔', '1/4': '¼', '3/4': '¾',
-    '1/5': '⅕', '2/5': '⅖', '3/5': '⅗', '4/5': '⅘',
-    '1/6': '⅙', '5/6': '⅚', '1/8': '⅛', '3/8': '⅜',
-    '5/8': '⅝', '7/8': '⅞'
+    '+': '₊', '-': '₋', '=': '₌', '(': '₍', ')': '₎',
+    'a': 'ₐ', 'e': 'ₑ', 'h': 'ₕ', 'i': 'ᵢ', 'j': 'ⱼ',
+    'k': 'ₖ', 'l': 'ₗ', 'm': 'ₘ', 'n': 'ₙ', 'o': 'ₒ',
+    'p': 'ₚ', 'r': 'ᵣ', 's': 'ₛ', 't': 'ₜ', 'u': 'ᵤ',
+    'v': 'ᵥ', 'x': 'ₓ'
   };
 
   const insertSymbol = (symbol) => {
@@ -79,6 +80,14 @@ function ScientificInput({ value, onChange, placeholder = "Enter your answer..."
     }, 0);
   };
 
+  const convertToSuperscript = (text) => {
+    return text.split('').map(char => normalToSuperscript[char] || char).join('');
+  };
+
+  const convertToSubscript = (text) => {
+    return text.split('').map(char => normalToSubscript[char] || char).join('');
+  };
+
   const handleInputChange = (e) => {
     let newValue = e.target.value;
     const cursorPos = e.target.selectionStart;
@@ -96,7 +105,7 @@ function ScientificInput({ value, onChange, placeholder = "Enter your answer..."
         const beforeCaret = beforeCursor.substring(0, lastCaretIndex);
 
         // Convert to superscript
-        const converted = afterCaret.split('').map(char => normalToSuperscript[char] || char).join('');
+        const converted = convertToSuperscript(afterCaret);
         newValue = beforeCaret + converted + afterCursor;
 
         // Update value and cursor position
@@ -109,19 +118,40 @@ function ScientificInput({ value, onChange, placeholder = "Enter your answer..."
       }
     }
 
-    // Auto-convert / to fractions
+    // Auto-convert / to fraction (numerator as superscript, denominator as subscript)
     if (newValue.includes('/')) {
-      // Check for common fraction patterns before cursor
-      for (const [pattern, fraction] of Object.entries(fractionMap)) {
-        const beforeCursor = newValue.substring(0, cursorPos);
-        if (beforeCursor.endsWith(pattern)) {
-          const beforePattern = newValue.substring(0, cursorPos - pattern.length);
-          const afterCursor = newValue.substring(cursorPos);
-          newValue = beforePattern + fraction + afterCursor;
+      const beforeCursor = newValue.substring(0, cursorPos);
+      const afterCursor = newValue.substring(cursorPos);
 
+      // Find the last / before cursor
+      const lastSlashIndex = beforeCursor.lastIndexOf('/');
+      if (lastSlashIndex !== -1) {
+        const afterSlash = beforeCursor.substring(lastSlashIndex + 1);
+
+        // Only convert if we have something after the slash (denominator)
+        if (afterSlash.length > 0) {
+          // Find the numerator - go back to find digits/letters before the /
+          let numeratorStart = lastSlashIndex - 1;
+          while (numeratorStart >= 0 && /[0-9a-zA-Z]/.test(beforeCursor[numeratorStart])) {
+            numeratorStart--;
+          }
+          numeratorStart++; // Move to the first digit/letter
+
+          const beforeNumerator = beforeCursor.substring(0, numeratorStart);
+          const numerator = beforeCursor.substring(numeratorStart, lastSlashIndex);
+          const denominator = afterSlash;
+
+          // Convert numerator to superscript and denominator to subscript
+          const convertedNumerator = convertToSuperscript(numerator);
+          const convertedDenominator = convertToSubscript(denominator);
+
+          // Create the fraction: ⁿᵘᵐ⁄ₐₑₙ
+          newValue = beforeNumerator + convertedNumerator + '⁄' + convertedDenominator + afterCursor;
+
+          // Update value and cursor position
           onChange(newValue);
           setTimeout(() => {
-            const newPos = beforePattern.length + fraction.length;
+            const newPos = beforeNumerator.length + convertedNumerator.length + 1 + convertedDenominator.length;
             inputRef.current.setSelectionRange(newPos, newPos);
           }, 0);
           return;
@@ -260,7 +290,7 @@ function ScientificInput({ value, onChange, placeholder = "Enter your answer..."
         {/* Help Text */}
         <div className="mt-2 text-xs text-gray-600 bg-blue-50 border border-blue-200 rounded px-2 py-1">
           <strong>Tips:</strong> Type <code className="bg-white px-1 rounded">^</code> for superscripts (e.g., x^2 → x²)
-          • Type <code className="bg-white px-1 rounded">/</code> for fractions (e.g., 1/2 → ½)
+          • Type <code className="bg-white px-1 rounded">/</code> for fractions (e.g., 3/4 → ³⁄₄)
           • Select text and click format buttons to convert
         </div>
       </div>
