@@ -183,6 +183,7 @@ function QuestionBank() {
                 <option value="multiple_choice">Multiple Choice</option>
                 <option value="true_false">True/False</option>
                 <option value="written_answer">Written Answer</option>
+                <option value="fill_in_blank">Fill in the Blank</option>
               </select>
             </div>
 
@@ -290,6 +291,7 @@ function QuestionBank() {
                               <option value="multiple_choice">Multiple Choice</option>
                               <option value="true_false">True/False</option>
                               <option value="written_answer">Written Answer</option>
+                              <option value="fill_in_blank">Fill in the Blank</option>
                             </select>
                           </div>
 
@@ -309,7 +311,7 @@ function QuestionBank() {
                           </div>
                         </div>
 
-                        {editForm.question_type !== 'written_answer' && (
+                        {editForm.question_type !== 'written_answer' && editForm.question_type !== 'fill_in_blank' && (
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                               Options

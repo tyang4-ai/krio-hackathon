@@ -132,6 +132,7 @@ class QuizService {
       multipleChoice = 0,
       trueFalse = 0,
       writtenAnswer = 0,
+      fillInBlank = 0,
       totalQuestions = 10
     } = settings;
 
@@ -167,6 +168,16 @@ class QuizService {
           difficulty
         );
         selectedQuestions.push(...waQuestions);
+      }
+
+      if (fillInBlank > 0) {
+        const fibQuestions = this.getQuestionsByTypeAndCount(
+          categoryId,
+          'fill_in_blank',
+          fillInBlank,
+          difficulty
+        );
+        selectedQuestions.push(...fibQuestions);
       }
 
       // Shuffle the combined array
@@ -307,7 +318,8 @@ class QuizService {
         SUM(CASE WHEN difficulty = 'hard' THEN 1 ELSE 0 END) as hard,
         SUM(CASE WHEN question_type = 'multiple_choice' THEN 1 ELSE 0 END) as multiple_choice,
         SUM(CASE WHEN question_type = 'true_false' THEN 1 ELSE 0 END) as true_false,
-        SUM(CASE WHEN question_type = 'written_answer' THEN 1 ELSE 0 END) as written_answer
+        SUM(CASE WHEN question_type = 'written_answer' THEN 1 ELSE 0 END) as written_answer,
+        SUM(CASE WHEN question_type = 'fill_in_blank' THEN 1 ELSE 0 END) as fill_in_blank
       FROM questions
       WHERE category_id = ?
     `);
@@ -322,7 +334,8 @@ class QuizService {
       by_type: {
         multiple_choice: stats.multiple_choice,
         true_false: stats.true_false,
-        written_answer: stats.written_answer
+        written_answer: stats.written_answer,
+        fill_in_blank: stats.fill_in_blank
       }
     };
   }

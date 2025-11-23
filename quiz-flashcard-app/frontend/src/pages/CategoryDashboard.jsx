@@ -27,7 +27,7 @@ function CategoryDashboard() {
   const [uploading, setUploading] = useState(false);
   const [generating, setGenerating] = useState({ questions: false, flashcards: false });
   const [generateOptions, setGenerateOptions] = useState({
-    contentType: 'multiple_choice', // 'multiple_choice', 'flashcards', 'true_false', 'written_answer'
+    contentType: 'multiple_choice', // 'multiple_choice', 'flashcards', 'true_false', 'written_answer', 'fill_in_blank'
     count: 10,
     difficulty: 'medium',
     customDirections: ''
@@ -339,6 +339,7 @@ function CategoryDashboard() {
                 <option value="multiple_choice">Multiple Choice</option>
                 <option value="true_false">True/False</option>
                 <option value="written_answer">Written Answer</option>
+                <option value="fill_in_blank">Fill in the Blank</option>
                 <option value="flashcards">Flashcards</option>
               </select>
             </div>

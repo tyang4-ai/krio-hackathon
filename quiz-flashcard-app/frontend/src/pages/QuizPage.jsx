@@ -16,6 +16,7 @@ function QuizPage() {
     multipleChoice: 5,
     trueFalse: 3,
     writtenAnswer: 2,
+    fillInBlank: 0,
     totalQuestions: 10
   });
 
@@ -163,9 +164,26 @@ function QuizPage() {
                   </p>
                 </div>
 
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Fill in the Blank Questions
+                  </label>
+                  <input
+                    type="number"
+                    className="input"
+                    min="0"
+                    max={stats?.by_type?.fill_in_blank || 0}
+                    value={settings.fillInBlank}
+                    onChange={(e) => setSettings({ ...settings, fillInBlank: parseInt(e.target.value) })}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Available: {stats?.by_type?.fill_in_blank || 0}
+                  </p>
+                </div>
+
                 <div className="pt-2 border-t border-gray-200">
                   <p className="text-sm font-medium text-gray-700">
-                    Total: {settings.multipleChoice + settings.trueFalse + settings.writtenAnswer} questions
+                    Total: {settings.multipleChoice + settings.trueFalse + settings.writtenAnswer + settings.fillInBlank} questions
                   </p>
                 </div>
               </div>

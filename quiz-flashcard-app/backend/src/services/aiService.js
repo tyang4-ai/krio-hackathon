@@ -333,6 +333,17 @@ ${insights.join('\n\n')}
         explanation: "Key points that should be included in the answer",
         tags: ["topic1", "topic2"]
       };
+    } else if (questionType === 'fill_in_blank') {
+      typeInstructions = '- Create sentences with a blank space indicated by _____ (five underscores)\n- The blank should test key terms, concepts, or values\n- Provide the exact answer that fills the blank\n- Answers can be single words, phrases, numbers, or formulas\n- For scientific answers, use proper notation (e.g., H₂O, x², CO₂)';
+      exampleFormat = {
+        question_text: "The chemical formula for water is _____.",
+        question_type: "fill_in_blank",
+        difficulty: difficulty,
+        options: [],
+        correct_answer: "H₂O",
+        explanation: "Water consists of two hydrogen atoms and one oxygen atom",
+        tags: ["topic1", "topic2"]
+      };
     }
 
     const prompt = `Based on the following content, generate ${count} quiz questions.

@@ -133,23 +133,25 @@ function QuizResults() {
                   {index + 1}. {result.question_text}
                 </p>
 
-                {result.question_type === 'written_answer' ? (
+                {result.question_type === 'written_answer' || result.question_type === 'fill_in_blank' ? (
                   <div className="space-y-3">
                     <div>
                       <p className="text-xs font-medium text-gray-600 mb-1">Your Answer:</p>
-                      <div className="p-3 bg-gray-50 rounded text-sm text-gray-700">
+                      <div className="p-3 bg-gray-50 rounded text-sm text-gray-700 font-mono whitespace-pre-wrap">
                         {result.user_answer || <span className="text-gray-400 italic">No answer provided</span>}
                       </div>
                     </div>
                     <div>
-                      <p className="text-xs font-medium text-gray-600 mb-1">Model Answer:</p>
-                      <div className="p-3 bg-green-50 rounded text-sm text-green-800">
+                      <p className="text-xs font-medium text-gray-600 mb-1">
+                        {result.question_type === 'fill_in_blank' ? 'Correct Answer:' : 'Model Answer:'}
+                      </p>
+                      <div className="p-3 bg-green-50 rounded text-sm text-green-800 font-mono whitespace-pre-wrap">
                         {result.correct_answer}
                       </div>
                     </div>
                     {result.explanation && (
                       <div className="bg-blue-50 p-3 rounded text-sm text-blue-800">
-                        <strong>Key Points:</strong> {result.explanation}
+                        <strong>{result.question_type === 'fill_in_blank' ? 'Explanation:' : 'Key Points:'}</strong> {result.explanation}
                       </div>
                     )}
                   </div>

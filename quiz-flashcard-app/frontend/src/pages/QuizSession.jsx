@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Send, Clock, ArrowLeft } from 'lucide-react';
 import { quizApi } from '../services/api';
+import ScientificInput from '../components/ScientificInput';
 
 function QuizSession() {
   const { categoryId, sessionId } = useParams();
@@ -131,14 +132,32 @@ function QuizSession() {
 
         {currentQuestion.question_type === 'written_answer' ? (
           <div>
-            <textarea
-              className="input min-h-[200px]"
-              placeholder="Type your answer here..."
+            <ScientificInput
               value={answers[currentQuestion.id] || ''}
-              onChange={(e) => handleSelectAnswer(currentQuestion.id, e.target.value)}
+              onChange={(newValue) => handleSelectAnswer(currentQuestion.id, newValue)}
+              placeholder="Type your answer here..."
             />
             <p className="text-xs text-gray-500 mt-2">
               Write a comprehensive answer. You'll see a model answer after submitting.
+            </p>
+          </div>
+        ) : currentQuestion.question_type === 'fill_in_blank' ? (
+          <div>
+            <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                {currentQuestion.question_text}
+              </p>
+            </div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Your Answer:
+            </label>
+            <ScientificInput
+              value={answers[currentQuestion.id] || ''}
+              onChange={(newValue) => handleSelectAnswer(currentQuestion.id, newValue)}
+              placeholder="Enter the answer to fill in the blank..."
+            />
+            <p className="text-xs text-gray-500 mt-2">
+              Fill in the blank with the appropriate answer. Use the toolbar for scientific notation, formulas, and symbols.
             </p>
           </div>
         ) : (
