@@ -21,12 +21,13 @@ Scholarly is an AI-powered educational platform that generates quiz questions an
 
 ### Key Features
 - **Multi-format Document Support**: PDF, TXT, DOCX, MD
-- **AI Content Generation**: Questions (multiple choice, true/false, written answer) and flashcards
+- **AI Content Generation**: Questions (multiple choice, true/false, written answer, fill-in-the-blank) and flashcards
+- **Scientific Notation Input**: Rich input component with auto-conversion for superscripts (^), fractions (/), arrows, and Greek letters
 - **Adaptive Learning**: Tracks user performance and preferences
 - **Personalized AI**: Learns from ratings and performance history
 - **Spaced Repetition**: Smart flashcard review scheduling
 - **Multi-Provider AI**: Supports NVIDIA, Groq, Together.ai, Ollama, AWS Bedrock, HuggingFace
-- **Question Bank Management**: Full CRUD with bulk operations
+- **Question Bank Management**: Full CRUD with bulk operations and star ratings
 - **Custom Quiz Configuration**: Mixed or type-specific question selection
 - **Sample Questions**: User-provided examples to guide AI style
 
@@ -98,7 +99,8 @@ quiz-flashcard-app/
 │   ├── src/
 │   │   ├── components/
 │   │   │   ├── Layout.jsx              # Main layout wrapper
-│   │   │   └── CategoryForm.jsx        # Category creation form
+│   │   │   ├── CategoryForm.jsx        # Category creation form
+│   │   │   └── ScientificInput.jsx     # Scientific notation input with auto-conversion
 │   │   ├── pages/
 │   │   │   ├── Home.jsx                # Landing page & category list
 │   │   │   ├── CategoryDashboard.jsx   # Category overview & content generation
@@ -211,7 +213,7 @@ CREATE TABLE questions (
   category_id TEXT NOT NULL,
   document_id TEXT,
   question_text TEXT NOT NULL,
-  question_type TEXT DEFAULT 'multiple_choice', -- multiple_choice, true_false, written_answer
+  question_type TEXT DEFAULT 'multiple_choice', -- multiple_choice, true_false, written_answer, fill_in_blank
   difficulty TEXT DEFAULT 'medium',              -- easy, medium, hard
   options TEXT,                                   -- JSON array for MC/TF
   correct_answer TEXT NOT NULL,
@@ -574,7 +576,7 @@ uploadFile(file, categoryId)  // Returns { path, filename }
 **Content Generation**:
 ```javascript
 const [generateOptions, setGenerateOptions] = useState({
-  contentType: 'multiple_choice',  // multiple_choice, true_false, written_answer, flashcards
+  contentType: 'multiple_choice',  // multiple_choice, true_false, written_answer, fill_in_blank, flashcards
   count: 10,
   difficulty: 'medium',
   customDirections: ''
@@ -695,6 +697,32 @@ const [filter, setFilter] = useState({ type: 'all', difficulty: 'all' });
 - Description textarea
 - Color picker (custom palette)
 - Validation
+
+#### ScientificInput.jsx (NEW)
+**Purpose**: Rich text input component for scientific notation
+
+**Features**:
+- **Toggle Format Buttons**: Superscript (x²) and Subscript (H₂O) buttons with visual feedback
+- **Auto-Convert `^` to Superscripts**: Type `x^2` → `x²`, `10^-5` → `10⁻⁵`
+- **Auto-Convert `/` to Fractions**: Type `3/4` → `³⁄₄` (numerator as superscript, denominator as subscript)
+- **Format Mode**: Toggle buttons activate persistent formatting for continuous typing
+- **Selection Conversion**: Select text and click format button to convert
+- **Arrows**: → ← ↑ ↓ ↔ ⇌ ⇒ ⇐ (8 symbols)
+- **Greek Letters**: α β γ δ ε θ λ μ π σ τ φ Δ Σ Ω (15 symbols)
+- **Extended Character Support**:
+  - Superscript: ⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾ and letters ᵃᵇᶜᵈᵉᶠᵍʰⁱʲᵏˡᵐⁿᵒᵖʳˢᵗᵘᵛʷˣʸᶻ
+  - Subscript: ₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎ and letters ₐₑₕᵢⱼₖₗₘₙₒₚᵣₛₜᵤᵥₓ
+- **Help Text**: Inline tips showing keyboard shortcuts and examples
+- **Use Cases**: Chemistry formulas (H₂SO₄), math expressions (x²+y²=r²), physics equations (E=mc²), fractions (³⁄₄)
+
+**Usage**:
+```javascript
+<ScientificInput
+  value={answer}
+  onChange={setAnswer}
+  placeholder="Enter your answer..."
+/>
+```
 
 ---
 
