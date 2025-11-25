@@ -2,8 +2,12 @@
 Scholarly Quiz & Flashcard App - FastAPI Backend
 Main application entry point
 """
-import os
+import sys
 from contextlib import asynccontextmanager
+from pathlib import Path
+
+# Add the backend-python directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent))
 
 import sentry_sdk
 import structlog
@@ -11,6 +15,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+
+from config import settings
+from config.database import init_db, close_db
+from routers import health_router
 
 # Configure structured logging
 structlog.configure(
@@ -34,28 +42,41 @@ structlog.configure(
 logger = structlog.get_logger()
 
 # Initialize Sentry if DSN is provided
-sentry_dsn = os.getenv("SENTRY_DSN")
-if sentry_dsn:
+if settings.sentry_dsn:
     sentry_sdk.init(
-        dsn=sentry_dsn,
+        dsn=settings.sentry_dsn,
         integrations=[
             FastApiIntegration(),
             SqlalchemyIntegration(),
         ],
-        traces_sample_rate=1.0 if os.getenv("ENVIRONMENT") == "development" else 0.1,
-        profiles_sample_rate=1.0 if os.getenv("ENVIRONMENT") == "development" else 0.1,
-        environment=os.getenv("ENVIRONMENT", "development"),
+        traces_sample_rate=1.0 if settings.is_development else 0.1,
+        profiles_sample_rate=1.0 if settings.is_development else 0.1,
+        environment=settings.environment,
     )
-    logger.info("sentry_initialized", environment=os.getenv("ENVIRONMENT"))
+    logger.info("sentry_initialized", environment=settings.environment)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events."""
     # Startup
-    logger.info("application_starting", environment=os.getenv("ENVIRONMENT", "development"))
+    logger.info(
+        "application_starting",
+        environment=settings.environment,
+        ai_provider=settings.ai_provider,
+        ai_model=settings.ai_model,
+        vision_provider=settings.vision_provider,
+        vision_model=settings.vision_model,
+    )
+
+    # Initialize database
+    await init_db()
+    logger.info("database_initialized")
+
     yield
+
     # Shutdown
+    await close_db()
     logger.info("application_shutting_down")
 
 
@@ -65,14 +86,16 @@ app = FastAPI(
     description="Quiz & Flashcard Application with AI-powered content generation",
     version="5.0.0",
     lifespan=lifespan,
+    docs_url="/docs",
+    redoc_url="/redoc",
 )
 
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",  # Vite dev server
-        "http://localhost:3000",  # Alternative frontend port
+        "http://localhost:5173",  # Vite dev server (original)
+        "http://localhost:3000",  # Vite dev server (Docker)
         "http://127.0.0.1:5173",
         "http://127.0.0.1:3000",
     ],
@@ -80,6 +103,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# Include routers
+app.include_router(health_router)
 
 
 @app.get("/")
@@ -90,26 +117,21 @@ async def root():
         "version": "5.0.0",
         "status": "running",
         "docs": "/docs",
-        "environment": os.getenv("ENVIRONMENT", "development"),
+        "environment": settings.environment,
+        "ai_provider": settings.ai_provider,
+        "ai_model": settings.ai_model,
+        "vision_available": bool(settings.openai_api_key),
     }
 
 
-@app.get("/health")
-async def health_check():
-    """Health check endpoint for Docker/Kubernetes."""
-    return {
-        "status": "healthy",
-        "database": "connected",  # TODO: Add actual DB check
-    }
-
-
-# TODO: Import and include routers
+# TODO: Include additional routers as they are implemented
 # from routers import categories, documents, questions, flashcards, quiz
 # app.include_router(categories.router, prefix="/api/categories", tags=["Categories"])
 # app.include_router(documents.router, prefix="/api/documents", tags=["Documents"])
 # app.include_router(questions.router, prefix="/api/questions", tags=["Questions"])
 # app.include_router(flashcards.router, prefix="/api/flashcards", tags=["Flashcards"])
 # app.include_router(quiz.router, prefix="/api/quiz", tags=["Quiz"])
+
 
 if __name__ == "__main__":
     import uvicorn
