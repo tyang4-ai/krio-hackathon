@@ -2249,6 +2249,7 @@ For issues, questions, or contributions:
 | Phase | Status | Description |
 |-------|--------|-------------|
 | Phase 1 | ✅ Complete | Docker + PostgreSQL setup |
+| Phase 1.1 | ✅ Complete | Frontend port fix (5173 → 3000) |
 | Phase 2 | ⏳ Pending | Python backend structure (FastAPI) |
 | Phase 3 | ⏳ Pending | Migrate services (Categories, Documents, etc.) |
 | Phase 4 | ⏳ Pending | Database schema migration (Alembic) |
@@ -2262,7 +2263,23 @@ For issues, questions, or contributions:
 - Monitoring: Sentry.io integration
 - Privacy: PostgreSQL Row-Level Security
 
+**AI Model Configuration**:
+- Primary (Controller, Analysis, Generation, Grading): NVIDIA `llama-3.1-nemotron-nano-4b-v1.1`
+- Vision (Handwriting Recognition): OpenAI `gpt-4o`
+
+**Current Docker Services**:
+| Service | Port | Status |
+|---------|------|--------|
+| PostgreSQL | 5432 | ✅ Running |
+| FastAPI Backend | 8000 | ✅ Running (skeleton only) |
+| React Frontend | 3000 | ✅ Running |
+
+**Known Limitations** (until Phase 3 complete):
+- API endpoints not implemented (500 errors expected)
+- Database tables not created
+- Frontend cannot create/read data
+
 ---
 
 **Last Updated**: 2025-11-25
-**Version**: 5.0.0 (Python Migration - Phase 1: Docker Setup)
+**Version**: 5.0.1 (Python Migration - Phase 1 Complete, Frontend Port Fixed)
