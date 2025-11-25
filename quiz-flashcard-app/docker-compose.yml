@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: scholarly-postgres
+    environment:
+      POSTGRES_DB: scholarly
+      POSTGRES_USER: scholarly
+      POSTGRES_PASSWORD: localdev123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U scholarly -d scholarly"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Python FastAPI Backend
+  backend:
+    build: ./backend-python
+    container_name: scholarly-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://scholarly:localdev123@postgres:5432/scholarly
+      - ENVIRONMENT=development
+      - DEBUG=true
+      - SENTRY_DSN=${SENTRY_DSN:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backend-python:/app
+      - ./uploads:/app/uploads
+    restart: unless-stopped
+
+  # React Frontend (Vite)
+  frontend:
+    build: ./frontend
+    container_name: scholarly-frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
