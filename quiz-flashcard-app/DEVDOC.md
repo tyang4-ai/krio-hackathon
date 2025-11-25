@@ -1686,12 +1686,88 @@ userPreferencesService.setPreference(categoryId, 'study_schedule', JSON.stringif
 
 ## Development Setup
 
-### Prerequisites
+### Option 1: Docker (Recommended)
+
+**Prerequisites**:
+- Docker Desktop installed
+- API key for AI provider (NVIDIA, Groq, etc.)
+
+**Quick Start**:
+```bash
+cd quiz-flashcard-app
+
+# Copy environment template
+cp .env.example .env
+
+# Edit .env with your API keys
+# At minimum, set one AI provider key (e.g., OPENAI_API_KEY or GROQ_API_KEY)
+
+# Start all services
+docker-compose up
+
+# Access the application:
+# - Frontend: http://localhost:5173
+# - Backend API: http://localhost:8000
+# - API Docs: http://localhost:8000/docs (auto-generated!)
+# - Database: localhost:5432
+
+# Stop all services
+docker-compose down
+```
+
+**Docker Architecture**:
+```
+┌─────────────────────────────────────────────────────┐
+│              docker-compose.yml                      │
+├─────────────────────────────────────────────────────┤
+│                                                      │
+│  ┌──────────────────┐    ┌──────────────────┐       │
+│  │   backend        │    │   postgres       │       │
+│  │   (FastAPI)      │◄──►│   (Database)     │       │
+│  │   Python 3.11    │    │   PostgreSQL 15  │       │
+│  │   Port 8000      │    │   Port 5432      │       │
+│  └──────────────────┘    └──────────────────┘       │
+│           ▲                                          │
+│           │ API calls                                │
+│  ┌────────┴─────────┐    ┌──────────────────┐       │
+│  │   frontend       │    │   volumes        │       │
+│  │   (React/Vite)   │    │   ./uploads      │       │
+│  │   Port 5173      │    │   postgres_data  │       │
+│  └──────────────────┘    └──────────────────┘       │
+│                                                      │
+└─────────────────────────────────────────────────────┘
+```
+
+**Useful Docker Commands**:
+```bash
+# Rebuild after code changes
+docker-compose up --build
+
+# View logs
+docker-compose logs -f backend
+docker-compose logs -f postgres
+
+# Run backend tests
+docker-compose exec backend pytest
+
+# Access PostgreSQL CLI
+docker-compose exec postgres psql -U scholarly -d scholarly
+
+# Reset database (WARNING: deletes all data)
+docker-compose down -v
+docker-compose up
+```
+
+### Option 2: Manual Setup (Legacy Node.js Backend)
+
+> Note: The Node.js backend is being migrated to Python. Use Docker for new development.
+
+**Prerequisites**:
 - Node.js 18+ and npm
 - Text editor (VS Code recommended)
 - API key for AI provider (NVIDIA, Groq, etc.)
 
-### Backend Setup
+**Backend Setup**:
 ```bash
 cd quiz-flashcard-app/backend
 
@@ -1713,7 +1789,7 @@ EOF
 npm run dev
 ```
 
-### Frontend Setup
+**Frontend Setup**:
 ```bash
 cd quiz-flashcard-app/frontend
 
@@ -2166,5 +2242,27 @@ For issues, questions, or contributions:
 
 ---
 
-**Last Updated**: 2025-01-24
-**Version**: 4.0.0 (Enhanced Quiz Features Release - Multiple Modes, Handwriting Recognition, Partial Credit)
+## Migration Status
+
+**Current Status**: Migrating from Node.js/SQLite to Python/PostgreSQL
+
+| Phase | Status | Description |
+|-------|--------|-------------|
+| Phase 1 | ✅ Complete | Docker + PostgreSQL setup |
+| Phase 2 | ⏳ Pending | Python backend structure (FastAPI) |
+| Phase 3 | ⏳ Pending | Migrate services (Categories, Documents, etc.) |
+| Phase 4 | ⏳ Pending | Database schema migration (Alembic) |
+| Phase 5 | ⏳ Pending | Frontend updates (API URL change) |
+| Phase 6 | ⏳ Pending | Authentication & Privacy (RLS) |
+
+**New Stack**:
+- Backend: Python 3.11 + FastAPI (replacing Node.js + Express)
+- Database: PostgreSQL 15 (replacing SQLite)
+- Dev Environment: Docker Compose
+- Monitoring: Sentry.io integration
+- Privacy: PostgreSQL Row-Level Security
+
+---
+
+**Last Updated**: 2025-11-25
+**Version**: 5.0.0 (Python Migration - Phase 1: Docker Setup)
