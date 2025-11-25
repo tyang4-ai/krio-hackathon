@@ -18,7 +18,7 @@ from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 
 from config import settings
 from config.database import init_db, close_db
-from routers import health_router
+from routers import health_router, categories_router, documents_router
 
 # Configure structured logging
 structlog.configure(
@@ -107,6 +107,8 @@ app.add_middleware(
 
 # Include routers
 app.include_router(health_router)
+app.include_router(categories_router)
+app.include_router(documents_router)
 
 
 @app.get("/")
@@ -125,12 +127,9 @@ async def root():
 
 
 # TODO: Include additional routers as they are implemented
-# from routers import categories, documents, questions, flashcards, quiz
-# app.include_router(categories.router, prefix="/api/categories", tags=["Categories"])
-# app.include_router(documents.router, prefix="/api/documents", tags=["Documents"])
-# app.include_router(questions.router, prefix="/api/questions", tags=["Questions"])
-# app.include_router(flashcards.router, prefix="/api/flashcards", tags=["Flashcards"])
-# app.include_router(quiz.router, prefix="/api/quiz", tags=["Quiz"])
+# app.include_router(questions_router)
+# app.include_router(flashcards_router)
+# app.include_router(quiz_router)
 
 
 if __name__ == "__main__":
