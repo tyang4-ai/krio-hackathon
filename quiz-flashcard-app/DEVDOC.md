@@ -2251,7 +2251,11 @@ For issues, questions, or contributions:
 | Phase 1 | ✅ Complete | Docker + PostgreSQL setup |
 | Phase 1.1 | ✅ Complete | Frontend port fix (5173 → 3000) |
 | Phase 2 | ✅ Complete | Python backend structure (FastAPI) |
-| Phase 3 | ⏳ Pending | Migrate services (Categories, Documents, etc.) |
+| Phase 3.1 | ✅ Complete | Categories API (CRUD with stats) |
+| Phase 3.2 | ✅ Complete | Documents API (upload, process, delete) |
+| Phase 3.3 | ✅ Complete | All 16 database models created |
+| Phase 3.4 | ⏳ Pending | Remaining services (Flashcards, Quiz, etc.) |
+| Phase 3.5 | ⏳ Pending | AI Agents migration |
 | Phase 4 | ⏳ Pending | Database schema migration (Alembic) |
 | Phase 5 | ⏳ Pending | Frontend updates (API URL change) |
 | Phase 6 | ⏳ Pending | Authentication & Privacy (RLS) |
@@ -2271,34 +2275,64 @@ For issues, questions, or contributions:
 | Service | Port | Status |
 |---------|------|--------|
 | PostgreSQL | 5432 | ✅ Running |
-| FastAPI Backend | 8000 | ✅ Running (with structure) |
+| FastAPI Backend | 8000 | ✅ Running (Categories + Documents API) |
 | React Frontend | 3000 | ✅ Running |
 
-**Python Backend Structure** (Phase 2):
+**Python Backend Structure** (Phase 3 Progress):
 ```
 backend-python/
-├── main.py                 # FastAPI app entry point
+├── main.py                    # FastAPI app entry point
 ├── config/
-│   ├── settings.py        # Pydantic settings (env vars)
-│   └── database.py        # SQLAlchemy async engine
-├── models/
-│   └── base.py            # Base model with timestamps
+│   ├── settings.py           # Pydantic settings (env vars)
+│   └── database.py           # SQLAlchemy async engine
+├── models/                    # 16 SQLAlchemy models
+│   ├── category.py           # ✅ Categories
+│   ├── document.py           # ✅ Documents
+│   ├── question.py           # ✅ Questions
+│   ├── flashcard.py          # ✅ Flashcards
+│   ├── quiz_session.py       # ✅ Quiz sessions
+│   ├── notebook_entry.py     # ✅ Wrong answer tracking
+│   ├── flashcard_progress.py # ✅ Spaced repetition
+│   ├── sample_question.py    # ✅ AI learning samples
+│   ├── ai_analysis.py        # ✅ AI analysis + agent messages
+│   ├── user_preferences.py   # ✅ Preferences + performance
+│   ├── handwriting.py        # ✅ Handwritten answers + corrections
+│   └── grading.py            # ✅ Partial credit + focus events
 ├── schemas/
-│   └── base.py            # Base Pydantic schemas
+│   ├── category.py           # ✅ Category schemas
+│   └── document.py           # ✅ Document schemas
 ├── routers/
-│   └── health.py          # Health check endpoints
+│   ├── health.py             # ✅ Health check
+│   ├── categories.py         # ✅ Categories CRUD
+│   └── documents.py          # ✅ Documents upload/delete
 ├── services/
-│   └── ai_service.py      # Multi-provider AI (NVIDIA + OpenAI)
+│   ├── ai_service.py         # ✅ Multi-provider AI
+│   ├── category_service.py   # ✅ Category business logic
+│   └── document_service.py   # ✅ Document processing
 └── agents/
-    └── base_agent.py      # Base class for 5 AI agents
+    └── base_agent.py         # ✅ Base class for agents
 ```
 
-**Known Limitations** (until Phase 3 complete):
-- API endpoints not implemented (500 errors expected)
-- Database tables not created
-- Frontend cannot create/read data
+**Implemented API Endpoints**:
+| Method | Endpoint | Status |
+|--------|----------|--------|
+| GET | `/api/categories` | ✅ Working |
+| GET | `/api/categories/{id}` | ✅ Working |
+| POST | `/api/categories` | ✅ Working |
+| PUT | `/api/categories/{id}` | ✅ Working |
+| DELETE | `/api/categories/{id}` | ✅ Working |
+| GET | `/api/categories/{id}/documents` | ✅ Working |
+| POST | `/api/categories/{id}/documents` | ✅ Working |
+| DELETE | `/api/documents/{id}` | ✅ Working |
+| POST | `/api/categories/{id}/generate-questions` | ⏳ Stub |
+| POST | `/api/categories/{id}/generate-flashcards` | ⏳ Stub |
+
+**Known Limitations** (current):
+- Question/Flashcard/Quiz APIs not implemented yet
+- AI generation endpoints return stubs (waiting for agent migration)
+- Database tables auto-created on startup (no Alembic yet)
 
 ---
 
 **Last Updated**: 2025-11-25
-**Version**: 5.0.2 (Python Migration - Phase 2 Complete, Backend Structure)
+**Version**: 5.0.3 (Python Migration - Phase 3 In Progress, Categories + Documents + Models)

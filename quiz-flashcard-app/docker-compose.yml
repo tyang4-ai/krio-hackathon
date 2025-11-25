@@ -25,11 +25,10 @@ services:
     container_name: scholarly-backend
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     environment:
       - DATABASE_URL=postgresql+asyncpg://scholarly:localdev123@postgres:5432/scholarly
-      - ENVIRONMENT=development
-      - DEBUG=true
-      - SENTRY_DSN=${SENTRY_DSN:-}
     depends_on:
       postgres:
         condition: service_healthy
