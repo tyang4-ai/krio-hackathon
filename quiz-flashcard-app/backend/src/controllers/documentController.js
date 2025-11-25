@@ -5,6 +5,7 @@ const quizService = require('../services/quizService');
 const flashcardService = require('../services/flashcardService');
 const sampleQuestionService = require('../services/sampleQuestionService');
 const userPreferencesService = require('../services/userPreferencesService');
+const controllerAgent = require('../services/agents/controllerAgent');
 const path = require('path');
 
 const documentController = {
@@ -78,20 +79,18 @@ const documentController = {
         });
       }
 
-      // Get sample questions for this category to use as style guide
-      const sampleQuestions = sampleQuestionService.getSampleQuestionsForAI(categoryId);
+      // Get sample question count for response
+      const sampleCount = sampleQuestionService.getSampleQuestionCount(categoryId);
 
-      // Get AI insights for personalized generation
-      const aiInsights = userPreferencesService.getAIInsights(categoryId);
-
-      // Generate questions using AI
-      const questions = await aiService.generateQuestions(content, {
+      // Use controller agent to generate questions (coordinates with analysis agent)
+      const questions = await controllerAgent.generateQuestions(content, {
+        categoryId,
         count,
         difficulty,
-        questionTypes: [questionType],
-        sampleQuestions,
+        questionType,
         customDirections,
-        aiInsights
+        useAnalysis: true,
+        useSampleQuestions: true
       });
 
       // Save questions to database
@@ -102,7 +101,7 @@ const documentController = {
         data: {
           generated: questions.length,
           question_ids: questionIds,
-          used_samples: sampleQuestions.length
+          used_samples: sampleCount
         }
       });
     } catch (error) {

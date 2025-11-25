@@ -111,4 +111,16 @@ export const sampleQuestionApi = {
     api.get(`/categories/${categoryId}/sample-questions/count`)
 };
 
+// AI Analysis (Multi-Agent System)
+export const analysisApi = {
+  triggerAnalysis: (categoryId) =>
+    api.post(`/categories/${categoryId}/analyze-samples`),
+  getAnalysisStatus: (categoryId) =>
+    api.get(`/categories/${categoryId}/analysis-status`),
+  clearAnalysis: (categoryId) =>
+    api.delete(`/categories/${categoryId}/analysis`),
+  getAgentActivity: (categoryId, limit = 20) =>
+    api.get(`/categories/${categoryId}/agent-activity`, { params: { limit } })
+};
+
 export default api;

@@ -164,6 +164,38 @@ async function initializeDatabase() {
     )
   `);
 
+  // AI analysis results table (for pattern analysis agent)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS ai_analysis_results (
+      id TEXT PRIMARY KEY,
+      category_id TEXT NOT NULL,
+      analysis_type TEXT NOT NULL,
+      patterns TEXT,
+      style_guide TEXT,
+      recommendations TEXT,
+      analyzed_count INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Agent communication log (for multi-agent coordination)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS agent_messages (
+      id TEXT PRIMARY KEY,
+      category_id TEXT NOT NULL,
+      from_agent TEXT NOT NULL,
+      to_agent TEXT NOT NULL,
+      message_type TEXT NOT NULL,
+      payload TEXT,
+      status TEXT DEFAULT 'pending',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      processed_at DATETIME,
+      FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+    )
+  `);
+
   // User preferences table (for AI personalization)
   db.run(`
     CREATE TABLE IF NOT EXISTS user_preferences (

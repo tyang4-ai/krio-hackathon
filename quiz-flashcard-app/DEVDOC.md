@@ -6,12 +6,13 @@
 3. [Technology Stack](#technology-stack)
 4. [Database Schema](#database-schema)
 5. [Backend Services](#backend-services)
-6. [Frontend Components](#frontend-components)
-7. [API Reference](#api-reference)
-8. [AI Integration](#ai-integration)
-9. [Personalization System](#personalization-system)
-10. [Development Setup](#development-setup)
-11. [Deployment](#deployment)
+6. [Multi-Agent AI System](#multi-agent-ai-system)
+7. [Frontend Components](#frontend-components)
+8. [API Reference](#api-reference)
+9. [AI Integration](#ai-integration)
+10. [Personalization System](#personalization-system)
+11. [Development Setup](#development-setup)
+12. [Deployment](#deployment)
 
 ---
 
@@ -27,9 +28,10 @@ Scholarly is an AI-powered educational platform that generates quiz questions an
 - **Personalized AI**: Learns from ratings and performance history
 - **Spaced Repetition**: Smart flashcard review scheduling
 - **Multi-Provider AI**: Supports NVIDIA, Groq, Together.ai, Ollama, AWS Bedrock, HuggingFace
+- **Multi-Agent AI System**: Separate analysis and generation agents with controller coordination
 - **Question Bank Management**: Full CRUD with bulk operations and star ratings
 - **Custom Quiz Configuration**: Mixed or type-specific question selection
-- **Sample Questions**: User-provided examples to guide AI style
+- **Sample Questions**: User-provided examples with AI pattern analysis
 
 ---
 
@@ -54,6 +56,10 @@ Scholarly is an AI-powered educational platform that generates quiz questions an
 │  ┌──────────────────────────────────────────────────────┐  │
 │  │                     Services                          │  │
 │  │  Category │ Document │ Quiz │ Flashcard │ AI │ Prefs │  │
+│  └──────────────────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │               Multi-Agent System (NEW)                │  │
+│  │     Controller ←→ Analysis Agent ←→ Generation Agent │  │
 │  └──────────────────────────────────────────────────────┘  │
 │  ┌──────────────────────────────────────────────────────┐  │
 │  │              Database (SQLite + sql.js)               │  │
@@ -88,7 +94,11 @@ quiz-flashcard-app/
 │   │   │   ├── quizService.js           # Quiz sessions & questions
 │   │   │   ├── sampleQuestionService.js # Sample question management
 │   │   │   ├── storageService.js        # File storage
-│   │   │   └── userPreferencesService.js # Performance tracking & AI insights
+│   │   │   ├── userPreferencesService.js # Performance tracking & AI insights
+│   │   │   └── agents/                  # Multi-agent AI system (NEW)
+│   │   │       ├── controllerAgent.js   # Main coordinator
+│   │   │       ├── analysisAgent.js     # Pattern analysis agent
+│   │   │       └── generationAgent.js   # Question generation agent
 │   │   ├── routes/
 │   │   │   └── index.js                 # API route definitions
 │   │   └── server.js                    # Express server entry point
@@ -170,9 +180,13 @@ quiz_sessions       # Quiz attempts
 flashcard_progress  # Spaced repetition tracking
 notebook_entries    # Wrong answers
 
--- Personalization Tables (New)
+-- Personalization Tables
 user_preferences    # Key-value preference storage
 question_performance # Answer accuracy tracking
+
+-- Multi-Agent System Tables (NEW)
+ai_analysis_results # Pattern analysis results from analysis agent
+agent_messages      # Inter-agent communication log
 ```
 
 ### Detailed Schema
@@ -334,6 +348,38 @@ CREATE TABLE notebook_entries (
   FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE,
   FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE,
   FOREIGN KEY (quiz_session_id) REFERENCES quiz_sessions(id) ON DELETE SET NULL
+);
+```
+
+#### ai_analysis_results (NEW)
+```sql
+CREATE TABLE ai_analysis_results (
+  id TEXT PRIMARY KEY,
+  category_id TEXT NOT NULL,
+  analysis_type TEXT NOT NULL,      -- 'sample_questions'
+  patterns TEXT,                     -- JSON: language_style, question_structure, etc.
+  style_guide TEXT,                  -- JSON: tone, vocabulary_level, formatting_rules
+  recommendations TEXT,              -- JSON array of recommendations
+  analyzed_count INTEGER DEFAULT 0,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+);
+```
+
+#### agent_messages (NEW)
+```sql
+CREATE TABLE agent_messages (
+  id TEXT PRIMARY KEY,
+  category_id TEXT NOT NULL,
+  from_agent TEXT NOT NULL,          -- 'analysis_agent', 'generation_agent', 'controller_agent'
+  to_agent TEXT NOT NULL,
+  message_type TEXT NOT NULL,        -- 'analysis_request', 'analysis_complete', 'generation_request'
+  payload TEXT,                       -- JSON message content
+  status TEXT DEFAULT 'pending',      -- 'pending', 'processed'
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  processed_at DATETIME,
+  FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
 );
 ```
 
@@ -542,6 +588,310 @@ getSampleQuestionCount(categoryId)
 ```javascript
 uploadFile(file, categoryId)  // Returns { path, filename }
 ```
+
+---
+
+## Multi-Agent AI System
+
+### Overview
+The multi-agent system separates AI responsibilities into specialized agents that communicate through a shared database. This architecture improves question generation quality by allowing dedicated pattern analysis.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Controller Agent                          │
+│  - Coordinates workflow between agents                       │
+│  - Manages generation requests                               │
+│  - Triggers analysis when needed                             │
+│  - Aggregates results                                        │
+└───────────────┬───────────────────────────┬─────────────────┘
+                │                           │
+                ▼                           ▼
+┌───────────────────────────┐   ┌───────────────────────────┐
+│     Analysis Agent        │   │    Generation Agent        │
+│  - Analyzes sample Qs     │   │  - Generates questions     │
+│  - Detects patterns       │   │  - Uses analysis patterns  │
+│  - Creates style guides   │   │  - Applies user insights   │
+│  - Stores to database     │   │  - Supports all Q types    │
+└───────────────────────────┘   └───────────────────────────┘
+                │                           │
+                └─────────┬─────────────────┘
+                          ▼
+              ┌───────────────────────┐
+              │  Shared Database       │
+              │  - ai_analysis_results │
+              │  - agent_messages      │
+              └───────────────────────┘
+```
+
+### 1. Controller Agent (controllerAgent.js)
+**Purpose**: Main coordinator for the multi-agent system
+
+**Responsibilities**:
+- Route requests to appropriate agents
+- Trigger analysis before generation if needed
+- Manage workflow and coordination
+- Log all agent activity
+
+**Key Methods**:
+```javascript
+// Trigger pattern analysis
+triggerAnalysis(categoryId)
+// Returns: { success, analysis, analyzedCount }
+
+// Generate questions with coordination
+generateQuestions(content, options = {
+  categoryId,
+  count: 10,
+  difficulty: 'medium',
+  questionType: 'multiple_choice',
+  customDirections: '',
+  useAnalysis: true,
+  useSampleQuestions: true
+})
+// Auto-triggers analysis if samples exist but no analysis
+
+// Get analysis status
+getAnalysisStatus(categoryId)
+// Returns: { hasAnalysis, analysis, sampleCount, samplesByType, lastUpdated }
+
+// Get agent activity log
+getAgentActivity(categoryId, limit = 20)
+// Returns: [{ id, from, to, type, payload, status, createdAt, processedAt }]
+
+// Clear analysis (force re-analysis)
+clearAnalysis(categoryId)
+
+// Get system stats
+getSystemStats(categoryId)
+// Returns: { analysisCount, messageStats, recentActivity }
+```
+
+### 2. Analysis Agent (analysisAgent.js)
+**Purpose**: Specialized agent for analyzing sample question patterns
+
+**Responsibilities**:
+- Analyze sample questions to detect patterns
+- Generate style guides for question generation
+- Identify language patterns, structure, and format
+- Store analysis results in database
+- Communicate with generation agent
+
+**Key Methods**:
+```javascript
+// Analyze sample questions
+analyzeSampleQuestions(categoryId, sampleQuestions)
+// Returns: { success, analysis, analyzedCount }
+
+// Get stored analysis
+getAnalysis(categoryId)
+// Returns: { id, categoryId, patterns, styleGuide, recommendations, analyzedCount, updatedAt }
+
+// Store analysis results
+storeAnalysis(categoryId, analysis, analyzedCount)
+
+// Send results to generation agent
+sendToGenerationAgent(categoryId, analysis)
+```
+
+**Analysis Output Structure**:
+```javascript
+{
+  patterns: {
+    language_style: "Formal academic tone with technical vocabulary",
+    question_structure: "Direct questions with clear stems",
+    option_format: "Concise options with parallel structure",
+    answer_patterns: "Single correct answer, plausible distractors",
+    difficulty_indicators: "Complexity of concepts, specificity required",
+    subject_focus: "Chemistry, molecular structures"
+  },
+  style_guide: {
+    tone: "Educational and precise",
+    vocabulary_level: "Advanced undergraduate",
+    question_length: "Medium (15-30 words)",
+    option_count: 4,
+    explanation_style: "Concise with key concept reference",
+    formatting_rules: [
+      "Use scientific notation for formulas",
+      "Include units where applicable",
+      "Avoid negative phrasing"
+    ]
+  },
+  by_type: {
+    multiple_choice: { count: 5, patterns: "...", examples: "..." },
+    true_false: { count: 2, patterns: "...", examples: "..." },
+    written_answer: { count: 1, patterns: "...", examples: "..." },
+    fill_in_blank: { count: 2, patterns: "...", examples: "..." }
+  },
+  recommendations: [
+    "Maintain consistent option length",
+    "Include explanations for all answers",
+    "Vary difficulty within topics"
+  ],
+  quality_indicators: {
+    strengths: ["Clear question stems", "Good distractor quality"],
+    areas_to_improve: ["Add more explanations"]
+  }
+}
+```
+
+### 3. Generation Agent (generationAgent.js)
+**Purpose**: Specialized agent for generating questions using analysis patterns
+
+**Responsibilities**:
+- Generate questions based on content
+- Use style guides from analysis agent
+- Apply user preferences and performance insights
+- Support all question types (MC, T/F, Written, Fill-in-blank)
+- Log generation activity
+
+**Key Methods**:
+```javascript
+// Generate questions
+generateQuestions(content, options = {
+  categoryId,
+  count: 10,
+  difficulty: 'medium',
+  questionType: 'multiple_choice',
+  customDirections: '',
+  aiInsights: null
+})
+// Returns: [{ question_text, question_type, difficulty, options, correct_answer, explanation, tags }]
+
+// Get analysis from database
+getAnalysisFromDB(categoryId)
+// Returns: { patterns, styleGuide, recommendations }
+
+// Build insights section for prompt
+buildInsightsSection(aiInsights)
+// Returns: Formatted string for AI prompt
+
+// Get pending messages from analysis agent
+getPendingMessages(categoryId)
+
+// Mark message as processed
+markMessageProcessed(messageId)
+
+// Log generation activity
+logGeneration(categoryId, questionType, count)
+```
+
+### Agent Communication Flow
+
+```
+1. User clicks "Generate Questions"
+   │
+   ▼
+2. Controller Agent receives request
+   │
+   ├── Check if analysis exists
+   │   │
+   │   ├── No analysis but samples exist?
+   │   │   └── Trigger Analysis Agent
+   │   │       │
+   │   │       └── Analysis Agent analyzes samples
+   │   │           │
+   │   │           ├── Store results in ai_analysis_results
+   │   │           │
+   │   │           └── Send message to Generation Agent
+   │   │
+   │   └── Analysis exists or no samples
+   │
+   ▼
+3. Controller delegates to Generation Agent
+   │
+   ├── Generation Agent retrieves analysis from DB
+   │
+   ├── Builds prompt with style guide
+   │
+   ├── Gets AI insights from user preferences
+   │
+   └── Generates questions
+       │
+       ▼
+4. Questions returned to Controller
+   │
+   ▼
+5. Controller logs activity and returns to user
+```
+
+### API Endpoints for Multi-Agent System
+
+```
+POST   /api/categories/:categoryId/analyze-samples    # Trigger analysis
+GET    /api/categories/:categoryId/analysis-status    # Get analysis status
+DELETE /api/categories/:categoryId/analysis           # Clear analysis
+GET    /api/categories/:categoryId/agent-activity     # Get activity log
+```
+
+**Trigger Analysis Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "success": true,
+    "analysis": { "patterns": {...}, "style_guide": {...}, ... },
+    "analyzedCount": 10
+  }
+}
+```
+
+**Analysis Status Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "hasAnalysis": true,
+    "analysis": {
+      "id": "uuid",
+      "categoryId": "uuid",
+      "patterns": {...},
+      "styleGuide": {...},
+      "recommendations": [...],
+      "analyzedCount": 10,
+      "updatedAt": "2025-01-20T..."
+    },
+    "sampleCount": 10,
+    "samplesByType": {
+      "multiple_choice": 5,
+      "true_false": 2,
+      "written_answer": 1,
+      "fill_in_blank": 2
+    },
+    "lastUpdated": "2025-01-20T..."
+  }
+}
+```
+
+### Frontend Integration
+
+The CategoryDashboard includes an analysis button in the Sample Questions section:
+
+```javascript
+// Analysis button states
+- Purple (Brain icon): No analysis yet, click to analyze
+- Green (CheckCircle icon): Analysis complete, click to re-analyze
+- Spinning loader: Analysis in progress
+
+// Analysis status banner
+- Shows when analysis is complete
+- Displays sample count and last updated date
+- Shows detected language style preview
+
+// Question type badges on samples
+- Multiple Choice: Blue
+- True/False: Purple
+- Written Answer: Green
+- Fill in Blank: Orange
+```
+
+### Benefits of Multi-Agent Architecture
+
+1. **Separation of Concerns**: Each agent has a single responsibility
+2. **Reusable Analysis**: Analysis results are cached and reused
+3. **Improved Quality**: Style guides ensure consistent question generation
+4. **Transparency**: Agent messages provide audit trail
+5. **Flexibility**: Easy to add new agents (e.g., evaluation agent)
+6. **Scalability**: Agents can be distributed in future
 
 ---
 
@@ -1532,5 +1882,5 @@ For issues, questions, or contributions:
 
 ---
 
-**Last Updated**: 2025-01-20
-**Version**: 2.0.0 (Personalization System Release)
+**Last Updated**: 2025-01-24
+**Version**: 3.0.0 (Multi-Agent AI System Release)

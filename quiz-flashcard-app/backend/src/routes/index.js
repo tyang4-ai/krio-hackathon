@@ -110,4 +110,10 @@ router.put('/sample-questions/:id', sampleQuestionController.update);
 router.delete('/sample-questions/:id', sampleQuestionController.delete);
 router.get('/categories/:categoryId/sample-questions/count', sampleQuestionController.getCount);
 
+// ===== AI Analysis Routes (Multi-Agent System) =====
+router.post('/categories/:categoryId/analyze-samples', sampleQuestionController.triggerAnalysis);
+router.get('/categories/:categoryId/analysis-status', sampleQuestionController.getAnalysisStatus);
+router.delete('/categories/:categoryId/analysis', sampleQuestionController.clearAnalysis);
+router.get('/categories/:categoryId/agent-activity', sampleQuestionController.getAgentActivity);
+
 module.exports = router;

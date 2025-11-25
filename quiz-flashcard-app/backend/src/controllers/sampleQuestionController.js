@@ -1,5 +1,6 @@
 const sampleQuestionService = require('../services/sampleQuestionService');
 const aiService = require('../services/aiService');
+const controllerAgent = require('../services/agents/controllerAgent');
 const fs = require('fs');
 const path = require('path');
 const pdfParse = require('pdf-parse');
@@ -364,6 +365,82 @@ const sampleQuestionController = {
       }
 
       res.status(500).json({ error: error.message || 'Failed to upload sample questions' });
+    }
+  },
+
+  // Trigger AI analysis of sample questions
+  triggerAnalysis: async (req, res) => {
+    try {
+      const { categoryId } = req.params;
+
+      const result = await controllerAgent.triggerAnalysis(categoryId);
+
+      if (!result.success) {
+        return res.status(400).json({
+          success: false,
+          error: result.error
+        });
+      }
+
+      res.json({
+        success: true,
+        data: result
+      });
+    } catch (error) {
+      console.error('Error triggering analysis:', error);
+      res.status(500).json({ error: 'Failed to analyze sample questions' });
+    }
+  },
+
+  // Get analysis status and results
+  getAnalysisStatus: async (req, res) => {
+    try {
+      const { categoryId } = req.params;
+
+      const status = controllerAgent.getAnalysisStatus(categoryId);
+
+      res.json({
+        success: true,
+        data: status
+      });
+    } catch (error) {
+      console.error('Error getting analysis status:', error);
+      res.status(500).json({ error: 'Failed to get analysis status' });
+    }
+  },
+
+  // Clear analysis (force re-analysis)
+  clearAnalysis: async (req, res) => {
+    try {
+      const { categoryId } = req.params;
+
+      const result = controllerAgent.clearAnalysis(categoryId);
+
+      res.json({
+        success: true,
+        message: 'Analysis cleared successfully'
+      });
+    } catch (error) {
+      console.error('Error clearing analysis:', error);
+      res.status(500).json({ error: 'Failed to clear analysis' });
+    }
+  },
+
+  // Get agent activity log
+  getAgentActivity: async (req, res) => {
+    try {
+      const { categoryId } = req.params;
+      const { limit = 20 } = req.query;
+
+      const activity = controllerAgent.getAgentActivity(categoryId, parseInt(limit));
+
+      res.json({
+        success: true,
+        data: activity
+      });
+    } catch (error) {
+      console.error('Error getting agent activity:', error);
+      res.status(500).json({ error: 'Failed to get agent activity' });
     }
   }
 };

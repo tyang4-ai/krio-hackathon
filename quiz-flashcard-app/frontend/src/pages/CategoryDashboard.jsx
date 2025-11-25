@@ -13,9 +13,12 @@ import {
   X,
   Lightbulb,
   ArrowLeft,
-  Database
+  Database,
+  Brain,
+  CheckCircle,
+  RefreshCw
 } from 'lucide-react';
-import { categoryApi, documentApi, sampleQuestionApi } from '../services/api';
+import { categoryApi, documentApi, sampleQuestionApi, analysisApi } from '../services/api';
 
 function CategoryDashboard() {
   const { categoryId } = useParams();
@@ -42,6 +45,8 @@ function CategoryDashboard() {
   });
   const [savingSample, setSavingSample] = useState(false);
   const [uploadingSamples, setUploadingSamples] = useState(false);
+  const [analysisStatus, setAnalysisStatus] = useState(null);
+  const [analyzing, setAnalyzing] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -49,14 +54,16 @@ function CategoryDashboard() {
 
   const loadData = async () => {
     try {
-      const [catResponse, docsResponse, samplesResponse] = await Promise.all([
+      const [catResponse, docsResponse, samplesResponse, analysisResponse] = await Promise.all([
         categoryApi.getById(categoryId),
         documentApi.getByCategory(categoryId),
-        sampleQuestionApi.getByCategory(categoryId)
+        sampleQuestionApi.getByCategory(categoryId),
+        analysisApi.getAnalysisStatus(categoryId)
       ]);
       setCategory(catResponse.data.data);
       setDocuments(docsResponse.data.data);
       setSampleQuestions(samplesResponse.data);
+      setAnalysisStatus(analysisResponse.data.data);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -182,6 +189,71 @@ function CategoryDashboard() {
     const newOptions = [...newSample.options];
     newOptions[index] = value;
     setNewSample({ ...newSample, options: newOptions });
+  };
+
+  const handleTriggerAnalysis = async () => {
+    if (sampleQuestions.length === 0) {
+      alert('Add some sample questions first to analyze patterns');
+      return;
+    }
+
+    setAnalyzing(true);
+    try {
+      const response = await analysisApi.triggerAnalysis(categoryId);
+      if (response.data.success) {
+        alert(`Analysis complete! Analyzed ${response.data.data.analyzedCount} sample questions.`);
+        // Refresh analysis status
+        const statusResponse = await analysisApi.getAnalysisStatus(categoryId);
+        setAnalysisStatus(statusResponse.data.data);
+      }
+    } catch (error) {
+      console.error('Error triggering analysis:', error);
+      alert('Error analyzing samples: ' + (error.response?.data?.error || error.message));
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
+  const handleClearAnalysis = async () => {
+    if (window.confirm('Clear analysis and force re-analysis next time?')) {
+      try {
+        await analysisApi.clearAnalysis(categoryId);
+        setAnalysisStatus({ ...analysisStatus, hasAnalysis: false, analysis: null });
+      } catch (error) {
+        console.error('Error clearing analysis:', error);
+      }
+    }
+  };
+
+  const handleQuestionTypeChange = (type) => {
+    let options = [];
+    let correctAnswer = '';
+
+    switch (type) {
+      case 'multiple_choice':
+        options = ['A) ', 'B) ', 'C) ', 'D) '];
+        correctAnswer = 'A';
+        break;
+      case 'true_false':
+        options = ['A) True', 'B) False'];
+        correctAnswer = 'A';
+        break;
+      case 'written_answer':
+      case 'fill_in_blank':
+        options = [];
+        correctAnswer = '';
+        break;
+      default:
+        options = ['A) ', 'B) ', 'C) ', 'D) '];
+        correctAnswer = 'A';
+    }
+
+    setNewSample({
+      ...newSample,
+      question_type: type,
+      options,
+      correct_answer: correctAnswer
+    });
   };
 
   if (loading) {
@@ -427,6 +499,39 @@ function CategoryDashboard() {
             </p>
           </div>
           <div className="flex space-x-2">
+            {/* Analysis Button */}
+            <button
+              onClick={handleTriggerAnalysis}
+              disabled={analyzing || sampleQuestions.length === 0}
+              className={`flex items-center space-x-2 px-3 py-2 rounded-lg border transition-colors ${
+                analysisStatus?.hasAnalysis
+                  ? 'bg-green-50 border-green-300 text-green-700 hover:bg-green-100'
+                  : 'bg-purple-50 border-purple-300 text-purple-700 hover:bg-purple-100'
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
+              title={analysisStatus?.hasAnalysis ? 'Re-analyze patterns' : 'Analyze patterns'}
+            >
+              {analyzing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : analysisStatus?.hasAnalysis ? (
+                <CheckCircle className="h-4 w-4" />
+              ) : (
+                <Brain className="h-4 w-4" />
+              )}
+              <span className="text-sm font-medium">
+                {analyzing ? 'Analyzing...' : analysisStatus?.hasAnalysis ? 'Analyzed' : 'Analyze'}
+              </span>
+            </button>
+
+            {analysisStatus?.hasAnalysis && (
+              <button
+                onClick={handleClearAnalysis}
+                className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                title="Clear analysis"
+              >
+                <RefreshCw className="h-4 w-4" />
+              </button>
+            )}
+
             <label className="btn-secondary cursor-pointer flex items-center space-x-2">
               {uploadingSamples ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -452,6 +557,29 @@ function CategoryDashboard() {
           </div>
         </div>
 
+        {/* Analysis Status Banner */}
+        {analysisStatus?.hasAnalysis && (
+          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <CheckCircle className="h-5 w-5 text-green-600" />
+                <span className="text-sm font-medium text-green-800">
+                  Pattern analysis complete
+                </span>
+              </div>
+              <span className="text-xs text-green-600">
+                {analysisStatus.sampleCount} samples analyzed
+                {analysisStatus.lastUpdated && ` • Updated ${new Date(analysisStatus.lastUpdated).toLocaleDateString()}`}
+              </span>
+            </div>
+            {analysisStatus.analysis?.patterns && (
+              <p className="mt-2 text-xs text-green-700">
+                Style: {analysisStatus.analysis.patterns.language_style?.substring(0, 100) || 'Detected'}...
+              </p>
+            )}
+          </div>
+        )}
+
         {sampleQuestions.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
             <Lightbulb className="h-12 w-12 mx-auto mb-2 text-gray-400" />
@@ -468,14 +596,36 @@ function CategoryDashboard() {
               >
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
-                    <p className="font-medium text-gray-900 mb-2">{sample.question_text}</p>
-                    <div className="space-y-1 text-sm text-gray-600">
-                      {sample.options.map((opt, i) => (
-                        <p key={i} className={opt.startsWith(sample.correct_answer + ')') ? 'text-primary-600 font-medium' : ''}>
-                          {opt}
-                        </p>
-                      ))}
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${
+                        sample.question_type === 'multiple_choice' ? 'bg-blue-100 text-blue-700' :
+                        sample.question_type === 'true_false' ? 'bg-purple-100 text-purple-700' :
+                        sample.question_type === 'written_answer' ? 'bg-green-100 text-green-700' :
+                        sample.question_type === 'fill_in_blank' ? 'bg-orange-100 text-orange-700' :
+                        'bg-gray-100 text-gray-700'
+                      }`}>
+                        {sample.question_type === 'multiple_choice' ? 'Multiple Choice' :
+                         sample.question_type === 'true_false' ? 'True/False' :
+                         sample.question_type === 'written_answer' ? 'Written Answer' :
+                         sample.question_type === 'fill_in_blank' ? 'Fill in Blank' :
+                         sample.question_type}
+                      </span>
                     </div>
+                    <p className="font-medium text-gray-900 mb-2">{sample.question_text}</p>
+                    {sample.options && sample.options.length > 0 && (
+                      <div className="space-y-1 text-sm text-gray-600">
+                        {sample.options.map((opt, i) => (
+                          <p key={i} className={opt.startsWith(sample.correct_answer + ')') ? 'text-primary-600 font-medium' : ''}>
+                            {opt}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                    {(sample.question_type === 'written_answer' || sample.question_type === 'fill_in_blank') && (
+                      <p className="text-sm text-primary-600 font-medium">
+                        Answer: {sample.correct_answer}
+                      </p>
+                    )}
                     {sample.explanation && (
                       <p className="mt-2 text-sm text-gray-500 italic">
                         Explanation: {sample.explanation}
@@ -516,50 +666,94 @@ function CategoryDashboard() {
             </div>
 
             <div className="space-y-4">
+              {/* Question Type Selector */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Question Type
+                </label>
+                <select
+                  className="select"
+                  value={newSample.question_type}
+                  onChange={(e) => handleQuestionTypeChange(e.target.value)}
+                >
+                  <option value="multiple_choice">Multiple Choice</option>
+                  <option value="true_false">True/False</option>
+                  <option value="written_answer">Written Answer</option>
+                  <option value="fill_in_blank">Fill in the Blank</option>
+                </select>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Question
                 </label>
                 <textarea
                   className="input min-h-[80px]"
-                  placeholder="Enter your sample question..."
+                  placeholder={newSample.question_type === 'fill_in_blank'
+                    ? "Enter your question with _____ for the blank (e.g., 'The chemical formula for water is _____.')"
+                    : "Enter your sample question..."}
                   value={newSample.question_text}
                   onChange={(e) => setNewSample({ ...newSample, question_text: e.target.value })}
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Options
-                </label>
-                <div className="space-y-2">
-                  {newSample.options.map((opt, index) => (
-                    <input
-                      key={index}
-                      type="text"
-                      className="input"
-                      placeholder={`Option ${String.fromCharCode(65 + index)}`}
-                      value={opt}
-                      onChange={(e) => updateSampleOption(index, e.target.value)}
-                    />
-                  ))}
+              {/* Options - Only for multiple choice and true/false */}
+              {(newSample.question_type === 'multiple_choice' || newSample.question_type === 'true_false') && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Options
+                  </label>
+                  <div className="space-y-2">
+                    {newSample.options.map((opt, index) => (
+                      <input
+                        key={index}
+                        type="text"
+                        className="input"
+                        placeholder={`Option ${String.fromCharCode(65 + index)}`}
+                        value={opt}
+                        onChange={(e) => updateSampleOption(index, e.target.value)}
+                        disabled={newSample.question_type === 'true_false'}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
+              {/* Correct Answer */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Correct Answer
                 </label>
-                <select
-                  className="select"
-                  value={newSample.correct_answer}
-                  onChange={(e) => setNewSample({ ...newSample, correct_answer: e.target.value })}
-                >
-                  <option value="A">A</option>
-                  <option value="B">B</option>
-                  <option value="C">C</option>
-                  <option value="D">D</option>
-                </select>
+                {(newSample.question_type === 'multiple_choice' || newSample.question_type === 'true_false') ? (
+                  <select
+                    className="select"
+                    value={newSample.correct_answer}
+                    onChange={(e) => setNewSample({ ...newSample, correct_answer: e.target.value })}
+                  >
+                    {newSample.question_type === 'multiple_choice' ? (
+                      <>
+                        <option value="A">A</option>
+                        <option value="B">B</option>
+                        <option value="C">C</option>
+                        <option value="D">D</option>
+                      </>
+                    ) : (
+                      <>
+                        <option value="A">True</option>
+                        <option value="B">False</option>
+                      </>
+                    )}
+                  </select>
+                ) : (
+                  <textarea
+                    className="input min-h-[60px]"
+                    placeholder={newSample.question_type === 'fill_in_blank'
+                      ? "Enter the text that fills the blank (e.g., 'H₂O')"
+                      : "Enter the model answer for this question..."}
+                    value={newSample.correct_answer}
+                    onChange={(e) => setNewSample({ ...newSample, correct_answer: e.target.value })}
+                  />
+                )}
               </div>
 
               <div>
