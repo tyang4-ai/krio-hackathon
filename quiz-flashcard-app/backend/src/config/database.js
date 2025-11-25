@@ -224,6 +224,64 @@ async function initializeDatabase() {
     )
   `);
 
+  // Handwritten answer uploads for quiz sessions
+  db.run(`
+    CREATE TABLE IF NOT EXISTS handwritten_answers (
+      id TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL,
+      question_id TEXT NOT NULL,
+      file_path TEXT NOT NULL,
+      original_name TEXT,
+      recognized_text TEXT,
+      confidence_score REAL DEFAULT 0,
+      user_corrections TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (session_id) REFERENCES quiz_sessions(id) ON DELETE CASCADE,
+      FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Handwriting correction learning data
+  db.run(`
+    CREATE TABLE IF NOT EXISTS handwriting_corrections (
+      id TEXT PRIMARY KEY,
+      category_id TEXT NOT NULL,
+      original_text TEXT NOT NULL,
+      corrected_text TEXT NOT NULL,
+      context TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Partial credit grading results
+  db.run(`
+    CREATE TABLE IF NOT EXISTS partial_credit_grades (
+      id TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL,
+      question_id TEXT NOT NULL,
+      total_points REAL DEFAULT 1.0,
+      earned_points REAL DEFAULT 0,
+      breakdown TEXT,
+      feedback TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (session_id) REFERENCES quiz_sessions(id) ON DELETE CASCADE,
+      FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Focus tracking for exam simulation mode
+  db.run(`
+    CREATE TABLE IF NOT EXISTS exam_focus_events (
+      id TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL,
+      event_type TEXT NOT NULL,
+      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+      details TEXT,
+      FOREIGN KEY (session_id) REFERENCES quiz_sessions(id) ON DELETE CASCADE
+    )
+  `);
+
   // Run migrations to add rating column if it doesn't exist
   try {
     // Check if rating column exists in questions table

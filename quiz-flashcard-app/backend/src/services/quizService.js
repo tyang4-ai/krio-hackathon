@@ -3,6 +3,12 @@ const { db } = require('../config/database');
 const userPreferencesService = require('./userPreferencesService');
 
 class QuizService {
+  // Quiz mode constants
+  static MODES = {
+    PRACTICE: 'practice',
+    TIMED: 'timed',
+    EXAM: 'exam'
+  };
   // Question Bank Methods
   addQuestion(questionData) {
     const id = uuidv4();
@@ -372,6 +378,62 @@ class QuizService {
   rateQuestion(id, rating) {
     const stmt = db.prepare('UPDATE questions SET rating = ? WHERE id = ?');
     stmt.run(rating, id);
+  }
+
+  // Focus event tracking for exam simulation mode
+  recordFocusEvent(sessionId, eventType, details = {}) {
+    const id = uuidv4();
+    const stmt = db.prepare(`
+      INSERT INTO exam_focus_events (id, session_id, event_type, details)
+      VALUES (?, ?, ?, ?)
+    `);
+    stmt.run(id, sessionId, eventType, JSON.stringify(details));
+    return id;
+  }
+
+  getFocusEvents(sessionId) {
+    const stmt = db.prepare(`
+      SELECT * FROM exam_focus_events
+      WHERE session_id = ?
+      ORDER BY timestamp ASC
+    `);
+    const events = stmt.all(sessionId);
+    return events.map(e => ({
+      ...e,
+      details: e.details ? JSON.parse(e.details) : {}
+    }));
+  }
+
+  getFocusEventCount(sessionId, eventType = null) {
+    let query = 'SELECT COUNT(*) as count FROM exam_focus_events WHERE session_id = ?';
+    const params = [sessionId];
+
+    if (eventType) {
+      query += ' AND event_type = ?';
+      params.push(eventType);
+    }
+
+    const stmt = db.prepare(query);
+    const result = stmt.get(...params);
+    return result?.count || 0;
+  }
+
+  // Get exam integrity report
+  getExamIntegrityReport(sessionId) {
+    const events = this.getFocusEvents(sessionId);
+    const focusLostCount = events.filter(e => e.event_type === 'focus_lost').length;
+    const tabSwitchCount = events.filter(e => e.event_type === 'tab_switch').length;
+    const windowBlurCount = events.filter(e => e.event_type === 'window_blur').length;
+
+    return {
+      sessionId,
+      totalViolations: focusLostCount + tabSwitchCount + windowBlurCount,
+      focusLostCount,
+      tabSwitchCount,
+      windowBlurCount,
+      events,
+      integrityScore: Math.max(0, 100 - (focusLostCount + tabSwitchCount + windowBlurCount) * 5)
+    };
   }
 }
 

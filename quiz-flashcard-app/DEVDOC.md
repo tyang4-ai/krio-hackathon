@@ -28,10 +28,14 @@ Scholarly is an AI-powered educational platform that generates quiz questions an
 - **Personalized AI**: Learns from ratings and performance history
 - **Spaced Repetition**: Smart flashcard review scheduling
 - **Multi-Provider AI**: Supports NVIDIA, Groq, Together.ai, Ollama, AWS Bedrock, HuggingFace
-- **Multi-Agent AI System**: Separate analysis and generation agents with controller coordination
+- **Multi-Agent AI System**: Separate analysis, generation, handwriting, and grading agents with controller coordination
 - **Question Bank Management**: Full CRUD with bulk operations and star ratings
 - **Custom Quiz Configuration**: Mixed or type-specific question selection
 - **Sample Questions**: User-provided examples with AI pattern analysis
+- **Multiple Quiz Modes**: Practice (no timer), Timed (customizable), Exam Simulation (focus tracking)
+- **Handwritten Answer Support**: PDF upload with AI handwriting recognition
+- **Partial Credit Grading**: AI-powered component breakdown for complex questions
+- **Exam Integrity Tracking**: Focus violation detection for exam simulation mode
 
 ---
 
@@ -58,8 +62,9 @@ Scholarly is an AI-powered educational platform that generates quiz questions an
 │  │  Category │ Document │ Quiz │ Flashcard │ AI │ Prefs │  │
 │  └──────────────────────────────────────────────────────┘  │
 │  ┌──────────────────────────────────────────────────────┐  │
-│  │               Multi-Agent System (NEW)                │  │
-│  │     Controller ←→ Analysis Agent ←→ Generation Agent │  │
+│  │               Multi-Agent System                       │  │
+│  │  Controller ←→ Analysis ←→ Generation ←→ Handwriting │  │
+│  │                         ←→ Grading                    │  │
 │  └──────────────────────────────────────────────────────┘  │
 │  ┌──────────────────────────────────────────────────────┐  │
 │  │              Database (SQLite + sql.js)               │  │
@@ -98,7 +103,9 @@ quiz-flashcard-app/
 │   │   │   └── agents/                  # Multi-agent AI system (NEW)
 │   │   │       ├── controllerAgent.js   # Main coordinator
 │   │   │       ├── analysisAgent.js     # Pattern analysis agent
-│   │   │       └── generationAgent.js   # Question generation agent
+│   │   │       ├── generationAgent.js   # Question generation agent
+│   │   │       ├── handwritingAgent.js  # Handwritten PDF recognition (NEW)
+│   │   │       └── gradingAgent.js      # Partial credit grading (NEW)
 │   │   ├── routes/
 │   │   │   └── index.js                 # API route definitions
 │   │   └── server.js                    # Express server entry point
@@ -184,9 +191,15 @@ notebook_entries    # Wrong answers
 user_preferences    # Key-value preference storage
 question_performance # Answer accuracy tracking
 
--- Multi-Agent System Tables (NEW)
+-- Multi-Agent System Tables
 ai_analysis_results # Pattern analysis results from analysis agent
 agent_messages      # Inter-agent communication log
+
+-- Quiz Enhanced Features Tables (NEW)
+handwritten_answers     # Uploaded handwritten PDFs with recognized text
+handwriting_corrections # User corrections for AI learning
+partial_credit_grades   # Detailed partial credit breakdowns
+exam_focus_events       # Focus tracking for exam simulation mode
 ```
 
 ### Detailed Schema
@@ -367,7 +380,7 @@ CREATE TABLE ai_analysis_results (
 );
 ```
 
-#### agent_messages (NEW)
+#### agent_messages
 ```sql
 CREATE TABLE agent_messages (
   id TEXT PRIMARY KEY,
@@ -380,6 +393,64 @@ CREATE TABLE agent_messages (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   processed_at DATETIME,
   FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+);
+```
+
+#### handwritten_answers (NEW)
+```sql
+CREATE TABLE handwritten_answers (
+  id TEXT PRIMARY KEY,
+  session_id TEXT NOT NULL,
+  question_id TEXT NOT NULL,
+  file_path TEXT NOT NULL,
+  original_name TEXT,
+  recognized_text TEXT,              -- AI-recognized text from handwriting
+  confidence_score REAL DEFAULT 0,   -- Recognition confidence (0-1)
+  user_corrections TEXT,             -- JSON array of corrections
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (session_id) REFERENCES quiz_sessions(id) ON DELETE CASCADE,
+  FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
+);
+```
+
+#### handwriting_corrections (NEW)
+```sql
+CREATE TABLE handwriting_corrections (
+  id TEXT PRIMARY KEY,
+  category_id TEXT NOT NULL,
+  original_text TEXT NOT NULL,       -- What AI recognized
+  corrected_text TEXT NOT NULL,      -- What user corrected to
+  context TEXT,                       -- Additional context for learning
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+);
+```
+
+#### partial_credit_grades (NEW)
+```sql
+CREATE TABLE partial_credit_grades (
+  id TEXT PRIMARY KEY,
+  session_id TEXT NOT NULL,
+  question_id TEXT NOT NULL,
+  total_points REAL DEFAULT 1.0,
+  earned_points REAL DEFAULT 0,
+  breakdown TEXT,                     -- JSON: [{component, points, earned, correct}]
+  feedback TEXT,                      -- AI feedback for partial credit
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (session_id) REFERENCES quiz_sessions(id) ON DELETE CASCADE,
+  FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
+);
+```
+
+#### exam_focus_events (NEW)
+```sql
+CREATE TABLE exam_focus_events (
+  id TEXT PRIMARY KEY,
+  session_id TEXT NOT NULL,
+  event_type TEXT NOT NULL,           -- 'focus_lost', 'tab_switch', 'window_blur'
+  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+  details TEXT,                        -- JSON with event details
+  FOREIGN KEY (session_id) REFERENCES quiz_sessions(id) ON DELETE CASCADE
 );
 ```
 
@@ -489,9 +560,9 @@ addQuestion(questionData)
 addBulkQuestions(questions, categoryId, documentId)
 getQuestionById(id)
 getQuestionsByCategory(categoryId, filters)
-updateQuestion(id, data)          // NEW
+updateQuestion(id, data)
 deleteQuestion(id)
-rateQuestion(id, rating)          // NEW
+rateQuestion(id, rating)
 
 // Quiz Sessions
 createQuizSession(categoryId, settings)
@@ -502,19 +573,56 @@ getQuizHistory(categoryId)
 
 // Stats
 getQuestionStats(categoryId)  // Returns by_type counts
+
+// Focus Event Tracking (NEW)
+recordFocusEvent(sessionId, eventType, details)
+getFocusEvents(sessionId)
+getFocusEventCount(sessionId, eventType)
+getExamIntegrityReport(sessionId)
+```
+
+**Quiz Modes** (NEW):
+```javascript
+static MODES = {
+  PRACTICE: 'practice',  // No timer, relaxed learning
+  TIMED: 'timed',        // Customizable timer
+  EXAM: 'exam'           // Focus tracking, strict simulation
+};
 ```
 
 **Quiz Settings**:
 ```javascript
 {
+  mode: 'practice' | 'timed' | 'exam',   // NEW
   difficulty: 'mixed' | 'easy' | 'medium' | 'hard',
   selectionMode: 'mixed' | 'custom',
+  // Timer settings (NEW)
+  timerType: 'total' | 'per_question',
+  totalTimeMinutes: 30,
+  perQuestionSeconds: 60,
+  // Advanced options (NEW)
+  allowPartialCredit: true,
+  allowHandwrittenUpload: true,
   // Mixed mode
   totalQuestions: 10,
   // Custom mode
   multipleChoice: 5,
   trueFalse: 3,
-  writtenAnswer: 2
+  writtenAnswer: 2,
+  fillInBlank: 0
+}
+```
+
+**Exam Integrity Report**:
+```javascript
+{
+  sessionId: "uuid",
+  totalViolations: 3,
+  focusLostCount: 1,
+  tabSwitchCount: 1,
+  windowBlurCount: 1,
+  events: [...],
+  integrityScore: 85  // 100 - (violations * 5)
 }
 ```
 
@@ -884,14 +992,115 @@ The CategoryDashboard includes an analysis button in the Sample Questions sectio
 - Fill in Blank: Orange
 ```
 
+### 4. Handwriting Agent (handwritingAgent.js) (NEW)
+**Purpose**: Process handwritten PDF answers and recognize text using AI
+
+**Responsibilities**:
+- Process uploaded PDF files
+- Extract text/images from PDFs
+- Use AI to recognize handwriting
+- Store recognized text in database
+- Learn from user corrections
+
+**Key Methods**:
+```javascript
+// Process uploaded handwritten answer
+processHandwrittenAnswer(sessionId, questionId, filePath, originalName)
+// Returns: { id, sessionId, questionId, recognizedText, confidence }
+
+// Get handwritten answers for a session
+getSessionHandwrittenAnswers(sessionId)
+// Returns: [{ id, questionId, recognizedText, confidence, ... }]
+
+// Update recognized text with user correction
+updateRecognizedText(handwrittenId, correctedText, corrections)
+
+// Learn from a correction
+learnCorrection(categoryId, originalText, correctedText, context)
+// Stores correction for future AI improvement
+```
+
+**Handwriting Recognition Flow**:
+```
+1. User uploads PDF → multer saves to uploads/handwritten/
+2. handwritingAgent.processHandwrittenAnswer() called
+3. PDF parsed with pdf-parse
+4. AI prompt sent with content + recognition request
+5. Recognized text stored in handwritten_answers table
+6. During results review, user can correct recognition
+7. Corrections stored in handwriting_corrections for learning
+```
+
+### 5. Grading Agent (gradingAgent.js) (NEW)
+**Purpose**: Provide partial credit grading for complex questions using AI
+
+**Responsibilities**:
+- Analyze answer components
+- Grade written answers with partial credit
+- Handle handwritten answer grading
+- Provide detailed feedback
+- Store grading breakdown
+
+**Key Methods**:
+```javascript
+// Grade an answer with partial credit
+gradeAnswer(sessionId, questionId, userAnswer, options = {})
+// Returns: { questionId, totalPoints, earnedPoints, breakdown, feedback, partialCredit }
+
+// Determine if question needs partial credit
+needsPartialCredit(question)
+// Returns: true for written_answer, fill_in_blank, or hard difficulty
+
+// Get session grades
+getSessionGrades(sessionId)
+// Returns: [{ questionId, earnedPoints, totalPoints, breakdown, feedback }]
+
+// Check if answer is semantically correct
+isAnswerCorrect(userAnswer, correctAnswer, questionType)
+// Returns: boolean (handles variations for T/F, etc.)
+
+// Check mathematical equivalence
+checkMathEquivalence(userAnswer, correctAnswer)
+// Returns: boolean (handles different formats)
+```
+
+**Partial Credit Structure**:
+```javascript
+{
+  questionId: "uuid",
+  totalPoints: 1.0,
+  earnedPoints: 0.7,
+  breakdown: [
+    { component: "Key concept A", points: 0.3, earned: 0.3, correct: true },
+    { component: "Key concept B", points: 0.3, earned: 0.3, correct: true },
+    { component: "Supporting detail", points: 0.2, earned: 0.1, correct: false },
+    { component: "Explanation", points: 0.2, earned: 0.0, correct: false }
+  ],
+  feedback: "Good understanding of main concepts. Missing some supporting details.",
+  partialCredit: true
+}
+```
+
+**Grading Flow**:
+```
+1. Quiz submitted with partial credit enabled
+2. For each question:
+   a. Check if needs partial credit (written/fill-in-blank/hard)
+   b. If yes: Send to AI for component analysis
+   c. AI breaks down into components, grades each
+   d. Store breakdown in partial_credit_grades table
+3. Results show detailed breakdown with feedback
+```
+
 ### Benefits of Multi-Agent Architecture
 
 1. **Separation of Concerns**: Each agent has a single responsibility
 2. **Reusable Analysis**: Analysis results are cached and reused
 3. **Improved Quality**: Style guides ensure consistent question generation
 4. **Transparency**: Agent messages provide audit trail
-5. **Flexibility**: Easy to add new agents (e.g., evaluation agent)
+5. **Flexibility**: Easy to add new agents
 6. **Scalability**: Agents can be distributed in future
+7. **Specialized Processing**: Handwriting and grading agents handle complex tasks
 
 ---
 
@@ -937,23 +1146,34 @@ const [generateOptions, setGenerateOptions] = useState({
 **Purpose**: Quiz configuration and history
 
 **Features**:
+- **Quiz Mode Selection** (NEW): Practice, Timed, Exam cards with icons
+- **Timer Settings** (NEW): Total time or per-question timer (for timed/exam modes)
 - **Selection Mode Toggle**: Mixed vs Custom
 - **Mixed Mode**: Single total questions input, random from all types
-- **Custom Mode**: Individual inputs for each question type (MC, T/F, Written)
+- **Custom Mode**: Individual inputs for each question type (MC, T/F, Written, Fill-in-blank)
 - **Difficulty Filter**: Mixed, Easy, Medium, Hard
-- **Available Questions Display**: By type and difficulty
-- **Quiz History**: Recent attempts with scores and percentages
-- **Start Quiz Button**: Creates session and navigates to quiz
+- **Advanced Options** (NEW): Partial credit toggle, Handwritten upload toggle
+- **Exam Mode Warning**: Alert about focus tracking
+- **Quiz History**: Recent attempts with scores, percentages, and mode badges
 
 **Settings State**:
 ```javascript
 const [settings, setSettings] = useState({
+  mode: 'practice',            // NEW: 'practice', 'timed', 'exam'
   difficulty: 'mixed',
   selectionMode: 'mixed',      // 'mixed' or 'custom'
   multipleChoice: 5,
   trueFalse: 3,
   writtenAnswer: 2,
-  totalQuestions: 10
+  fillInBlank: 0,
+  totalQuestions: 10,
+  // Timer settings (NEW)
+  timerType: 'total',          // 'total' or 'per_question'
+  totalTimeMinutes: 30,
+  perQuestionSeconds: 60,
+  // Advanced options (NEW)
+  allowPartialCredit: true,
+  allowHandwrittenUpload: true
 });
 ```
 
@@ -965,21 +1185,74 @@ const [settings, setSettings] = useState({
 - Progress indicator
 - Multiple choice: Radio buttons
 - True/False: Radio buttons
-- Written answer: Textarea
-- Submit button
-- Answer state management
+- Written answer: Textarea with ScientificInput
+- Fill-in-blank: Inline answer input
+- **Timer Display** (NEW): Color-coded countdown (green > 50%, yellow > 25%, red)
+- **Mode Badge** (NEW): Shows current mode (timed/exam)
+- **Focus Tracking** (NEW): Detects tab switches, window blur, mouse leave
+- **Focus Warning Overlay** (NEW): Red overlay when violation detected
+- **Violation Counter** (NEW): Shows focus violation count in exam mode
+- **Handwritten Upload** (NEW): PDF upload button for written answers
+- **Auto-Submit** (NEW): Submits automatically when time runs out
+
+**State Management**:
+```javascript
+// Timer state
+const [timeRemaining, setTimeRemaining] = useState(null);
+const [questionTimeRemaining, setQuestionTimeRemaining] = useState(null);
+
+// Focus tracking for exam mode
+const [focusViolations, setFocusViolations] = useState(0);
+const [showFocusWarning, setShowFocusWarning] = useState(false);
+
+// Handwritten uploads
+const [handwrittenFiles, setHandwrittenFiles] = useState({});
+const [uploadingHandwritten, setUploadingHandwritten] = useState(false);
+```
+
+**Focus Event Listeners** (Exam Mode):
+```javascript
+document.addEventListener('visibilitychange', handleVisibilityChange);
+window.addEventListener('blur', handleWindowBlur);
+document.addEventListener('mouseleave', handleMouseLeave);
+```
 
 #### 5. QuizResults.jsx
 **Purpose**: Quiz results and review
 
 **Features**:
-- Score display with percentage
+- Score display with percentage (supports decimal points for partial credit)
 - Color-coded performance (green >70%, yellow >50%, red <50%)
+- **Mode Badge** (NEW): Shows quiz mode with icon
+- **Exam Integrity Report** (NEW): Focus violation summary for exam mode
 - Question-by-question breakdown
 - Correct/incorrect indicators
+- **Partial Credit Display** (NEW): Shows point breakdown with component details
+- **Handwritten Answer Section** (NEW): Shows recognized text with confidence
+- **Correction Interface** (NEW): Edit recognized text, "Save & Learn" button
 - Show explanations
 - For written answers: Show user answer vs model answer
 - Retake quiz button
+
+**Partial Credit UI**:
+```javascript
+// Shows breakdown for each component
+{result.partial_credit.breakdown.map(item => (
+  <div>
+    {item.correct ? <CheckCircle /> : <XCircle />}
+    {item.component}: {item.earned}/{item.points} pts
+  </div>
+))}
+```
+
+**Handwriting Correction Flow**:
+```javascript
+// User clicks "Correct Recognition"
+handleStartCorrection(handwritten) → setEditingHandwritten(id)
+// User edits text and clicks "Save & Learn"
+handleSaveCorrection(id) → quizEnhancedApi.updateHandwrittenRecognition()
+// AI learns from the correction for future recognition
+```
 
 #### 6. QuestionBank.jsx (NEW)
 **Purpose**: Comprehensive question management
@@ -1145,6 +1418,17 @@ POST   /api/categories/:categoryId/quiz                   # Create quiz session
 POST   /api/quiz/:sessionId/submit                        # Submit quiz answers
 GET    /api/quiz/:sessionId                               # Get quiz session
 GET    /api/categories/:categoryId/quiz/history           # Quiz history
+
+# Enhanced Quiz Features (NEW)
+POST   /api/quiz/:sessionId/focus-event                   # Record focus violation
+GET    /api/quiz/:sessionId/focus-events                  # Get focus events
+GET    /api/quiz/:sessionId/integrity-report              # Get exam integrity report
+POST   /api/quiz/:sessionId/question/:questionId/handwritten  # Upload handwritten PDF
+GET    /api/quiz/:sessionId/handwritten-answers           # Get handwritten answers
+PUT    /api/handwritten/:handwrittenId/correction         # Update recognition
+POST   /api/quiz/:sessionId/question/:questionId/grade    # Grade with partial credit
+GET    /api/quiz/:sessionId/partial-grades                # Get partial credit grades
+POST   /api/quiz/:sessionId/submit-graded                 # Submit with grading
 ```
 
 **Create Quiz Body**:
@@ -1883,4 +2167,4 @@ For issues, questions, or contributions:
 ---
 
 **Last Updated**: 2025-01-24
-**Version**: 3.0.0 (Multi-Agent AI System Release)
+**Version**: 4.0.0 (Enhanced Quiz Features Release - Multiple Modes, Handwriting Recognition, Partial Credit)

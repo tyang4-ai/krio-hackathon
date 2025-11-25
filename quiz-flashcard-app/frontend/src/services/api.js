@@ -123,4 +123,38 @@ export const analysisApi = {
     api.get(`/categories/${categoryId}/agent-activity`, { params: { limit } })
 };
 
+// Quiz Enhanced Features
+export const quizEnhancedApi = {
+  // Focus tracking for exam simulation
+  recordFocusEvent: (sessionId, eventType, details = {}) =>
+    api.post(`/quiz/${sessionId}/focus-event`, { eventType, details }),
+  getFocusEvents: (sessionId) =>
+    api.get(`/quiz/${sessionId}/focus-events`),
+  getIntegrityReport: (sessionId) =>
+    api.get(`/quiz/${sessionId}/integrity-report`),
+
+  // Handwritten answers
+  uploadHandwrittenAnswer: (sessionId, questionId, file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post(`/quiz/${sessionId}/question/${questionId}/handwritten`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
+  getHandwrittenAnswers: (sessionId) =>
+    api.get(`/quiz/${sessionId}/handwritten-answers`),
+  updateHandwrittenRecognition: (handwrittenId, correctedText, corrections) =>
+    api.put(`/handwritten/${handwrittenId}/correction`, { correctedText, corrections }),
+
+  // Partial credit grading
+  gradeWithPartialCredit: (sessionId, questionId, userAnswer, isHandwritten = false, recognizedText = null) =>
+    api.post(`/quiz/${sessionId}/question/${questionId}/grade`, { userAnswer, isHandwritten, recognizedText }),
+  getPartialCreditGrades: (sessionId) =>
+    api.get(`/quiz/${sessionId}/partial-grades`),
+
+  // Enhanced submit
+  submitWithGrading: (sessionId, answers, usePartialCredit = false) =>
+    api.post(`/quiz/${sessionId}/submit-graded`, { answers, usePartialCredit })
+};
+
 export default api;

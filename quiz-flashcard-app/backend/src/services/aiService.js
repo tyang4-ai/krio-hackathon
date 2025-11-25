@@ -538,6 +538,41 @@ Respond ONLY with valid JSON, no other text.`;
   }
 
   /**
+   * Generate a raw response from AI (for agents that need custom parsing)
+   */
+  async generateRawResponse(prompt, options = {}) {
+    const { temperature = 0.5, maxTokens = 2000 } = options;
+
+    try {
+      const result = await this.retryWithBackoff(async () => {
+        const response = await this.client.chat.completions.create({
+          model: this.model,
+          messages: [
+            {
+              role: 'system',
+              content: 'You are an expert assistant. Respond with valid JSON when requested.'
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          temperature,
+          max_tokens: maxTokens
+        });
+
+        return response.choices[0].message.content;
+      });
+
+      // Clean and return the response
+      return this.cleanJsonResponse(result);
+    } catch (error) {
+      console.error('Error generating raw response:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Health check for the AI service
    */
   async healthCheck() {

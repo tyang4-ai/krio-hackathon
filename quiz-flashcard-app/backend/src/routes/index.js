@@ -116,4 +116,33 @@ router.get('/categories/:categoryId/analysis-status', sampleQuestionController.g
 router.delete('/categories/:categoryId/analysis', sampleQuestionController.clearAnalysis);
 router.get('/categories/:categoryId/agent-activity', sampleQuestionController.getAgentActivity);
 
+// ===== Quiz Enhanced Features =====
+// Focus tracking for exam simulation
+router.post('/quiz/:sessionId/focus-event', quizController.recordFocusEvent);
+router.get('/quiz/:sessionId/focus-events', quizController.getFocusEvents);
+router.get('/quiz/:sessionId/integrity-report', quizController.getExamIntegrityReport);
+
+// Handwritten answer routes
+const handwrittenUpload = multer({
+  dest: 'uploads/handwritten/',
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === 'application/pdf') {
+      cb(null, true);
+    } else {
+      cb(new Error('Only PDF files are allowed for handwritten answers'), false);
+    }
+  },
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+});
+router.post('/quiz/:sessionId/question/:questionId/handwritten', handwrittenUpload.single('file'), quizController.uploadHandwrittenAnswer);
+router.get('/quiz/:sessionId/handwritten-answers', quizController.getHandwrittenAnswers);
+router.put('/handwritten/:handwrittenId/correction', quizController.updateHandwrittenRecognition);
+
+// Partial credit grading
+router.post('/quiz/:sessionId/question/:questionId/grade', quizController.gradeWithPartialCredit);
+router.get('/quiz/:sessionId/partial-grades', quizController.getPartialCreditGrades);
+
+// Enhanced submit with partial credit
+router.post('/quiz/:sessionId/submit-graded', quizController.submitQuizWithGrading);
+
 module.exports = router;
