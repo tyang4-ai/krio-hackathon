@@ -6,6 +6,7 @@ from .flashcards import router as flashcards_router
 from .quiz import router as quiz_router
 from .notebook import router as notebook_router
 from .sample_questions import router as sample_questions_router
+from .ai import router as ai_router
 
 __all__ = [
     "health_router",
@@ -15,4 +16,5 @@ __all__ = [
     "quiz_router",
     "notebook_router",
     "sample_questions_router",
+    "ai_router",
 ]

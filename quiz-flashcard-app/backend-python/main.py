@@ -26,6 +26,7 @@ from routers import (
     quiz_router,
     notebook_router,
     sample_questions_router,
+    ai_router,
 )
 
 # Configure structured logging
@@ -121,6 +122,7 @@ app.include_router(flashcards_router)
 app.include_router(quiz_router)
 app.include_router(notebook_router)
 app.include_router(sample_questions_router)
+app.include_router(ai_router)
 
 
 @app.get("/")
