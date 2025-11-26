@@ -82,19 +82,62 @@ function QuizSession() {
     }
   };
 
-  // Timer effect
+  // Initialize timer values when settings are loaded
   useEffect(() => {
     if (!settings || settings.mode === 'practice') return;
 
-    if (settings.timerType === 'total' && timeRemaining === null) {
-      setTimeRemaining(settings.totalTimeMinutes * 60);
-    } else if (settings.timerType === 'per_question' && questionTimeRemaining === null) {
-      setQuestionTimeRemaining(settings.perQuestionSeconds);
+    console.log('Timer initialization - mode:', settings.mode, 'timerType:', settings.timerType);
+
+    // Set initial timer value based on timer type
+    if (settings.timerType === 'total') {
+      const totalSeconds = (settings.totalTimeMinutes || 30) * 60;
+      console.log('Setting total time:', totalSeconds, 'seconds');
+      setTimeRemaining(totalSeconds);
+    } else if (settings.timerType === 'per_question') {
+      const perQuestionSecs = settings.perQuestionSeconds || 60;
+      console.log('Setting per-question time:', perQuestionSecs, 'seconds');
+      setQuestionTimeRemaining(perQuestionSecs);
+    }
+  }, [settings?.mode, settings?.timerType, settings?.totalTimeMinutes, settings?.perQuestionSeconds]);
+
+  // Timer countdown effect - MUST run after initialization
+  useEffect(() => {
+    // Only start timer for timed/exam modes
+    if (!settings || settings.mode === 'practice') {
+      console.log('Timer not starting - practice mode or no settings');
+      return;
+    }
+
+    // Check if we have timer values initialized
+    const isTotalTimer = settings.timerType === 'total';
+    const isPerQuestionTimer = settings.timerType === 'per_question';
+
+    if (!isTotalTimer && !isPerQuestionTimer) {
+      console.log('Timer not starting - no timer type set');
+      return;
+    }
+
+    // Wait for timer to be initialized
+    if (isTotalTimer && timeRemaining === null) {
+      console.log('Waiting for total timer initialization...');
+      return;
+    }
+    if (isPerQuestionTimer && questionTimeRemaining === null) {
+      console.log('Waiting for per-question timer initialization...');
+      return;
+    }
+
+    console.log('Starting timer countdown - type:', settings.timerType);
+
+    // Clear any existing timer
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
     }
 
     timerRef.current = setInterval(() => {
       if (settings.timerType === 'total') {
         setTimeRemaining(prev => {
+          if (prev === null || prev === undefined) return prev;
           if (prev <= 1) {
             clearInterval(timerRef.current);
             handleSubmit(true); // Auto-submit
@@ -102,13 +145,14 @@ function QuizSession() {
           }
           return prev - 1;
         });
-      } else {
+      } else if (settings.timerType === 'per_question') {
         setQuestionTimeRemaining(prev => {
+          if (prev === null || prev === undefined) return prev;
           if (prev <= 1) {
             // Move to next question or submit
             if (currentIndex < quiz?.questions?.length - 1) {
               setCurrentIndex(i => i + 1);
-              return settings.perQuestionSeconds;
+              return settings.perQuestionSeconds || 60;
             } else {
               clearInterval(timerRef.current);
               handleSubmit(true);
@@ -125,14 +169,14 @@ function QuizSession() {
         clearInterval(timerRef.current);
       }
     };
-  }, [settings, quiz, currentIndex]);
+  }, [settings?.mode, settings?.timerType, timeRemaining !== null, questionTimeRemaining !== null, quiz?.questions?.length]);
 
   // Reset per-question timer when changing questions
   useEffect(() => {
     if (settings?.timerType === 'per_question' && settings?.perQuestionSeconds) {
       setQuestionTimeRemaining(settings.perQuestionSeconds);
     }
-  }, [currentIndex]);
+  }, [currentIndex, settings?.timerType, settings?.perQuestionSeconds]);
 
   const loadQuiz = async () => {
     try {

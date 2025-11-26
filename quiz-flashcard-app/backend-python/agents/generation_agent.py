@@ -229,6 +229,32 @@ Output ONLY valid JSON:
 Rules: options always ["A) True","B) False"], correct_answer is "A" or "B". All questions MUST be {difficulty} difficulty. Generate exactly {count}."""
 
         else:  # multiple_choice
+            # Special handling for concepts mode in MCQ
+            if difficulty == "concepts":
+                return f"""Generate {count} CONCEPT-FOCUSED multiple choice questions from this content:
+
+{content}
+{custom_section}
+
+Mode: CONCEPTS ONLY - Test key terminology, definitions, and core concepts.
+
+Guidelines:
+- Questions should test VOCABULARY and DEFINITIONS
+- Ask "What is X?", "Which term describes...", "What is the definition of..."
+- For science: include questions about formulas, structures, properties
+- Distractors should be plausible related terms
+- Keep questions straightforward - no complex application scenarios
+
+Example question formats:
+- "What is the term for a molecular structure with 5 bonding pairs and 1 lone pair?"
+- "Which organelle is known as the powerhouse of the cell?"
+- "What does the term 'photosynthesis' refer to?"
+
+Output ONLY valid JSON:
+{{"questions":[{{"question_text":"What is/Which term...?","question_type":"multiple_choice","difficulty":"concepts","options":["A) term1","B) term2","C) term3","D) term4"],"correct_answer":"A","explanation":"brief definition"}}]}}
+
+Rules: 4 options A-D, correct_answer is letter. Focus on testing terminology and definitions. Generate exactly {count}."""
+
             return f"""Generate {count} {difficulty.upper()} multiple choice questions from this content:
 
 {content}
@@ -281,14 +307,51 @@ Rules: 4 options A-D, correct_answer is letter. All questions MUST be {difficult
             # Fix common JSON issues - trailing commas
             cleaned = re.sub(r",\s*}", "}", cleaned)
             cleaned = re.sub(r",\s*]", "]", cleaned)
+
+            # Try to fix truncated JSON by closing any open structures
+            try:
+                json.loads(cleaned)
+                return cleaned
+            except json.JSONDecodeError as e:
+                logger.warning("json_parse_attempt_failed", error=str(e)[:100])
+                # Try to repair truncated JSON
+                cleaned = self._repair_truncated_json(cleaned)
+
             return cleaned
 
         return response
+
+    def _repair_truncated_json(self, json_str: str) -> str:
+        """Attempt to repair truncated JSON by closing open structures."""
+        # Count open brackets/braces
+        open_braces = json_str.count('{') - json_str.count('}')
+        open_brackets = json_str.count('[') - json_str.count(']')
+        open_quotes = json_str.count('"') % 2 == 1
+
+        repaired = json_str
+
+        # Close open string
+        if open_quotes:
+            repaired += '"'
+
+        # Close any open structures
+        for _ in range(open_brackets):
+            # Check if we need to close a partial object first
+            if open_braces > 0:
+                repaired += '}'
+                open_braces -= 1
+            repaired += ']'
+
+        for _ in range(open_braces):
+            repaired += '}'
+
+        return repaired
 
     async def generate_flashcards(
         self,
         content: str,
         count: int = 10,
+        difficulty: str = "medium",
         custom_directions: str = "",
     ) -> Dict[str, Any]:
         """
@@ -297,6 +360,7 @@ Rules: 4 options A-D, correct_answer is letter. All questions MUST be {difficult
         Args:
             content: Text content to create flashcards from
             count: Number of flashcards to generate
+            difficulty: Difficulty level (easy, medium, hard)
             custom_directions: Optional user instructions
 
         Returns:
@@ -312,9 +376,10 @@ Rules: 4 options A-D, correct_answer is letter. All questions MUST be {difficult
             "generation_agent_flashcards",
             content_length=len(content),
             count=count,
+            difficulty=difficulty,
         )
 
-        prompt = self._build_flashcard_prompt(content, count, custom_directions)
+        prompt = self._build_flashcard_prompt(content, count, difficulty, custom_directions)
 
         try:
             response = await self.generate_json(prompt, max_tokens=3000)
@@ -341,6 +406,7 @@ Rules: 4 options A-D, correct_answer is letter. All questions MUST be {difficult
         self,
         content: str,
         count: int,
+        difficulty: str = "medium",
         custom_directions: str = "",
     ) -> str:
         """Build prompt for flashcard generation."""
@@ -352,16 +418,74 @@ Rules: 4 options A-D, correct_answer is letter. All questions MUST be {difficult
         if custom_directions:
             custom_section = f"\nAdditional Instructions:\n{custom_directions}\n"
 
-        return f"""Create {count} educational flashcards from this content:
+        # Special handling for "concepts" mode - focused on terminology and definitions
+        if difficulty == "concepts":
+            return f"""Create {count} CONCEPT-FOCUSED educational flashcards from this content:
 
 {content}
 {custom_section}
+
+Mode: CONCEPTS ONLY - Focus exclusively on key terminology, definitions, and core concepts.
+
+IMPORTANT GUIDELINES:
+- Front should contain a KEY TERM, VOCABULARY WORD, CONCEPT NAME, or STRUCTURAL DESCRIPTION
+- Back should contain a CLEAR, CONCISE DEFINITION, name, or explanation
+- Extract the most important terminology and concepts from the content
+- Perfect for memorizing vocabulary, definitions, and foundational knowledge
+- Keep answers brief but complete (1-3 sentences max)
+- Do NOT create application questions or complex scenarios
+- Use BOTH directions: "Term → Definition" AND "Description → Term"
+
+EXAMPLE FORMATS (use variety):
+1. Term → Definition:
+   - Front: "Mitochondria" → Back: "The powerhouse of the cell; organelles that generate ATP through cellular respiration"
+
+2. Description → Term (IMPORTANT - include these!):
+   - Front: "Molecular structure with 5 bonding pairs and 1 lone pair" → Back: "Square pyramidal geometry"
+   - Front: "Process where plants convert CO2 and water into glucose using light" → Back: "Photosynthesis"
+   - Front: "The organelle that contains digestive enzymes" → Back: "Lysosome"
+
+3. Formula/Symbol → Name:
+   - Front: "H2SO4" → Back: "Sulfuric acid"
+   - Front: "Fe" → Back: "Iron (Ferrum)"
+
+4. Property → Concept:
+   - Front: "Bond angle of 109.5°" → Back: "Tetrahedral geometry"
+   - Front: "Electronegativity of 4.0" → Back: "Fluorine (most electronegative element)"
+
+Create a MIX of these formats. For chemistry/science content, prioritize structural descriptions and formulas.
+
+Respond with JSON in this format:
+{{
+    "flashcards": [
+        {{
+            "front_text": "Term, description, or formula",
+            "back_text": "Definition, name, or explanation",
+            "difficulty": "concepts",
+            "tags": ["vocabulary", "definition"]
+        }}
+    ]
+}}"""
+
+        # Difficulty guidance for standard modes
+        difficulty_guidance = {
+            "easy": "EASY: Basic definitions, simple concepts, straightforward facts that are easy to remember",
+            "medium": "MEDIUM: Application of concepts, moderate complexity, requires some understanding",
+            "hard": "HARD: Complex relationships, analysis required, challenging concepts that require deep understanding"
+        }.get(difficulty, "MEDIUM")
+
+        return f"""Create {count} {difficulty.upper()} difficulty educational flashcards from this content:
+
+{content}
+{custom_section}
+
+Difficulty Level: {difficulty_guidance}
 
 Guidelines:
 - Front should contain a clear question or term
 - Back should contain a concise but complete answer
 - Focus on key concepts, definitions, and important facts
-- Vary the difficulty from easy to hard
+- ALL flashcards MUST be {difficulty.upper()} difficulty - do NOT vary the difficulty
 - Use clear, educational language
 
 Respond with JSON in this format:
@@ -370,7 +494,7 @@ Respond with JSON in this format:
         {{
             "front_text": "Question or term",
             "back_text": "Answer or definition",
-            "difficulty": "easy|medium|hard",
+            "difficulty": "{difficulty}",
             "tags": ["topic1", "topic2"]
         }}
     ]
@@ -499,6 +623,7 @@ async def generate_flashcards(
     category_id: int,
     content: str,
     count: int = 10,
+    difficulty: str = "medium",
     custom_directions: str = "",
     document_id: Optional[int] = None,
 ) -> Dict[str, Any]:
@@ -510,6 +635,7 @@ async def generate_flashcards(
         category_id: Category to generate for
         content: Source content
         count: Number of flashcards
+        difficulty: Difficulty level (easy, medium, hard)
         custom_directions: User instructions
         document_id: Optional document to link flashcards to
 
@@ -520,6 +646,7 @@ async def generate_flashcards(
     result = await agent.generate_flashcards(
         content=content,
         count=count,
+        difficulty=difficulty,
         custom_directions=custom_directions,
     )
 

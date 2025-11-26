@@ -162,11 +162,11 @@ function QuestionBank() {
   return (
     <div>
       <button
-        onClick={() => navigate(-1)}
+        onClick={() => navigate(`/category/${categoryId}`)}
         className="flex items-center text-gray-600 hover:text-gray-900 mb-4 transition-colors"
       >
         <ArrowLeft className="h-5 w-5 mr-2" />
-        Back
+        Back to Dashboard
       </button>
 
       <h1 className="text-3xl font-bold text-gray-900 mb-2">Question Bank - {category?.name}</h1>
