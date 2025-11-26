@@ -2254,8 +2254,11 @@ For issues, questions, or contributions:
 | Phase 3.1 | ✅ Complete | Categories API (CRUD with stats) |
 | Phase 3.2 | ✅ Complete | Documents API (upload, process, delete) |
 | Phase 3.3 | ✅ Complete | All 16 database models created |
-| Phase 3.4 | ⏳ Pending | Remaining services (Flashcards, Quiz, etc.) |
-| Phase 3.5 | ⏳ Pending | AI Agents migration |
+| Phase 3.4 | ✅ Complete | Flashcards API with spaced repetition |
+| Phase 3.5 | ✅ Complete | Questions/Quiz API (sessions, focus events) |
+| Phase 3.6 | ✅ Complete | Notebook API (wrong answer tracking) |
+| Phase 3.7 | ✅ Complete | Sample Questions API (file upload) |
+| Phase 3.8 | ✅ Complete | AI Service (NVIDIA + OpenAI vision) |
 | Phase 4 | ⏳ Pending | Database schema migration (Alembic) |
 | Phase 5 | ⏳ Pending | Frontend updates (API URL change) |
 | Phase 6 | ⏳ Pending | Authentication & Privacy (RLS) |
@@ -2278,7 +2281,7 @@ For issues, questions, or contributions:
 | FastAPI Backend | 8000 | ✅ Running (Categories + Documents API) |
 | React Frontend | 3000 | ✅ Running |
 
-**Python Backend Structure** (Phase 3 Progress):
+**Python Backend Structure** (Phase 3 Complete):
 ```
 backend-python/
 ├── main.py                    # FastAPI app entry point
@@ -2300,15 +2303,28 @@ backend-python/
 │   └── grading.py            # ✅ Partial credit + focus events
 ├── schemas/
 │   ├── category.py           # ✅ Category schemas
-│   └── document.py           # ✅ Document schemas
+│   ├── document.py           # ✅ Document schemas
+│   ├── flashcard.py          # ✅ Flashcard schemas
+│   ├── question.py           # ✅ Question schemas
+│   ├── quiz.py               # ✅ Quiz session schemas
+│   ├── notebook.py           # ✅ Notebook schemas
+│   └── sample_question.py    # ✅ Sample question schemas
 ├── routers/
 │   ├── health.py             # ✅ Health check
 │   ├── categories.py         # ✅ Categories CRUD
-│   └── documents.py          # ✅ Documents upload/delete
+│   ├── documents.py          # ✅ Documents upload/delete
+│   ├── flashcards.py         # ✅ Flashcards + spaced repetition
+│   ├── quiz.py               # ✅ Questions + quiz sessions
+│   ├── notebook.py           # ✅ Wrong answer tracking
+│   └── sample_questions.py   # ✅ Sample questions + file upload
 ├── services/
-│   ├── ai_service.py         # ✅ Multi-provider AI
+│   ├── ai_service.py         # ✅ Multi-provider AI (NVIDIA + OpenAI)
 │   ├── category_service.py   # ✅ Category business logic
-│   └── document_service.py   # ✅ Document processing
+│   ├── document_service.py   # ✅ Document processing
+│   ├── flashcard_service.py  # ✅ Flashcard + spaced repetition
+│   ├── quiz_service.py       # ✅ Quiz session + focus events
+│   ├── notebook_service.py   # ✅ Notebook tracking
+│   └── sample_question_service.py # ✅ Sample question management
 └── agents/
     └── base_agent.py         # ✅ Base class for agents
 ```
@@ -2316,23 +2332,73 @@ backend-python/
 **Implemented API Endpoints**:
 | Method | Endpoint | Status |
 |--------|----------|--------|
+| **Categories** | | |
 | GET | `/api/categories` | ✅ Working |
 | GET | `/api/categories/{id}` | ✅ Working |
 | POST | `/api/categories` | ✅ Working |
 | PUT | `/api/categories/{id}` | ✅ Working |
 | DELETE | `/api/categories/{id}` | ✅ Working |
+| **Documents** | | |
 | GET | `/api/categories/{id}/documents` | ✅ Working |
 | POST | `/api/categories/{id}/documents` | ✅ Working |
 | DELETE | `/api/documents/{id}` | ✅ Working |
 | POST | `/api/categories/{id}/generate-questions` | ⏳ Stub |
 | POST | `/api/categories/{id}/generate-flashcards` | ⏳ Stub |
+| **Flashcards** | | |
+| GET | `/api/categories/{id}/flashcards` | ✅ Working |
+| POST | `/api/categories/{id}/flashcards` | ✅ Working |
+| POST | `/api/categories/{id}/flashcards/bulk` | ✅ Working |
+| GET | `/api/categories/{id}/flashcards/review` | ✅ Working |
+| GET | `/api/categories/{id}/flashcards/stats` | ✅ Working |
+| GET | `/api/flashcards/{id}` | ✅ Working |
+| PUT | `/api/flashcards/{id}` | ✅ Working |
+| DELETE | `/api/flashcards/{id}` | ✅ Working |
+| POST | `/api/flashcards/{id}/rate` | ✅ Working |
+| POST | `/api/categories/{id}/flashcards/{id}/progress` | ✅ Working |
+| **Questions** | | |
+| GET | `/api/categories/{id}/questions` | ✅ Working |
+| POST | `/api/categories/{id}/questions` | ✅ Working |
+| POST | `/api/categories/{id}/questions/bulk` | ✅ Working |
+| GET | `/api/categories/{id}/questions/stats` | ✅ Working |
+| GET | `/api/questions/{id}` | ✅ Working |
+| PUT | `/api/questions/{id}` | ✅ Working |
+| DELETE | `/api/questions/{id}` | ✅ Working |
+| POST | `/api/questions/{id}/rate` | ✅ Working |
+| **Quiz Sessions** | | |
+| POST | `/api/categories/{id}/quiz` | ✅ Working |
+| GET | `/api/quiz/{id}` | ✅ Working |
+| POST | `/api/quiz/{id}/submit` | ✅ Working |
+| GET | `/api/categories/{id}/quiz/history` | ✅ Working |
+| POST | `/api/quiz/{id}/focus-event` | ✅ Working |
+| GET | `/api/quiz/{id}/focus-events` | ✅ Working |
+| GET | `/api/quiz/{id}/integrity-report` | ✅ Working |
+| **Notebook** | | |
+| GET | `/api/categories/{id}/notebook` | ✅ Working |
+| POST | `/api/categories/{id}/notebook` | ✅ Working |
+| GET | `/api/notebook/{id}` | ✅ Working |
+| PUT | `/api/notebook/{id}` | ✅ Working |
+| DELETE | `/api/notebook/{id}` | ✅ Working |
+| POST | `/api/notebook/{id}/mark-reviewed` | ✅ Working |
+| GET | `/api/categories/{id}/notebook/stats` | ✅ Working |
+| GET | `/api/categories/{id}/notebook/most-missed` | ✅ Working |
+| DELETE | `/api/categories/{id}/notebook` | ✅ Working |
+| **Sample Questions** | | |
+| GET | `/api/categories/{id}/samples` | ✅ Working |
+| POST | `/api/categories/{id}/samples` | ✅ Working |
+| POST | `/api/categories/{id}/samples/bulk` | ✅ Working |
+| POST | `/api/categories/{id}/samples/upload` | ✅ Working |
+| GET | `/api/categories/{id}/samples/count` | ✅ Working |
+| GET | `/api/samples/{id}` | ✅ Working |
+| PUT | `/api/samples/{id}` | ✅ Working |
+| DELETE | `/api/samples/{id}` | ✅ Working |
 
 **Known Limitations** (current):
-- Question/Flashcard/Quiz APIs not implemented yet
-- AI generation endpoints return stubs (waiting for agent migration)
-- Database tables auto-created on startup (no Alembic yet)
+- AI generation endpoints return stubs (waiting for full agent migration)
+- AI Analysis endpoints not fully implemented (will be added in Phase 4)
+- Database tables auto-created on startup (no Alembic migrations yet)
+- Frontend still connects to Node.js backend (Phase 5)
 
 ---
 
 **Last Updated**: 2025-11-25
-**Version**: 5.0.3 (Python Migration - Phase 3 In Progress, Categories + Documents + Models)
+**Version**: 5.0.4 (Python Migration - Phase 3 Complete, All Services Migrated)

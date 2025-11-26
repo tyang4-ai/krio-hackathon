@@ -18,7 +18,15 @@ from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 
 from config import settings
 from config.database import init_db, close_db
-from routers import health_router, categories_router, documents_router
+from routers import (
+    health_router,
+    categories_router,
+    documents_router,
+    flashcards_router,
+    quiz_router,
+    notebook_router,
+    sample_questions_router,
+)
 
 # Configure structured logging
 structlog.configure(
@@ -109,6 +117,10 @@ app.add_middleware(
 app.include_router(health_router)
 app.include_router(categories_router)
 app.include_router(documents_router)
+app.include_router(flashcards_router)
+app.include_router(quiz_router)
+app.include_router(notebook_router)
+app.include_router(sample_questions_router)
 
 
 @app.get("/")
@@ -124,12 +136,6 @@ async def root():
         "ai_model": settings.ai_model,
         "vision_available": bool(settings.openai_api_key),
     }
-
-
-# TODO: Include additional routers as they are implemented
-# app.include_router(questions_router)
-# app.include_router(flashcards_router)
-# app.include_router(quiz_router)
 
 
 if __name__ == "__main__":
