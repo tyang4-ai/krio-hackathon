@@ -2261,6 +2261,7 @@ For issues, questions, or contributions:
 | Phase 3.8 | ✅ Complete | AI Service (NVIDIA + OpenAI vision) |
 | Phase 4 | ✅ Complete | Database schema migration (Alembic) |
 | Phase 5 | ✅ Complete | Frontend-backend integration (API URL + endpoint fixes) |
+| Phase 5.1 | ✅ Complete | AI Multi-Agent System Migration |
 | Phase 6 | ⏳ Pending | Authentication & Privacy (RLS) |
 
 **New Stack**:
@@ -2323,7 +2324,8 @@ backend-python/
 │   ├── flashcards.py         # ✅ Flashcards + spaced repetition
 │   ├── quiz.py               # ✅ Questions + quiz sessions
 │   ├── notebook.py           # ✅ Wrong answer tracking
-│   └── sample_questions.py   # ✅ Sample questions + file upload
+│   ├── sample_questions.py   # ✅ Sample questions + file upload
+│   └── ai.py                 # ✅ AI endpoints (analysis, generation, grading, handwriting)
 ├── services/
 │   ├── ai_service.py         # ✅ Multi-provider AI (NVIDIA + OpenAI)
 │   ├── category_service.py   # ✅ Category business logic
@@ -2333,7 +2335,13 @@ backend-python/
 │   ├── notebook_service.py   # ✅ Notebook tracking
 │   └── sample_question_service.py # ✅ Sample question management
 └── agents/
-    └── base_agent.py         # ✅ Base class for agents
+    ├── __init__.py           # ✅ Agent exports
+    ├── base_agent.py         # ✅ Base class for agents
+    ├── controller_agent.py   # ✅ Orchestrates multi-agent system
+    ├── analysis_agent.py     # ✅ Analyzes sample questions for patterns
+    ├── generation_agent.py   # ✅ Generates questions and flashcards
+    ├── grading_agent.py      # ✅ Grades answers with partial credit
+    └── handwriting_agent.py  # ✅ Recognizes handwritten answers (OpenAI Vision)
 ```
 
 **Implemented API Endpoints**:
@@ -2398,9 +2406,26 @@ backend-python/
 | GET | `/api/sample-questions/{id}` | ✅ Working |
 | PUT | `/api/sample-questions/{id}` | ✅ Working |
 | DELETE | `/api/sample-questions/{id}` | ✅ Working |
+| **AI - Analysis** | | |
+| POST | `/api/categories/{id}/analyze-samples` | ✅ Working |
+| GET | `/api/categories/{id}/analysis-status` | ✅ Working |
+| DELETE | `/api/categories/{id}/analysis` | ✅ Working |
+| GET | `/api/categories/{id}/agent-activity` | ✅ Working |
+| GET | `/api/categories/{id}/ai-stats` | ✅ Working |
+| **AI - Generation** | | |
+| POST | `/api/categories/{id}/generate-questions` | ✅ Working |
+| POST | `/api/categories/{id}/generate-flashcards` | ✅ Working |
+| **AI - Grading** | | |
+| POST | `/api/quiz/{id}/question/{qid}/grade` | ✅ Working |
+| GET | `/api/quiz/{id}/partial-grades` | ✅ Working |
+| **AI - Handwriting** | | |
+| POST | `/api/quiz/{id}/question/{qid}/handwritten` | ✅ Working |
+| GET | `/api/quiz/{id}/handwritten-answers` | ✅ Working |
+| PUT | `/api/handwritten/{id}/correction` | ✅ Working |
+| GET | `/api/handwritten/{id}` | ✅ Working |
 
 **Known Limitations** (current):
-- AI generation endpoints return stubs (waiting for full agent migration)
+- None - all core features are implemented
 
 **Alembic Migration Commands**:
 ```bash
@@ -2420,4 +2445,4 @@ docker-compose exec backend alembic downgrade -1
 ---
 
 **Last Updated**: 2025-11-25
-**Version**: 5.1.0 (Python Migration - Phase 5 Complete, Frontend Integration)
+**Version**: 5.2.0 (Python Migration - AI Multi-Agent System Complete)

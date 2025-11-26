@@ -34,7 +34,7 @@ class HandwrittenAnswer(BaseModel):
     confidence_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
     # User corrections (for learning)
-    user_corrections: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    user_corrections: Mapped[Optional[list]] = mapped_column(JSON, nullable=True, default=list)
 
     # Relationships
     session = relationship("QuizSession", backref="handwritten_answers")

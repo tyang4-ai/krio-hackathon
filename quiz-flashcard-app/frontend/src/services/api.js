@@ -127,7 +127,7 @@ export const analysisApi = {
 export const quizEnhancedApi = {
   // Focus tracking for exam simulation
   recordFocusEvent: (sessionId, eventType, details = {}) =>
-    api.post(`/quiz/${sessionId}/focus-event`, { eventType, details }),
+    api.post(`/quiz/${sessionId}/focus-event`, { event_type: eventType, details }),
   getFocusEvents: (sessionId) =>
     api.get(`/quiz/${sessionId}/focus-events`),
   getIntegrityReport: (sessionId) =>
@@ -144,11 +144,16 @@ export const quizEnhancedApi = {
   getHandwrittenAnswers: (sessionId) =>
     api.get(`/quiz/${sessionId}/handwritten-answers`),
   updateHandwrittenRecognition: (handwrittenId, correctedText, corrections) =>
-    api.put(`/handwritten/${handwrittenId}/correction`, { correctedText, corrections }),
+    api.put(`/handwritten/${handwrittenId}/correction`, { corrected_text: correctedText, corrections }),
 
   // Partial credit grading
   gradeWithPartialCredit: (sessionId, questionId, userAnswer, isHandwritten = false, recognizedText = null) =>
-    api.post(`/quiz/${sessionId}/question/${questionId}/grade`, { userAnswer, isHandwritten, recognizedText }),
+    api.post(`/quiz/${sessionId}/question/${questionId}/grade`, {
+      user_answer: userAnswer,
+      is_handwritten: isHandwritten,
+      recognized_text: recognizedText,
+      use_partial_credit: true
+    }),
   getPartialCreditGrades: (sessionId) =>
     api.get(`/quiz/${sessionId}/partial-grades`),
 
