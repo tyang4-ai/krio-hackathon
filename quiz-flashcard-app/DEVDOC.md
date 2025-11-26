@@ -163,7 +163,9 @@ quiz-flashcard-app/
 - **Build Tool**: Vite
 
 ### AI Providers
-- NVIDIA Nemotron (default)
+- **Moonshot/Kimi K2** (primary - recommended for reasoning tasks)
+- NVIDIA Nemotron (legacy support)
+- OpenAI GPT-4o (vision/handwriting recognition)
 - Groq (recommended for production - fast & cheap)
 - Together.ai
 - Ollama (local development)
@@ -2282,8 +2284,9 @@ For issues, questions, or contributions:
 - Privacy: PostgreSQL Row-Level Security
 
 **AI Model Configuration**:
-- Primary (Controller, Analysis, Generation, Grading): NVIDIA `llama-3.1-nemotron-nano-4b-v1.1`
+- Primary (Controller, Analysis, Generation, Grading): Moonshot `kimi-k2-0711-preview`
 - Vision (Handwriting Recognition): OpenAI `gpt-4o`
+- Legacy Support: NVIDIA `llama-3.1-nemotron-nano-4b-v1.1`
 
 **Current Docker Services**:
 | Service | Port | Status |
@@ -2454,8 +2457,49 @@ docker-compose exec backend alembic downgrade -1
 
 ---
 
-**Last Updated**: 2025-11-25
-**Version**: 5.3.0 (API Contract Validation + Bug Fixes)
+**Last Updated**: 2025-11-26
+**Version**: 5.4.0 (Moonshot Kimi K2 Integration + Bug Fixes)
+
+---
+
+## Changelog
+
+### v5.4.0 (2025-11-26)
+
+**AI Provider Changes**:
+- Switched primary AI provider from NVIDIA Nemotron to Moonshot Kimi K2
+- Model: `kimi-k2-0711-preview` via `https://api.moonshot.ai/v1`
+- NVIDIA kept as legacy fallback
+- OpenAI GPT-4o still used for vision/handwriting recognition
+
+**Bug Fixes**:
+- **Quiz Results Display**: Fixed percentage not showing on results page after quiz submission
+  - Added answer normalization (case-insensitive, letter extraction from "A)" format)
+  - Now uses session score stored by backend for consistency
+- **Question Deletion 500 Error**: Fixed foreign key constraint violation when deleting questions
+  - Now properly cascades deletes to notebook_entries and partial_credit_grades tables
+- **NotebookPage Crash**: Fixed null map error when entry.options is undefined
+  - Added null check before mapping over options array
+- **Analysis Results Visibility**: Made "View Results" button more prominent
+  - Changed from small icon to styled button with text label
+- **Difficulty Selection**: Enhanced question generation prompts with explicit difficulty guidance
+  - Added difficulty explanation in prompts (EASY/MEDIUM/HARD criteria)
+  - Prompts now emphasize "All questions MUST be {difficulty} difficulty"
+
+**New Features**:
+- Docker logging configuration added to docker-compose.yml
+- Docker log save/stream batch scripts for Windows
+
+**Files Changed**:
+- `backend-python/config/settings.py` - Added Moonshot configuration
+- `backend-python/services/ai_service.py` - Added Moonshot client initialization
+- `backend-python/agents/generation_agent.py` - Enhanced difficulty guidance in prompts
+- `backend-python/services/quiz_service.py` - Added cascading deletes, answer normalization
+- `backend-python/routers/quiz.py` - Return answers field in session response
+- `frontend/src/pages/QuizResults.jsx` - Added normalizeAnswer helper, use session score
+- `frontend/src/pages/NotebookPage.jsx` - Added null check for options
+- `frontend/src/pages/CategoryDashboard.jsx` - Styled "View Results" button
+- `docker-compose.yml` - Added logging configuration
 
 ---
 
