@@ -2260,7 +2260,7 @@ For issues, questions, or contributions:
 | Phase 3.7 | ✅ Complete | Sample Questions API (file upload) |
 | Phase 3.8 | ✅ Complete | AI Service (NVIDIA + OpenAI vision) |
 | Phase 4 | ✅ Complete | Database schema migration (Alembic) |
-| Phase 5 | ⏳ Pending | Frontend updates (API URL change) |
+| Phase 5 | ✅ Complete | Frontend-backend integration (API URL + endpoint fixes) |
 | Phase 6 | ⏳ Pending | Authentication & Privacy (RLS) |
 
 **New Stack**:
@@ -2385,23 +2385,22 @@ backend-python/
 | GET | `/api/notebook/{id}` | ✅ Working |
 | PUT | `/api/notebook/{id}` | ✅ Working |
 | DELETE | `/api/notebook/{id}` | ✅ Working |
-| POST | `/api/notebook/{id}/mark-reviewed` | ✅ Working |
+| POST | `/api/notebook/{id}/reviewed` | ✅ Working |
 | GET | `/api/categories/{id}/notebook/stats` | ✅ Working |
 | GET | `/api/categories/{id}/notebook/most-missed` | ✅ Working |
-| DELETE | `/api/categories/{id}/notebook` | ✅ Working |
+| DELETE | `/api/categories/{id}/notebook/clear` | ✅ Working |
 | **Sample Questions** | | |
-| GET | `/api/categories/{id}/samples` | ✅ Working |
-| POST | `/api/categories/{id}/samples` | ✅ Working |
-| POST | `/api/categories/{id}/samples/bulk` | ✅ Working |
-| POST | `/api/categories/{id}/samples/upload` | ✅ Working |
-| GET | `/api/categories/{id}/samples/count` | ✅ Working |
-| GET | `/api/samples/{id}` | ✅ Working |
-| PUT | `/api/samples/{id}` | ✅ Working |
-| DELETE | `/api/samples/{id}` | ✅ Working |
+| GET | `/api/categories/{id}/sample-questions` | ✅ Working |
+| POST | `/api/categories/{id}/sample-questions` | ✅ Working |
+| POST | `/api/categories/{id}/sample-questions/bulk` | ✅ Working |
+| POST | `/api/categories/{id}/sample-questions/upload` | ✅ Working |
+| GET | `/api/categories/{id}/sample-questions/count` | ✅ Working |
+| GET | `/api/sample-questions/{id}` | ✅ Working |
+| PUT | `/api/sample-questions/{id}` | ✅ Working |
+| DELETE | `/api/sample-questions/{id}` | ✅ Working |
 
 **Known Limitations** (current):
 - AI generation endpoints return stubs (waiting for full agent migration)
-- Frontend still connects to Node.js backend (Phase 5)
 
 **Alembic Migration Commands**:
 ```bash
@@ -2421,4 +2420,4 @@ docker-compose exec backend alembic downgrade -1
 ---
 
 **Last Updated**: 2025-11-25
-**Version**: 5.0.5 (Python Migration - Phase 4 Complete, Alembic Migrations)
+**Version**: 5.1.0 (Python Migration - Phase 5 Complete, Frontend Integration)

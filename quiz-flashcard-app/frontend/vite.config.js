@@ -7,7 +7,8 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/api': {
-        target: 'http://localhost:3001',
+        // Use 'backend' hostname when running in Docker, localhost:8000 otherwise
+        target: process.env.DOCKER_ENV ? 'http://backend:8000' : 'http://localhost:8000',
         changeOrigin: true
       }
     }

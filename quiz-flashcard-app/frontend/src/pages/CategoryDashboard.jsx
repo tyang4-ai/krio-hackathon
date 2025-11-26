@@ -54,16 +54,24 @@ function CategoryDashboard() {
 
   const loadData = async () => {
     try {
-      const [catResponse, docsResponse, samplesResponse, analysisResponse] = await Promise.all([
+      // Load category, documents, and samples - these are required
+      const [catResponse, docsResponse, samplesResponse] = await Promise.all([
         categoryApi.getById(categoryId),
         documentApi.getByCategory(categoryId),
         sampleQuestionApi.getByCategory(categoryId),
-        analysisApi.getAnalysisStatus(categoryId)
       ]);
-      setCategory(catResponse.data.data);
-      setDocuments(docsResponse.data.data);
-      setSampleQuestions(samplesResponse.data);
-      setAnalysisStatus(analysisResponse.data.data);
+      setCategory(catResponse.data);
+      setDocuments(docsResponse.data.documents || []);
+      setSampleQuestions(samplesResponse.data.samples || []);
+
+      // Analysis status is optional - endpoint may not exist yet
+      try {
+        const analysisResponse = await analysisApi.getAnalysisStatus(categoryId);
+        setAnalysisStatus(analysisResponse.data);
+      } catch {
+        // Analysis endpoint not implemented yet - ignore
+        setAnalysisStatus(null);
+      }
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -293,7 +301,7 @@ function CategoryDashboard() {
           </div>
           <div>
             <h3 className="font-semibold text-gray-900">Take Quiz</h3>
-            <p className="text-sm text-gray-600">{category.stats?.questions || 0} questions</p>
+            <p className="text-sm text-gray-600">{category.stats?.question_count || 0} questions</p>
           </div>
         </Link>
 
@@ -319,7 +327,7 @@ function CategoryDashboard() {
           </div>
           <div>
             <h3 className="font-semibold text-gray-900">Study Flashcards</h3>
-            <p className="text-sm text-gray-600">{category.stats?.flashcards || 0} cards</p>
+            <p className="text-sm text-gray-600">{category.stats?.flashcard_count || 0} cards</p>
           </div>
         </Link>
 
@@ -332,7 +340,7 @@ function CategoryDashboard() {
           </div>
           <div>
             <h3 className="font-semibold text-gray-900">View Notebook</h3>
-            <p className="text-sm text-gray-600">{category.stats?.notebook_entries || 0} entries</p>
+            <p className="text-sm text-gray-600">{category.stats?.notebook_count || 0} entries</p>
           </div>
         </Link>
       </div>

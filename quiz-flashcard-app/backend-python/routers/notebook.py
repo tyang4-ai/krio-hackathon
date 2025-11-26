@@ -151,7 +151,7 @@ async def update_notebook_entry(
 
 
 @router.post(
-    "/notebook/{entry_id}/mark-reviewed",
+    "/notebook/{entry_id}/reviewed",
     response_model=NotebookEntryResponse,
     summary="Mark a notebook entry as reviewed",
 )
@@ -238,7 +238,7 @@ async def get_most_missed_questions(
 
 
 @router.delete(
-    "/categories/{category_id}/notebook",
+    "/categories/{category_id}/notebook/clear",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Clear all notebook entries for a category",
 )

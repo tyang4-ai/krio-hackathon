@@ -16,7 +16,7 @@ function Home() {
   const loadCategories = async () => {
     try {
       const response = await categoryApi.getAll();
-      setCategories(response.data.data);
+      setCategories(response.data.categories || []);
     } catch (error) {
       console.error('Error loading categories:', error);
     } finally {
@@ -118,21 +118,21 @@ function Home() {
                   <div className="flex items-center justify-center text-gray-400 mb-1">
                     <FileText className="h-4 w-4" />
                   </div>
-                  <div className="text-sm font-medium text-gray-900">{category.stats?.documents || 0}</div>
+                  <div className="text-sm font-medium text-gray-900">{category.stats?.document_count || 0}</div>
                   <div className="text-xs text-gray-500">Docs</div>
                 </div>
                 <div className="text-center">
                   <div className="flex items-center justify-center text-gray-400 mb-1">
                     <HelpCircle className="h-4 w-4" />
                   </div>
-                  <div className="text-sm font-medium text-gray-900">{category.stats?.questions || 0}</div>
+                  <div className="text-sm font-medium text-gray-900">{category.stats?.question_count || 0}</div>
                   <div className="text-xs text-gray-500">Questions</div>
                 </div>
                 <div className="text-center">
                   <div className="flex items-center justify-center text-gray-400 mb-1">
                     <BookOpen className="h-4 w-4" />
                   </div>
-                  <div className="text-sm font-medium text-gray-900">{category.stats?.flashcards || 0}</div>
+                  <div className="text-sm font-medium text-gray-900">{category.stats?.flashcard_count || 0}</div>
                   <div className="text-xs text-gray-500">Cards</div>
                 </div>
               </div>

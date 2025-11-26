@@ -27,7 +27,7 @@ router = APIRouter(prefix="/api", tags=["sample-questions"])
 
 
 @router.get(
-    "/categories/{category_id}/samples",
+    "/categories/{category_id}/sample-questions",
     response_model=SampleQuestionListResponse,
     summary="Get all sample questions for a category",
 )
@@ -45,7 +45,7 @@ async def get_sample_questions(
 
 
 @router.get(
-    "/samples/{sample_id}",
+    "/sample-questions/{sample_id}",
     response_model=SampleQuestionResponse,
     summary="Get a sample question by ID",
 )
@@ -65,7 +65,7 @@ async def get_sample_question(
 
 
 @router.post(
-    "/categories/{category_id}/samples",
+    "/categories/{category_id}/sample-questions",
     response_model=SampleQuestionResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create a new sample question",
@@ -84,7 +84,7 @@ async def create_sample_question(
 
 
 @router.post(
-    "/categories/{category_id}/samples/bulk",
+    "/categories/{category_id}/sample-questions/bulk",
     response_model=SampleQuestionListResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create multiple sample questions at once",
@@ -112,7 +112,7 @@ async def create_bulk_sample_questions(
 
 
 @router.put(
-    "/samples/{sample_id}",
+    "/sample-questions/{sample_id}",
     response_model=SampleQuestionResponse,
     summary="Update a sample question",
 )
@@ -135,7 +135,7 @@ async def update_sample_question(
 
 
 @router.delete(
-    "/samples/{sample_id}",
+    "/sample-questions/{sample_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Delete a sample question",
 )
@@ -156,7 +156,7 @@ async def delete_sample_question(
 
 
 @router.get(
-    "/categories/{category_id}/samples/count",
+    "/categories/{category_id}/sample-questions/count",
     response_model=SampleQuestionCountResponse,
     summary="Get sample question count",
 )
@@ -170,7 +170,7 @@ async def get_sample_question_count(
 
 
 @router.post(
-    "/categories/{category_id}/samples/upload",
+    "/categories/{category_id}/sample-questions/upload",
     response_model=SampleQuestionUploadResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Upload sample questions from file",
