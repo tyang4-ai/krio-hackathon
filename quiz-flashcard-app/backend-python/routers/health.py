@@ -67,3 +67,15 @@ async def liveness_check() -> dict:
     Returns 200 if the application is running.
     """
     return {"alive": True}
+
+
+@router.get("/sentry-debug")
+async def trigger_error():
+    """
+    Trigger a test error for Sentry debugging.
+
+    This endpoint intentionally raises an exception to verify
+    that Sentry error tracking is working correctly.
+    """
+    division_by_zero = 1 / 0
+    return {"this": "will never return"}

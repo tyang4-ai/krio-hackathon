@@ -4,6 +4,7 @@ Provides session management and database connection utilities.
 """
 from typing import AsyncGenerator
 
+import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
@@ -56,9 +57,15 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 async def init_db() -> None:
-    """Initialize database tables."""
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    """
+    Initialize database connection.
+
+    Note: Tables are managed by Alembic migrations.
+    Run `alembic upgrade head` to create/update tables.
+    """
+    # Verify connection works
+    async with engine.connect() as conn:
+        await conn.execute(sa.text("SELECT 1"))
 
 
 async def close_db() -> None:

@@ -28,8 +28,12 @@ COPY . .
 # Create uploads directory
 RUN mkdir -p /app/uploads
 
+# Copy and set up entrypoint script
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 # Expose port
 EXPOSE 8000
 
-# Run the application with hot-reload for development
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# Run migrations and start server
+ENTRYPOINT ["/entrypoint.sh"]

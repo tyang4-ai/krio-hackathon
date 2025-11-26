@@ -2259,7 +2259,7 @@ For issues, questions, or contributions:
 | Phase 3.6 | ✅ Complete | Notebook API (wrong answer tracking) |
 | Phase 3.7 | ✅ Complete | Sample Questions API (file upload) |
 | Phase 3.8 | ✅ Complete | AI Service (NVIDIA + OpenAI vision) |
-| Phase 4 | ⏳ Pending | Database schema migration (Alembic) |
+| Phase 4 | ✅ Complete | Database schema migration (Alembic) |
 | Phase 5 | ⏳ Pending | Frontend updates (API URL change) |
 | Phase 6 | ⏳ Pending | Authentication & Privacy (RLS) |
 
@@ -2281,10 +2281,17 @@ For issues, questions, or contributions:
 | FastAPI Backend | 8000 | ✅ Running (Categories + Documents API) |
 | React Frontend | 3000 | ✅ Running |
 
-**Python Backend Structure** (Phase 3 Complete):
+**Python Backend Structure** (Phase 4 Complete):
 ```
 backend-python/
 ├── main.py                    # FastAPI app entry point
+├── entrypoint.sh             # Docker entrypoint (runs migrations)
+├── alembic.ini               # Alembic configuration
+├── alembic/
+│   ├── env.py                # Migration environment
+│   ├── script.py.mako        # Migration template
+│   └── versions/             # Migration scripts
+│       └── 001_initial_schema.py  # All 16 tables
 ├── config/
 │   ├── settings.py           # Pydantic settings (env vars)
 │   └── database.py           # SQLAlchemy async engine
@@ -2394,11 +2401,24 @@ backend-python/
 
 **Known Limitations** (current):
 - AI generation endpoints return stubs (waiting for full agent migration)
-- AI Analysis endpoints not fully implemented (will be added in Phase 4)
-- Database tables auto-created on startup (no Alembic migrations yet)
 - Frontend still connects to Node.js backend (Phase 5)
+
+**Alembic Migration Commands**:
+```bash
+# Run migrations (done automatically on Docker startup)
+docker-compose exec backend alembic upgrade head
+
+# Create new migration
+docker-compose exec backend alembic revision --autogenerate -m "description"
+
+# Show migration history
+docker-compose exec backend alembic history
+
+# Rollback one migration
+docker-compose exec backend alembic downgrade -1
+```
 
 ---
 
 **Last Updated**: 2025-11-25
-**Version**: 5.0.4 (Python Migration - Phase 3 Complete, All Services Migrated)
+**Version**: 5.0.5 (Python Migration - Phase 4 Complete, Alembic Migrations)
