@@ -39,9 +39,12 @@ function QuizPage() {
         quizApi.getStats(categoryId),
         quizApi.getHistory(categoryId)
       ]);
-      setCategory(catResponse.data.data);
-      setStats(statsResponse.data.data);
-      setHistory(historyResponse.data.data);
+      // Handle both wrapped and unwrapped response formats
+      setCategory(catResponse.data.data || catResponse.data);
+      setStats(statsResponse.data.data || statsResponse.data);
+      // History response has 'sessions' array, not 'data'
+      const historyData = historyResponse.data.data || historyResponse.data;
+      setHistory(historyData.sessions || historyData || []);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -52,7 +55,8 @@ function QuizPage() {
   const handleStartQuiz = async () => {
     try {
       const response = await quizApi.createSession(categoryId, settings);
-      navigate(`/category/${categoryId}/quiz/session/${response.data.data.session_id}`);
+      const data = response.data.data || response.data;
+      navigate(`/category/${categoryId}/quiz/session/${data.session_id}`);
     } catch (error) {
       console.error('Error starting quiz:', error);
       alert('Error starting quiz: ' + (error.response?.data?.error || error.message));

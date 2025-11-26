@@ -24,9 +24,11 @@ function NotebookPage() {
         notebookApi.getStats(categoryId),
         notebookApi.getMostMissed(categoryId, 5)
       ]);
-      setCategory(catResponse.data.data);
-      setStats(statsResponse.data.data);
-      setMostMissed(missedResponse.data.data);
+      // Handle both wrapped and unwrapped response formats
+      setCategory(catResponse.data.data || catResponse.data);
+      setStats(statsResponse.data.data || statsResponse.data);
+      const missedData = missedResponse.data.data || missedResponse.data;
+      setMostMissed(missedData.questions || missedData || []);
 
       // Load entries with filter
       const options = {};
@@ -34,7 +36,8 @@ function NotebookPage() {
       if (filter === 'unreviewed') options.reviewed = false;
 
       const entriesResponse = await notebookApi.getByCategory(categoryId, options);
-      setEntries(entriesResponse.data.data);
+      const entriesData = entriesResponse.data.data || entriesResponse.data;
+      setEntries(entriesData.entries || entriesData || []);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -203,30 +206,41 @@ function NotebookPage() {
 
               <p className="font-medium text-gray-900 mb-3">{entry.question_text}</p>
 
-              <div className="space-y-2 text-sm">
-                {entry.options.map((option, index) => {
-                  const letter = option.charAt(0);
-                  const isUserAnswer = entry.user_answer === letter;
-                  const isCorrectAnswer = entry.correct_answer === letter;
+              {entry.options && entry.options.length > 0 ? (
+                <div className="space-y-2 text-sm">
+                  {entry.options.map((option, index) => {
+                    const letter = option.charAt(0);
+                    const isUserAnswer = entry.user_answer === letter;
+                    const isCorrectAnswer = entry.correct_answer === letter;
 
-                  return (
-                    <div
-                      key={index}
-                      className={`p-2 rounded ${
-                        isCorrectAnswer
-                          ? 'bg-green-100 text-green-800'
-                          : isUserAnswer
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-gray-50 text-gray-600'
-                      }`}
-                    >
-                      {option}
-                      {isCorrectAnswer && ' ✓'}
-                      {isUserAnswer && !isCorrectAnswer && ' ✗'}
-                    </div>
-                  );
-                })}
-              </div>
+                    return (
+                      <div
+                        key={index}
+                        className={`p-2 rounded ${
+                          isCorrectAnswer
+                            ? 'bg-green-100 text-green-800'
+                            : isUserAnswer
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-gray-50 text-gray-600'
+                        }`}
+                      >
+                        {option}
+                        {isCorrectAnswer && ' ✓'}
+                        {isUserAnswer && !isCorrectAnswer && ' ✗'}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="space-y-2 text-sm">
+                  <div className="p-2 rounded bg-red-100 text-red-800">
+                    Your answer: {entry.user_answer || '(no answer)'}
+                  </div>
+                  <div className="p-2 rounded bg-green-100 text-green-800">
+                    Correct answer: {entry.correct_answer}
+                  </div>
+                </div>
+              )}
 
               {entry.explanation && (
                 <div className="mt-3 p-3 bg-blue-50 rounded text-sm text-blue-800">

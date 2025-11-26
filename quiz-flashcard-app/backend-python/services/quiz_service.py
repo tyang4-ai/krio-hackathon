@@ -6,12 +6,13 @@ from datetime import datetime
 from typing import List, Optional, Dict, Any
 
 import structlog
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.question import Question
 from models.quiz_session import QuizSession
-from models.grading import ExamFocusEvent
+from models.grading import ExamFocusEvent, PartialCreditGrade
+from models.notebook_entry import NotebookEntry
 from schemas.question import QuestionCreate, QuestionUpdate
 from schemas.quiz import QuizSettings
 
@@ -143,11 +144,22 @@ class QuizService:
         db: AsyncSession,
         question_id: int,
     ) -> bool:
-        """Delete a question."""
+        """Delete a question and all related entries."""
         question = await self.get_question_by_id(db, question_id)
         if not question:
             return False
 
+        # Delete related notebook entries first (foreign key constraint)
+        await db.execute(
+            delete(NotebookEntry).where(NotebookEntry.question_id == question_id)
+        )
+
+        # Delete related partial credit grades
+        await db.execute(
+            delete(PartialCreditGrade).where(PartialCreditGrade.question_id == question_id)
+        )
+
+        # Now delete the question
         await db.delete(question)
         await db.flush()
 
@@ -326,6 +338,7 @@ class QuizService:
         question_ids = session.questions
         results = []
         correct_count = 0
+        wrong_answers = []
 
         for question_id in question_ids:
             question = await self.get_question_by_id(db, question_id)
@@ -333,10 +346,43 @@ class QuizService:
                 continue
 
             user_answer = answers.get(str(question_id), "")
-            is_correct = user_answer == question.correct_answer
+            correct_answer = question.correct_answer
+
+            # Normalize answers for comparison
+            user_normalized = user_answer.strip().upper() if user_answer else ""
+            correct_normalized = correct_answer.strip().upper() if correct_answer else ""
+
+            # If correct_answer is like "A)" or "A) Option", extract just the letter
+            if correct_normalized and len(correct_normalized) > 0 and correct_normalized[0].isalpha():
+                if len(correct_normalized) > 1 and correct_normalized[1] in ").:":
+                    correct_normalized = correct_normalized[0]
+
+            # For user answer, it should already be just the letter (A, B, C, D)
+            if user_normalized and len(user_normalized) > 0 and user_normalized[0].isalpha():
+                if len(user_normalized) > 1 and user_normalized[1] in ").:":
+                    user_normalized = user_normalized[0]
+
+            is_correct = user_normalized == correct_normalized
+
+            logger.debug(
+                "answer_check",
+                question_id=question_id,
+                user_answer=user_answer,
+                correct_answer=correct_answer,
+                user_normalized=user_normalized,
+                correct_normalized=correct_normalized,
+                is_correct=is_correct,
+            )
 
             if is_correct:
                 correct_count += 1
+            else:
+                # Track wrong answers for notebook
+                wrong_answers.append({
+                    "question_id": question_id,
+                    "user_answer": user_answer,
+                    "correct_answer": correct_answer,
+                })
 
             results.append({
                 "question_id": question_id,
@@ -357,6 +403,29 @@ class QuizService:
         await db.flush()
         await db.refresh(session)
 
+        # Add wrong answers to notebook
+        notebook_entries_created = 0
+        for wrong in wrong_answers:
+            # Only add if user actually answered (not skipped)
+            if wrong["user_answer"]:
+                entry = NotebookEntry(
+                    category_id=session.category_id,
+                    question_id=wrong["question_id"],
+                    quiz_session_id=session_id,
+                    user_answer=wrong["user_answer"],
+                    correct_answer=wrong["correct_answer"],
+                )
+                db.add(entry)
+                notebook_entries_created += 1
+
+        if notebook_entries_created > 0:
+            await db.flush()
+            logger.info(
+                "notebook_entries_created_from_quiz",
+                session_id=session_id,
+                entries_count=notebook_entries_created,
+            )
+
         logger.info(
             "quiz_submitted",
             session_id=session_id,
@@ -370,6 +439,7 @@ class QuizService:
             "total": len(question_ids),
             "percentage": round((correct_count / len(question_ids)) * 100) if question_ids else 0,
             "results": results,
+            "notebook_entries_created": notebook_entries_created,
         }
 
     async def get_quiz_history(

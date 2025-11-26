@@ -16,7 +16,9 @@ function Home() {
   const loadCategories = async () => {
     try {
       const response = await categoryApi.getAll();
-      setCategories(response.data.categories || []);
+      // Handle both wrapped and unwrapped response formats
+      const data = response.data.data || response.data;
+      setCategories(data.categories || data || []);
     } catch (error) {
       console.error('Error loading categories:', error);
     } finally {

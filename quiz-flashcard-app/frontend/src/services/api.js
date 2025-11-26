@@ -9,6 +9,41 @@ const api = axios.create({
   }
 });
 
+// Response interceptor to normalize response format
+// The Python backend returns data directly, not wrapped in { data: ... }
+api.interceptors.response.use(
+  (response) => {
+    // Wrap response data to match expected format if not already wrapped
+    // This ensures frontend code expecting response.data.data works correctly
+    if (response.data && !response.data.data && typeof response.data === 'object') {
+      // Check if this looks like it should be wrapped
+      const needsWrapping = !Array.isArray(response.data) &&
+        (response.data.categories !== undefined ||
+         response.data.documents !== undefined ||
+         response.data.questions !== undefined ||
+         response.data.flashcards !== undefined ||
+         response.data.samples !== undefined ||
+         response.data.sessions !== undefined ||
+         response.data.session_id !== undefined ||
+         response.data.success !== undefined ||
+         response.data.id !== undefined ||
+         response.data.name !== undefined);
+
+      if (needsWrapping) {
+        response.data = { data: response.data };
+      }
+    }
+    return response;
+  },
+  (error) => {
+    // Normalize error format - FastAPI uses 'detail', frontend expects 'error'
+    if (error.response?.data?.detail) {
+      error.response.data.error = error.response.data.detail;
+    }
+    return Promise.reject(error);
+  }
+);
+
 // Categories
 export const categoryApi = {
   getAll: () => api.get('/categories'),
@@ -67,8 +102,13 @@ export const flashcardApi = {
   rateFlashcard: (id, rating) => api.post(`/flashcards/${id}/rate`, { rating }),
   getForReview: (categoryId) =>
     api.get(`/categories/${categoryId}/flashcards/review`),
-  updateProgress: (id, data) =>
-    api.post(`/flashcards/${id}/progress`, data),
+  updateProgress: (id, data) => {
+    // Backend route requires category_id in path
+    const categoryId = data.categoryId || data.category_id;
+    return api.post(`/categories/${categoryId}/flashcards/${id}/progress`, {
+      confidence_level: data.confidence || data.confidence_level
+    });
+  },
   getStats: (categoryId) =>
     api.get(`/categories/${categoryId}/flashcards/stats`)
 };

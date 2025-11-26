@@ -151,14 +151,16 @@ async def delete_document(
 
 
 @router.post("/api/categories/{category_id}/generate-questions")
-async def generate_questions(
+async def generate_questions_endpoint(
     category_id: int,
     request: GenerateQuestionsRequest,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """
-    Generate questions from documents in a category.
+    Generate questions from documents in a category using AI.
     """
+    from agents import generate_from_documents
+
     # Verify category exists
     category = await category_service.get_category_by_id(db, category_id)
     if not category:
@@ -167,36 +169,56 @@ async def generate_questions(
             detail=f"Category with ID {category_id} not found",
         )
 
-    # Get combined content
-    content = await document_service.get_combined_content_for_category(
-        db, category_id, request.document_ids
+    # Generate questions using AI agent
+    result = await generate_from_documents(
+        db=db,
+        category_id=category_id,
+        document_ids=request.document_ids,
+        count=request.question_count,
+        difficulty=request.difficulty or "medium",
+        question_type=request.question_type or "multiple_choice",
+        custom_directions=request.custom_directions or "",
     )
 
-    if not content:
+    await db.commit()
+
+    if not result.get("success"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No processed documents found for question generation",
+            detail=result.get("error", "Question generation failed"),
         )
 
-    # TODO: Implement AI question generation
-    # This will be implemented when we migrate the AI agents
+    # Return response in format frontend expects
+    questions = result.get("stored_questions", []) or result.get("questions", [])
     return {
-        "message": "Question generation not yet implemented",
-        "category_id": category_id,
-        "content_length": len(content),
-        "requested_count": request.question_count,
+        "success": True,
+        "questions": [
+            {
+                "id": getattr(q, "id", None) if hasattr(q, "id") else q.get("id"),
+                "question_text": getattr(q, "question_text", None) if hasattr(q, "question_text") else q.get("question_text"),
+                "question_type": getattr(q, "question_type", None) if hasattr(q, "question_type") else q.get("question_type"),
+                "difficulty": getattr(q, "difficulty", None) if hasattr(q, "difficulty") else q.get("difficulty"),
+                "options": getattr(q, "options", None) if hasattr(q, "options") else q.get("options"),
+                "correct_answer": getattr(q, "correct_answer", None) if hasattr(q, "correct_answer") else q.get("correct_answer"),
+                "explanation": getattr(q, "explanation", "") if hasattr(q, "explanation") else q.get("explanation", ""),
+            }
+            for q in questions
+        ],
+        "generated": len(questions),
     }
 
 
 @router.post("/api/categories/{category_id}/generate-flashcards")
-async def generate_flashcards(
+async def generate_flashcards_endpoint(
     category_id: int,
     request: GenerateFlashcardsRequest,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """
-    Generate flashcards from documents in a category.
+    Generate flashcards from documents in a category using AI.
     """
+    from agents import generate_flashcards as generate_flashcards_agent
+
     # Verify category exists
     category = await category_service.get_category_by_id(db, category_id)
     if not category:
@@ -216,11 +238,35 @@ async def generate_flashcards(
             detail="No processed documents found for flashcard generation",
         )
 
-    # TODO: Implement AI flashcard generation
-    # This will be implemented when we migrate the AI agents
+    # Generate flashcards using AI agent
+    result = await generate_flashcards_agent(
+        db=db,
+        category_id=category_id,
+        content=content,
+        count=request.count,
+        custom_directions=request.custom_directions or "",
+    )
+
+    await db.commit()
+
+    if not result.get("success"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=result.get("error", "Flashcard generation failed"),
+        )
+
+    # Return response in format frontend expects
+    flashcards = result.get("stored_flashcards", []) or result.get("flashcards", [])
     return {
-        "message": "Flashcard generation not yet implemented",
-        "category_id": category_id,
-        "content_length": len(content),
-        "requested_count": request.count,
+        "success": True,
+        "flashcards": [
+            {
+                "id": getattr(f, "id", None) if hasattr(f, "id") else f.get("id"),
+                "front_text": getattr(f, "front_text", None) if hasattr(f, "front_text") else f.get("front_text"),
+                "back_text": getattr(f, "back_text", None) if hasattr(f, "back_text") else f.get("back_text"),
+                "difficulty": getattr(f, "difficulty", "medium") if hasattr(f, "difficulty") else f.get("difficulty", "medium"),
+            }
+            for f in flashcards
+        ],
+        "generated": len(flashcards),
     }

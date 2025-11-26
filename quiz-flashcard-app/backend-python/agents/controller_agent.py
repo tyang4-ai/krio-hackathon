@@ -337,10 +337,16 @@ async def generate_from_documents(
             "error": "No documents found",
         }
 
-    # Combine document content
+    # Combine document content (use content_text and original_name from Document model)
     combined_content = "\n\n".join(
-        [f"--- {doc.title} ---\n{doc.content}" for doc in documents]
+        [f"--- {doc.original_name} ---\n{doc.content_text}" for doc in documents if doc.content_text]
     )
+
+    if not combined_content.strip():
+        return {
+            "success": False,
+            "error": "Documents have not been processed yet. Please wait for processing to complete.",
+        }
 
     # Generate questions
     return await generate_questions(

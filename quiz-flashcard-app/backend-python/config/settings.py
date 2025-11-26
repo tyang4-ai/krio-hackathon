@@ -27,9 +27,14 @@ class Settings(BaseSettings):
     sentry_dsn: Optional[str] = None
 
     # Primary AI Provider (for reasoning agents)
-    ai_provider: str = "nvidia"
-    ai_model: str = "llama-3.1-nemotron-nano-4b-v1.1"
+    ai_provider: str = "moonshot"
+    ai_model: str = "kimi-k2-0711-preview"
+    moonshot_api_key: Optional[str] = None
+    moonshot_base_url: str = "https://api.moonshot.ai/v1"
+
+    # Legacy NVIDIA (kept for backwards compatibility)
     nvidia_api_key: Optional[str] = None
+    nvidia_base_url: str = "https://integrate.api.nvidia.com/v1"
 
     # Vision AI Provider (for handwriting recognition)
     vision_provider: str = "openai"

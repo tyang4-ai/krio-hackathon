@@ -16,7 +16,8 @@ import {
   Database,
   Brain,
   CheckCircle,
-  RefreshCw
+  RefreshCw,
+  Eye
 } from 'lucide-react';
 import { categoryApi, documentApi, sampleQuestionApi, analysisApi } from '../services/api';
 
@@ -47,6 +48,7 @@ function CategoryDashboard() {
   const [uploadingSamples, setUploadingSamples] = useState(false);
   const [analysisStatus, setAnalysisStatus] = useState(null);
   const [analyzing, setAnalyzing] = useState(false);
+  const [showAnalysisDetails, setShowAnalysisDetails] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -60,14 +62,20 @@ function CategoryDashboard() {
         documentApi.getByCategory(categoryId),
         sampleQuestionApi.getByCategory(categoryId),
       ]);
-      setCategory(catResponse.data);
-      setDocuments(docsResponse.data.documents || []);
-      setSampleQuestions(samplesResponse.data.samples || []);
+      // Handle both wrapped and unwrapped response formats
+      const catData = catResponse.data.data || catResponse.data;
+      const docsData = docsResponse.data.data || docsResponse.data;
+      const samplesData = samplesResponse.data.data || samplesResponse.data;
+
+      setCategory(catData);
+      setDocuments(docsData.documents || docsData || []);
+      setSampleQuestions(samplesData.samples || samplesData || []);
 
       // Analysis status is optional - endpoint may not exist yet
       try {
         const analysisResponse = await analysisApi.getAnalysisStatus(categoryId);
-        setAnalysisStatus(analysisResponse.data);
+        const analysisData = analysisResponse.data.data || analysisResponse.data;
+        setAnalysisStatus(analysisData);
       } catch {
         // Analysis endpoint not implemented yet - ignore
         setAnalysisStatus(null);
@@ -117,17 +125,21 @@ function CategoryDashboard() {
       if (isFlashcards) {
         response = await documentApi.generateFlashcards(categoryId, {
           count: generateOptions.count,
-          customDirections: generateOptions.customDirections
+          custom_directions: generateOptions.customDirections
         });
-        alert(`Generated ${response.data.data.generated} flashcards!`);
+        const data = response.data.data || response.data;
+        const count = data.generated || data.flashcards?.length || 0;
+        alert(`Generated ${count} flashcards!`);
       } else {
         response = await documentApi.generateQuestions(categoryId, {
           count: generateOptions.count,
           difficulty: generateOptions.difficulty,
-          questionType: generateOptions.contentType,
-          customDirections: generateOptions.customDirections
+          question_type: generateOptions.contentType,
+          custom_directions: generateOptions.customDirections
         });
-        alert(`Generated ${response.data.data.generated} questions!`);
+        const data = response.data.data || response.data;
+        const count = data.generated || data.questions?.length || 0;
+        alert(`Generated ${count} questions!`);
       }
       loadData();
     } catch (error) {
@@ -208,11 +220,14 @@ function CategoryDashboard() {
     setAnalyzing(true);
     try {
       const response = await analysisApi.triggerAnalysis(categoryId);
-      if (response.data.success) {
-        alert(`Analysis complete! Analyzed ${response.data.data.analyzedCount} sample questions.`);
+      const data = response.data.data || response.data;
+      if (data.success) {
+        const count = data.analyzed_count || data.analyzedCount || sampleQuestions.length;
+        alert(`Analysis complete! Analyzed ${count} sample questions.`);
         // Refresh analysis status
         const statusResponse = await analysisApi.getAnalysisStatus(categoryId);
-        setAnalysisStatus(statusResponse.data.data);
+        const statusData = statusResponse.data.data || statusResponse.data;
+        setAnalysisStatus(statusData);
       }
     } catch (error) {
       console.error('Error triggering analysis:', error);
@@ -451,7 +466,10 @@ function CategoryDashboard() {
                 min="1"
                 max="50"
                 value={generateOptions.count}
-                onChange={(e) => setGenerateOptions({ ...generateOptions, count: parseInt(e.target.value) })}
+                onChange={(e) => {
+                  const value = parseInt(e.target.value);
+                  setGenerateOptions({ ...generateOptions, count: isNaN(value) ? 1 : value });
+                }}
               />
             </div>
 
@@ -531,13 +549,27 @@ function CategoryDashboard() {
             </button>
 
             {analysisStatus?.hasAnalysis && (
-              <button
-                onClick={handleClearAnalysis}
-                className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
-                title="Clear analysis"
-              >
-                <RefreshCw className="h-4 w-4" />
-              </button>
+              <>
+                <button
+                  onClick={() => setShowAnalysisDetails(!showAnalysisDetails)}
+                  className={`flex items-center space-x-1 px-3 py-2 rounded-lg border transition-colors ${
+                    showAnalysisDetails
+                      ? 'bg-blue-100 border-blue-400 text-blue-700'
+                      : 'bg-blue-50 border-blue-300 text-blue-600 hover:bg-blue-100'
+                  }`}
+                  title="View analysis details"
+                >
+                  <Eye className="h-5 w-5" />
+                  <span className="text-sm font-medium">View Results</span>
+                </button>
+                <button
+                  onClick={handleClearAnalysis}
+                  className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                  title="Clear analysis"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                </button>
+              </>
             )}
 
             <label className="btn-secondary cursor-pointer flex items-center space-x-2">
@@ -576,15 +608,92 @@ function CategoryDashboard() {
                 </span>
               </div>
               <span className="text-xs text-green-600">
-                {analysisStatus.sampleCount} samples analyzed
+                {analysisStatus.sampleCount || analysisStatus.sample_count || 0} samples analyzed
                 {analysisStatus.lastUpdated && ` • Updated ${new Date(analysisStatus.lastUpdated).toLocaleDateString()}`}
               </span>
             </div>
-            {analysisStatus.analysis?.patterns && (
-              <p className="mt-2 text-xs text-green-700">
-                Style: {analysisStatus.analysis.patterns.language_style?.substring(0, 100) || 'Detected'}...
-              </p>
+          </div>
+        )}
+
+        {/* Analysis Details Panel */}
+        {showAnalysisDetails && analysisStatus?.analysis && (
+          <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-medium text-blue-900">Analysis Details</h3>
+              <button
+                onClick={() => setShowAnalysisDetails(false)}
+                className="text-blue-400 hover:text-blue-600"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Style Guide */}
+            {analysisStatus.analysis.style_guide && (
+              <div className="mb-4">
+                <h4 className="text-sm font-medium text-blue-800 mb-2">Detected Style Guide</h4>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  {analysisStatus.analysis.style_guide.tone && (
+                    <div className="bg-white p-2 rounded">
+                      <span className="text-gray-500">Tone:</span>{' '}
+                      <span className="text-gray-900">{analysisStatus.analysis.style_guide.tone}</span>
+                    </div>
+                  )}
+                  {analysisStatus.analysis.style_guide.vocabulary_level && (
+                    <div className="bg-white p-2 rounded">
+                      <span className="text-gray-500">Vocabulary:</span>{' '}
+                      <span className="text-gray-900">{analysisStatus.analysis.style_guide.vocabulary_level}</span>
+                    </div>
+                  )}
+                  {analysisStatus.analysis.style_guide.question_length && (
+                    <div className="bg-white p-2 rounded">
+                      <span className="text-gray-500">Question Length:</span>{' '}
+                      <span className="text-gray-900">{analysisStatus.analysis.style_guide.question_length}</span>
+                    </div>
+                  )}
+                  {analysisStatus.analysis.style_guide.explanation_style && (
+                    <div className="bg-white p-2 rounded">
+                      <span className="text-gray-500">Explanation Style:</span>{' '}
+                      <span className="text-gray-900">{analysisStatus.analysis.style_guide.explanation_style}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
             )}
+
+            {/* Patterns */}
+            {analysisStatus.analysis.patterns && (
+              <div className="mb-4">
+                <h4 className="text-sm font-medium text-blue-800 mb-2">Detected Patterns</h4>
+                <div className="text-xs text-gray-700 bg-white p-3 rounded space-y-2">
+                  {analysisStatus.analysis.patterns.language_style && (
+                    <p><span className="font-medium">Language Style:</span> {analysisStatus.analysis.patterns.language_style}</p>
+                  )}
+                  {analysisStatus.analysis.patterns.common_themes && (
+                    <p><span className="font-medium">Common Themes:</span> {Array.isArray(analysisStatus.analysis.patterns.common_themes) ? analysisStatus.analysis.patterns.common_themes.join(', ') : analysisStatus.analysis.patterns.common_themes}</p>
+                  )}
+                  {analysisStatus.analysis.patterns.difficulty_distribution && (
+                    <p><span className="font-medium">Difficulty Distribution:</span> {JSON.stringify(analysisStatus.analysis.patterns.difficulty_distribution)}</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Recommendations */}
+            {analysisStatus.analysis.recommendations && analysisStatus.analysis.recommendations.length > 0 && (
+              <div>
+                <h4 className="text-sm font-medium text-blue-800 mb-2">Recommendations</h4>
+                <ul className="text-xs text-gray-700 bg-white p-3 rounded list-disc list-inside space-y-1">
+                  {analysisStatus.analysis.recommendations.map((rec, idx) => (
+                    <li key={idx}>{rec}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <p className="text-xs text-blue-600 mt-3">
+              These patterns will be applied when generating new questions.
+            </p>
           </div>
         )}
 

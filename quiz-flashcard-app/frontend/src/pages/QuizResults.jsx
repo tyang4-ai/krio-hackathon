@@ -28,23 +28,34 @@ function QuizResults() {
     try {
       // Get the session data
       const sessionResponse = await quizApi.getSession(sessionId);
-      const session = sessionResponse.data.data;
-      const parsedSettings = JSON.parse(session.settings);
+      const session = sessionResponse.data.data || sessionResponse.data;
+      // Handle settings - could be string or object
+      const parsedSettings = typeof session.settings === 'string'
+        ? JSON.parse(session.settings)
+        : session.settings;
       setSettings(parsedSettings);
 
       // Get all questions for this category
       const questionsResponse = await quizApi.getQuestions(categoryId);
-      const allQuestions = questionsResponse.data.data;
+      const questionsData = questionsResponse.data.data || questionsResponse.data;
+      const allQuestions = questionsData.questions || questionsData || [];
 
-      // Parse session data
-      const questionIds = JSON.parse(session.questions);
-      const answers = session.answers ? JSON.parse(session.answers) : {};
+      // Parse session data - handle both string and object formats
+      const questionIds = typeof session.questions === 'string'
+        ? JSON.parse(session.questions)
+        : session.questions;
+      const answers = typeof session.answers === 'string'
+        ? JSON.parse(session.answers)
+        : (session.answers || {});
 
       // Try to get partial credit grades
       let partialGrades = {};
       try {
         const gradesResponse = await quizEnhancedApi.getPartialCreditGrades(sessionId);
-        gradesResponse.data.data.forEach(g => {
+        const gradesData = gradesResponse.data.data || gradesResponse.data;
+        // Handle both array response and {grades: [...]} response
+        const gradesArray = Array.isArray(gradesData) ? gradesData : (gradesData.grades || []);
+        gradesArray.forEach(g => {
           partialGrades[g.question_id] = g;
         });
       } catch (e) {
@@ -54,10 +65,26 @@ function QuizResults() {
       // Try to get handwritten answers
       try {
         const handwrittenResponse = await quizEnhancedApi.getHandwrittenAnswers(sessionId);
-        setHandwrittenAnswers(handwrittenResponse.data.data);
+        const handwrittenData = handwrittenResponse.data.data || handwrittenResponse.data;
+        // Handle both array response and {answers: [...]} response
+        const handwrittenArray = Array.isArray(handwrittenData) ? handwrittenData : (handwrittenData.answers || []);
+        setHandwrittenAnswers(handwrittenArray);
       } catch (e) {
         // No handwritten answers
       }
+
+      // Helper function to normalize answer for comparison
+      const normalizeAnswer = (answer) => {
+        if (!answer) return '';
+        let normalized = answer.toString().trim().toUpperCase();
+        // Extract just the letter if format is "A)" or "A) Option"
+        if (normalized.length > 0 && normalized[0].match(/[A-Z]/)) {
+          if (normalized.length > 1 && [')', '.', ':'].includes(normalized[1])) {
+            return normalized[0];
+          }
+        }
+        return normalized;
+      };
 
       // Build results
       const resultsList = questionIds.map(id => {
@@ -65,10 +92,12 @@ function QuizResults() {
         const userAnswer = answers[id];
         const partialGrade = partialGrades[id];
 
-        // Determine correctness based on partial credit if available
+        // Determine correctness based on partial credit if available, or normalized comparison
+        const userNormalized = normalizeAnswer(userAnswer);
+        const correctNormalized = normalizeAnswer(question?.correct_answer);
         const isCorrect = partialGrade
           ? partialGrade.earned_points >= partialGrade.total_points * 0.9
-          : userAnswer === question?.correct_answer;
+          : userNormalized === correctNormalized;
 
         return {
           question_id: id,
@@ -90,7 +119,8 @@ function QuizResults() {
         };
       });
 
-      // Calculate score
+      // Use the score from the session if available, otherwise calculate
+      const sessionScore = session.score;
       let totalEarned = 0;
       let totalPossible = 0;
 
@@ -104,10 +134,14 @@ function QuizResults() {
         }
       });
 
+      // Prefer session score for consistency with backend calculation
+      const finalScore = sessionScore !== null && sessionScore !== undefined ? sessionScore : totalEarned;
+      const finalTotal = totalPossible || questionIds.length;
+
       setResults({
-        score: Math.round(totalEarned * 10) / 10,
-        total: totalPossible,
-        percentage: Math.round((totalEarned / totalPossible) * 100),
+        score: Math.round(finalScore * 10) / 10,
+        total: finalTotal,
+        percentage: Math.round((finalScore / finalTotal) * 100),
         results: resultsList
       });
 
@@ -242,11 +276,11 @@ function QuizResults() {
       {/* Exam Integrity Report */}
       {integrityReport && (
         <div className={`card mb-8 ${
-          integrityReport.totalViolations === 0 ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'
+          (integrityReport.total_violations || integrityReport.totalViolations || 0) === 0 ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'
         }`}>
           <div className="flex items-center space-x-3 mb-4">
             <AlertTriangle className={`h-6 w-6 ${
-              integrityReport.totalViolations === 0 ? 'text-green-600' : 'text-red-600'
+              (integrityReport.total_violations || integrityReport.totalViolations || 0) === 0 ? 'text-green-600' : 'text-red-600'
             }`} />
             <h2 className="text-lg font-semibold">Exam Integrity Report</h2>
           </div>
@@ -254,35 +288,35 @@ function QuizResults() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center">
               <p className={`text-2xl font-bold ${
-                integrityReport.integrityScore >= 80 ? 'text-green-600' :
-                integrityReport.integrityScore >= 50 ? 'text-yellow-600' :
+                (integrityReport.integrity_score || integrityReport.integrityScore || 0) >= 80 ? 'text-green-600' :
+                (integrityReport.integrity_score || integrityReport.integrityScore || 0) >= 50 ? 'text-yellow-600' :
                 'text-red-600'
               }`}>
-                {integrityReport.integrityScore}%
+                {integrityReport.integrity_score || integrityReport.integrityScore || 0}%
               </p>
               <p className="text-sm text-gray-600">Integrity Score</p>
             </div>
             <div className="text-center">
               <p className="text-2xl font-bold text-gray-800">
-                {integrityReport.totalViolations}
+                {integrityReport.total_violations || integrityReport.totalViolations || 0}
               </p>
               <p className="text-sm text-gray-600">Total Violations</p>
             </div>
             <div className="text-center">
               <p className="text-2xl font-bold text-gray-800">
-                {integrityReport.tabSwitchCount}
+                {integrityReport.tab_switch_count || integrityReport.tabSwitchCount || 0}
               </p>
               <p className="text-sm text-gray-600">Tab Switches</p>
             </div>
             <div className="text-center">
               <p className="text-2xl font-bold text-gray-800">
-                {integrityReport.focusLostCount}
+                {integrityReport.focus_lost_count || integrityReport.focusLostCount || 0}
               </p>
               <p className="text-sm text-gray-600">Focus Lost</p>
             </div>
           </div>
 
-          {integrityReport.totalViolations === 0 && (
+          {(integrityReport.total_violations || integrityReport.totalViolations || 0) === 0 && (
             <p className="text-sm text-green-700 mt-4 text-center">
               Excellent! You maintained focus throughout the exam.
             </p>

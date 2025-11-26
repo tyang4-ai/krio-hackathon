@@ -8,6 +8,10 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.category import Category
+from models.question import Question
+from models.flashcard import Flashcard
+from models.document import Document
+from models.notebook_entry import NotebookEntry
 from schemas.category import CategoryCreate, CategoryStats, CategoryUpdate
 
 logger = structlog.get_logger()
@@ -154,13 +158,35 @@ class CategoryService:
         Returns:
             Category statistics
         """
-        # TODO: Implement actual counts once other models are created
-        # For now, return zeros
+        # Count questions
+        question_result = await db.execute(
+            select(func.count(Question.id)).where(Question.category_id == category_id)
+        )
+        question_count = question_result.scalar() or 0
+
+        # Count flashcards
+        flashcard_result = await db.execute(
+            select(func.count(Flashcard.id)).where(Flashcard.category_id == category_id)
+        )
+        flashcard_count = flashcard_result.scalar() or 0
+
+        # Count documents
+        document_result = await db.execute(
+            select(func.count(Document.id)).where(Document.category_id == category_id)
+        )
+        document_count = document_result.scalar() or 0
+
+        # Count notebook entries
+        notebook_result = await db.execute(
+            select(func.count(NotebookEntry.id)).where(NotebookEntry.category_id == category_id)
+        )
+        notebook_count = notebook_result.scalar() or 0
+
         return CategoryStats(
-            question_count=0,
-            flashcard_count=0,
-            document_count=0,
-            notebook_count=0,
+            question_count=question_count,
+            flashcard_count=flashcard_count,
+            document_count=document_count,
+            notebook_count=notebook_count,
         )
 
     async def get_category_with_stats(

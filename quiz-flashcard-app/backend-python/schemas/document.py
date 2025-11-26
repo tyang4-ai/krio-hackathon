@@ -52,11 +52,15 @@ class GenerateQuestionsRequest(BaseSchema):
     document_ids: Optional[list[int]] = Field(
         None, description="Specific document IDs to use (all if not specified)"
     )
-    question_count: int = Field(10, ge=1, le=50, description="Number of questions to generate")
+    question_count: int = Field(10, ge=1, le=50, alias="count", description="Number of questions to generate")
     question_types: Optional[list[str]] = Field(
         None, description="Types: multiple_choice, true_false, written, fill_in_blank"
     )
+    question_type: Optional[str] = Field(
+        None, description="Single question type: multiple_choice, true_false, written_answer, fill_in_blank"
+    )
     difficulty: Optional[str] = Field(None, description="easy, medium, hard")
+    custom_directions: Optional[str] = Field(None, description="Additional instructions for AI")
 
 
 class GenerateFlashcardsRequest(BaseSchema):
@@ -67,3 +71,4 @@ class GenerateFlashcardsRequest(BaseSchema):
     )
     count: int = Field(10, ge=1, le=50, description="Number of flashcards to generate")
     difficulty: Optional[str] = Field(None, description="easy, medium, hard")
+    custom_directions: Optional[str] = Field(None, description="Additional instructions for AI")

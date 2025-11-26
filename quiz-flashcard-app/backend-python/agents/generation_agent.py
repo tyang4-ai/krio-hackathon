@@ -97,7 +97,7 @@ class GenerationAgent(BaseAgent):
         )
 
         try:
-            response = await self.generate_json(prompt, max_tokens=4000)
+            response = await self.generate_json(prompt, max_tokens=8000)
             questions = self._parse_questions_response(response)
 
             logger.info(
@@ -152,10 +152,13 @@ For WRITTEN ANSWER questions:
 - Correct answer should be the model answer text""",
             "fill_in_blank": """
 For FILL-IN-THE-BLANK questions:
-- Create sentences with a key term/formula replaced by _____
-- Use exactly 5 underscores for blanks
-- Test important concepts, terms, or formulas
-- Correct answer should be the exact text that fills the blank""",
+- Create a statement where a key term, concept, or formula is replaced by "_____" (exactly 5 underscores)
+- The question_text should contain the sentence with the blank
+- Test important vocabulary, concepts, dates, formulas, or facts
+- The correct_answer should be the exact word/phrase that fills the blank
+- Example: question_text: "The process of photosynthesis converts light energy into _____ energy."
+  correct_answer: "chemical"
+- Set options to null for fill_in_blank questions""",
         }
 
         type_instruction = type_instructions.get(
@@ -181,33 +184,61 @@ Use this style guide based on the user's sample questions:
         if custom_directions:
             custom_section = f"\nAdditional Instructions from User:\n{custom_directions}\n"
 
-        return f"""Generate {count} {difficulty} difficulty {question_type.replace('_', ' ')} questions based on this content:
+        # Difficulty guidance
+        difficulty_guidance = {
+            "easy": "EASY: Basic recall, straightforward concepts, obvious answers",
+            "medium": "MEDIUM: Application of knowledge, some analysis required",
+            "hard": "HARD: Complex analysis, synthesis of concepts, challenging scenarios"
+        }.get(difficulty, "MEDIUM")
+
+        # Build a simple, concise prompt to avoid truncation
+        if question_type == "fill_in_blank":
+            return f"""Generate {count} {difficulty.upper()} fill-in-the-blank questions from this content:
 
 {content}
-
-{type_instruction}
-{style_section}
 {custom_section}
+Difficulty: {difficulty_guidance}
 
-Respond with JSON in this format:
-{{
-    "questions": [
-        {{
-            "question_text": "The question text",
-            "question_type": "{question_type}",
-            "difficulty": "{difficulty}",
-            "options": ["A) Option 1", "B) Option 2", "C) Option 3", "D) Option 4"],
-            "correct_answer": "A",
-            "explanation": "Brief explanation of why this is correct",
-            "tags": ["topic1", "topic2"]
-        }}
-    ]
-}}
+Output ONLY valid JSON:
+{{"questions":[{{"question_text":"Statement with _____ blank","question_type":"fill_in_blank","difficulty":"{difficulty}","options":null,"correct_answer":"answer","explanation":"why"}}]}}
 
-Notes:
-- "options" should be null for written_answer and fill_in_blank types
-- Each question must have a clear, unambiguous correct answer
-- Explanations should help students understand the concept"""
+Rules: question_text has _____, options is null, correct_answer fills blank. All questions MUST be {difficulty} difficulty. Generate exactly {count}."""
+
+        elif question_type == "written_answer":
+            return f"""Generate {count} {difficulty.upper()} written answer questions from this content:
+
+{content}
+{custom_section}
+Difficulty: {difficulty_guidance}
+
+Output ONLY valid JSON:
+{{"questions":[{{"question_text":"Open-ended question?","question_type":"written_answer","difficulty":"{difficulty}","options":null,"correct_answer":"Model answer text","explanation":"Grading criteria"}}]}}
+
+Rules: options is null, correct_answer is model answer. All questions MUST be {difficulty} difficulty. Generate exactly {count}."""
+
+        elif question_type == "true_false":
+            return f"""Generate {count} {difficulty.upper()} true/false questions from this content:
+
+{content}
+{custom_section}
+Difficulty: {difficulty_guidance}
+
+Output ONLY valid JSON:
+{{"questions":[{{"question_text":"Statement to evaluate","question_type":"true_false","difficulty":"{difficulty}","options":["A) True","B) False"],"correct_answer":"A","explanation":"why"}}]}}
+
+Rules: options always ["A) True","B) False"], correct_answer is "A" or "B". All questions MUST be {difficulty} difficulty. Generate exactly {count}."""
+
+        else:  # multiple_choice
+            return f"""Generate {count} {difficulty.upper()} multiple choice questions from this content:
+
+{content}
+{custom_section}
+Difficulty: {difficulty_guidance}
+
+Output ONLY valid JSON:
+{{"questions":[{{"question_text":"Question?","question_type":"multiple_choice","difficulty":"{difficulty}","options":["A) opt1","B) opt2","C) opt3","D) opt4"],"correct_answer":"A","explanation":"why"}}]}}
+
+Rules: 4 options A-D, correct_answer is letter. All questions MUST be {difficulty} difficulty. Generate exactly {count}."""
 
     def _parse_questions_response(self, response: str) -> List[Dict[str, Any]]:
         """Parse the AI response into questions."""
@@ -246,7 +277,11 @@ Notes:
         end = response.rfind("}") + 1
 
         if start != -1 and end > start:
-            return response[start:end]
+            cleaned = response[start:end]
+            # Fix common JSON issues - trailing commas
+            cleaned = re.sub(r",\s*}", "}", cleaned)
+            cleaned = re.sub(r",\s*]", "]", cleaned)
+            return cleaned
 
         return response
 

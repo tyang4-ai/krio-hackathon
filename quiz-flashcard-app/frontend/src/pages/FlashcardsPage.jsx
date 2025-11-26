@@ -25,8 +25,8 @@ function FlashcardsPage() {
         categoryApi.getById(categoryId),
         flashcardApi.getStats(categoryId)
       ]);
-      setCategory(catResponse.data.data);
-      setStats(statsResponse.data.data);
+      setCategory(catResponse.data.data || catResponse.data);
+      setStats(statsResponse.data.data || statsResponse.data);
 
       // Load flashcards based on study mode
       let cardsResponse;
@@ -35,7 +35,9 @@ function FlashcardsPage() {
       } else {
         cardsResponse = await flashcardApi.getByCategory(categoryId);
       }
-      setFlashcards(cardsResponse.data.data);
+      const cardsData = cardsResponse.data.data || cardsResponse.data;
+      // Handle both array response and {flashcards: [...]} response
+      setFlashcards(cardsData.flashcards || cardsData || []);
       setCurrentIndex(0);
       setIsFlipped(false);
     } catch (error) {
@@ -104,7 +106,7 @@ function FlashcardsPage() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Flashcards - {category?.name}</h1>
           <p className="text-gray-600 mt-1">
-            {stats?.total || 0} total cards • {stats?.reviewed_cards || 0} reviewed
+            {stats?.total || 0} total cards • {stats?.reviewed_cards || stats?.reviewed || 0} reviewed
           </p>
         </div>
         <div className="flex space-x-2">

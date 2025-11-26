@@ -24,8 +24,11 @@ function QuestionBank() {
         categoryApi.getById(categoryId),
         quizApi.getQuestions(categoryId)
       ]);
-      setCategory(catResponse.data.data);
-      setQuestions(questionsResponse.data.data);
+      // Handle both wrapped and unwrapped response formats
+      setCategory(catResponse.data.data || catResponse.data);
+      const questionsData = questionsResponse.data.data || questionsResponse.data;
+      // Handle both {questions: [...]} and direct array response
+      setQuestions(questionsData.questions || questionsData || []);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -39,7 +42,7 @@ function QuestionBank() {
       question_text: question.question_text,
       question_type: question.question_type,
       difficulty: question.difficulty,
-      options: [...question.options],
+      options: question.options ? [...question.options] : [],
       correct_answer: question.correct_answer,
       explanation: question.explanation || ''
     });
@@ -141,7 +144,8 @@ function QuestionBank() {
     setEditForm({ ...editForm, options: newOptions });
   };
 
-  const filteredQuestions = questions.filter(q => {
+  // Ensure questions is an array before filtering
+  const filteredQuestions = (Array.isArray(questions) ? questions : []).filter(q => {
     if (filter.type !== 'all' && q.question_type !== filter.type) return false;
     if (filter.difficulty !== 'all' && q.difficulty !== filter.difficulty) return false;
     return true;
@@ -311,7 +315,7 @@ function QuestionBank() {
                           </div>
                         </div>
 
-                        {editForm.question_type !== 'written_answer' && editForm.question_type !== 'fill_in_blank' && (
+                        {editForm.question_type !== 'written_answer' && editForm.question_type !== 'fill_in_blank' && editForm.options && editForm.options.length > 0 && (
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                               Options
@@ -382,7 +386,7 @@ function QuestionBank() {
 
                         <p className="font-medium text-gray-900 mb-3">{question.question_text}</p>
 
-                        {question.question_type !== 'written_answer' && (
+                        {question.question_type !== 'written_answer' && question.options && question.options.length > 0 && (
                           <div className="space-y-1 mb-3">
                             {question.options.map((option, index) => {
                               const letter = option.charAt(0);

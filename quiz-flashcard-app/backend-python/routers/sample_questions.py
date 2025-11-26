@@ -37,24 +37,17 @@ For each question, identify:
 4. The correct answer
 5. Any explanation provided
 
-Return the questions as JSON in this exact format:
-{
-    "questions": [
-        {
-            "question_text": "The full question text",
-            "question_type": "multiple_choice",
-            "options": ["A) Option 1", "B) Option 2", "C) Option 3", "D) Option 4"],
-            "correct_answer": "A",
-            "explanation": "Optional explanation of why this is correct"
-        }
-    ]
-}
+You MUST respond with ONLY valid JSON, no other text before or after. Use this exact format:
+{"questions": [{"question_text": "The full question text", "question_type": "multiple_choice", "options": ["A) Option 1", "B) Option 2", "C) Option 3", "D) Option 4"], "correct_answer": "A", "explanation": "Why this is correct"}]}
 
-Important:
-- For multiple_choice: options should be an array of strings, correct_answer is the letter (A, B, C, D)
-- For true_false: options should be ["True", "False"], correct_answer is "True" or "False"
-- For written_answer: options should be null, correct_answer is the expected answer text
-- For fill_in_blank: options should be null, correct_answer is the word/phrase for the blank
+Important rules:
+- For multiple_choice: options is an array of strings, correct_answer is the letter (A, B, C, D)
+- For true_false: options is ["True", "False"], correct_answer is "True" or "False"
+- For written_answer: options is null, correct_answer is the expected answer text
+- For fill_in_blank: options is null, correct_answer is the word/phrase for the blank
+- Use double quotes for all strings
+- No trailing commas
+- Escape special characters in strings properly
 
 Document content:
 """
@@ -102,7 +95,7 @@ async def extract_text_from_docx(content: bytes) -> str:
 async def extract_questions_with_ai(text_content: str) -> List[dict]:
     """Use AI to extract questions from document text."""
     # Truncate if too long
-    max_length = 15000
+    max_length = 12000
     if len(text_content) > max_length:
         text_content = text_content[:max_length] + "..."
 
@@ -111,16 +104,25 @@ async def extract_questions_with_ai(text_content: str) -> List[dict]:
     try:
         response = await ai_service.generate_json(
             prompt=prompt,
-            system_prompt="You are an expert at analyzing educational documents and extracting quiz questions. Always respond with valid JSON.",
+            system_prompt="You are an expert at analyzing educational documents and extracting quiz questions. Always respond with valid JSON only, no additional text. Do not include any markdown formatting or code blocks.",
             max_tokens=4000,
-            temperature=0.2,  # Low temperature for accuracy
+            temperature=0.1,  # Very low temperature for accuracy
         )
 
+        logger.info("ai_extraction_raw_response", response_preview=response[:500] if response else "empty")
+
         # Parse the response
-        cleaned = response.strip()
+        cleaned = response.strip() if response else ""
+
+        if not cleaned:
+            logger.error("ai_extraction_empty_response")
+            raise ValueError("AI returned empty response")
+
         # Remove markdown code blocks if present
         cleaned = re.sub(r"```json\s*", "", cleaned)
         cleaned = re.sub(r"```\s*", "", cleaned)
+        cleaned = re.sub(r"```", "", cleaned)
+        cleaned = cleaned.strip()
 
         # Find JSON object
         start = cleaned.find("{")
@@ -128,14 +130,65 @@ async def extract_questions_with_ai(text_content: str) -> List[dict]:
         if start != -1 and end > start:
             cleaned = cleaned[start:end]
 
-        data = json.loads(cleaned)
-        return data.get("questions", [])
+        # Try to fix common JSON issues
+        # Remove trailing commas before } or ]
+        cleaned = re.sub(r",\s*}", "}", cleaned)
+        cleaned = re.sub(r",\s*]", "]", cleaned)
+        # Fix escaped quotes that might cause issues
+        cleaned = re.sub(r'\\"', '"', cleaned)
+        # Fix newlines in strings
+        cleaned = re.sub(r'(?<!\\)\n', ' ', cleaned)
+
+        try:
+            data = json.loads(cleaned)
+            questions = data.get("questions", [])
+            logger.info("ai_extraction_success", question_count=len(questions))
+            return questions
+        except json.JSONDecodeError as parse_error:
+            logger.warning("ai_extraction_first_parse_failed", error=str(parse_error))
+
+            # Try to extract questions array directly if the outer object is malformed
+            questions_match = re.search(r'"questions"\s*:\s*\[', cleaned)
+            if questions_match:
+                # Find the array and try to parse it
+                array_start = cleaned.find("[", questions_match.start())
+                if array_start != -1:
+                    # Find matching closing bracket
+                    depth = 0
+                    array_end = array_start
+                    for i, char in enumerate(cleaned[array_start:], start=array_start):
+                        if char == "[":
+                            depth += 1
+                        elif char == "]":
+                            depth -= 1
+                            if depth == 0:
+                                array_end = i + 1
+                                break
+
+                    array_str = cleaned[array_start:array_end]
+                    # Clean up trailing commas in array
+                    array_str = re.sub(r",\s*}", "}", array_str)
+                    array_str = re.sub(r",\s*]", "]", array_str)
+
+                    try:
+                        questions = json.loads(array_str)
+                        if isinstance(questions, list):
+                            logger.info("ai_extraction_array_parse_success", question_count=len(questions))
+                            return questions
+                    except json.JSONDecodeError as array_error:
+                        logger.warning("ai_extraction_array_parse_failed", error=str(array_error))
+
+            # If still failing, log and raise with more detail
+            logger.error("ai_extraction_json_error",
+                        response_preview=cleaned[:500],
+                        parse_error=str(parse_error))
+            raise ValueError(f"AI returned invalid JSON that could not be parsed: {str(parse_error)}")
 
     except json.JSONDecodeError as e:
         logger.error("ai_extraction_json_error", error=str(e))
         raise ValueError(f"AI returned invalid JSON: {str(e)}")
     except Exception as e:
-        logger.error("ai_extraction_error", error=str(e))
+        logger.error("ai_extraction_error", error=str(e), error_type=type(e).__name__)
         raise ValueError(f"AI extraction failed: {str(e)}")
 
 router = APIRouter(prefix="/api", tags=["sample-questions"])

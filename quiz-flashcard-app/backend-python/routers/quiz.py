@@ -268,6 +268,7 @@ async def get_quiz_session(
         "category_id": session.category_id,
         "settings": session.settings,
         "questions": session.questions,
+        "answers": session.answers,
         "total_questions": session.total_questions,
         "completed": session.completed,
         "score": session.score,

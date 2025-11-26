@@ -137,19 +137,26 @@ function QuizSession() {
   const loadQuiz = async () => {
     try {
       const response = await quizApi.getSession(sessionId);
-      const session = response.data.data;
+      const session = response.data.data || response.data;
 
       if (session.completed) {
         navigate(`/category/${categoryId}/quiz/results/${sessionId}`);
         return;
       }
 
-      const parsedSettings = JSON.parse(session.settings);
+      // Handle settings - could be string or object
+      const parsedSettings = typeof session.settings === 'string'
+        ? JSON.parse(session.settings)
+        : session.settings;
       setSettings(parsedSettings);
 
-      const questionIds = JSON.parse(session.questions);
+      // Handle questions - could be string or object/array
+      const questionIds = typeof session.questions === 'string'
+        ? JSON.parse(session.questions)
+        : session.questions;
       const questionsResponse = await quizApi.getQuestions(categoryId);
-      const allQuestions = questionsResponse.data.data;
+      const questionsData = questionsResponse.data.data || questionsResponse.data;
+      const allQuestions = questionsData.questions || questionsData || [];
 
       const sessionQuestions = questionIds
         .map(id => allQuestions.find(q => q.id === id))
@@ -163,8 +170,10 @@ function QuizSession() {
       // Load existing handwritten answers
       try {
         const handwrittenResponse = await quizEnhancedApi.getHandwrittenAnswers(sessionId);
+        const handwrittenData = handwrittenResponse.data.data || handwrittenResponse.data;
+        const handwrittenArray = Array.isArray(handwrittenData) ? handwrittenData : (handwrittenData.answers || []);
         const handwritten = {};
-        handwrittenResponse.data.data.forEach(h => {
+        handwrittenArray.forEach(h => {
           handwritten[h.question_id] = h;
         });
         setHandwrittenFiles(handwritten);
@@ -456,7 +465,7 @@ function QuizSession() {
               Fill in the blank with the appropriate answer. Use the toolbar for scientific notation, formulas, and symbols.
             </p>
           </div>
-        ) : (
+        ) : currentQuestion.options && currentQuestion.options.length > 0 ? (
           <div className="space-y-3">
             {currentQuestion.options.map((option, index) => {
               const letter = option.charAt(0);
@@ -476,6 +485,10 @@ function QuizSession() {
                 </button>
               );
             })}
+          </div>
+        ) : (
+          <div className="text-center py-8 text-gray-500">
+            <p>This question has no answer options configured.</p>
           </div>
         )}
       </div>

@@ -2,9 +2,9 @@
 Multi-provider AI service for Scholarly.
 
 Supports:
-- NVIDIA (primary for reasoning agents)
+- Moonshot/Kimi K2 (primary for reasoning agents)
 - OpenAI (vision for handwriting recognition)
-- Groq, Together, HuggingFace (optional)
+- NVIDIA (legacy support)
 """
 import base64
 from typing import Any, Dict, List, Optional
@@ -21,21 +21,30 @@ class AIService:
     """
     Multi-provider AI service.
 
-    Handles text generation (NVIDIA) and vision (OpenAI) tasks.
+    Handles text generation (Moonshot/Kimi K2) and vision (OpenAI) tasks.
     """
 
     def __init__(self):
         """Initialize AI clients based on available API keys."""
+        self._moonshot_client: Optional[AsyncOpenAI] = None
         self._nvidia_client: Optional[AsyncOpenAI] = None
         self._openai_client: Optional[AsyncOpenAI] = None
 
-        # Initialize NVIDIA client (OpenAI-compatible API)
+        # Initialize Moonshot/Kimi K2 client (OpenAI-compatible API)
+        if settings.moonshot_api_key:
+            self._moonshot_client = AsyncOpenAI(
+                api_key=settings.moonshot_api_key,
+                base_url=settings.moonshot_base_url,
+            )
+            logger.info("moonshot_client_initialized", model=settings.ai_model, base_url=settings.moonshot_base_url)
+
+        # Initialize NVIDIA client (legacy, OpenAI-compatible API)
         if settings.nvidia_api_key:
             self._nvidia_client = AsyncOpenAI(
                 api_key=settings.nvidia_api_key,
-                base_url="https://integrate.api.nvidia.com/v1",
+                base_url=settings.nvidia_base_url,
             )
-            logger.info("nvidia_client_initialized", model=settings.ai_model)
+            logger.info("nvidia_client_initialized", model=settings.ai_model, base_url=settings.nvidia_base_url)
 
         # Initialize OpenAI client (for vision)
         if settings.openai_api_key:
@@ -78,7 +87,7 @@ class AIService:
 
         messages.append({"role": "user", "content": prompt})
 
-        model = settings.ai_model if provider == "nvidia" else settings.vision_model
+        model = settings.ai_model if provider in ("moonshot", "nvidia") else settings.vision_model
 
         logger.info(
             "ai_generate_text",
@@ -215,13 +224,21 @@ class AIService:
 
     def _get_client(self, provider: str) -> Optional[AsyncOpenAI]:
         """Get the appropriate client for a provider."""
-        if provider == "nvidia":
+        if provider == "moonshot":
+            return self._moonshot_client
+        elif provider == "nvidia":
             return self._nvidia_client
         elif provider == "openai":
             return self._openai_client
         else:
             logger.warning("unknown_provider", provider=provider)
-            return self._nvidia_client  # Fallback to primary
+            # Fallback to moonshot (primary), then nvidia
+            return self._moonshot_client or self._nvidia_client
+
+    @property
+    def has_moonshot(self) -> bool:
+        """Check if Moonshot/Kimi K2 is available."""
+        return self._moonshot_client is not None
 
     @property
     def has_nvidia(self) -> bool:

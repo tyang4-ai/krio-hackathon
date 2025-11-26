@@ -194,7 +194,7 @@ class SystemStatsResponse(BaseModel):
 )
 async def analyze_category_samples(
     category_id: int,
-    request: AnalyzeRequest = AnalyzeRequest(),
+    request: Optional[AnalyzeRequest] = None,
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -203,7 +203,8 @@ async def analyze_category_samples(
     The analysis extracts patterns and style guides that will be
     used to generate consistent questions.
     """
-    result = await trigger_analysis(db, category_id, force=request.force)
+    force = request.force if request else False
+    result = await trigger_analysis(db, category_id, force=force)
     await db.commit()
 
     if not result.get("success"):
@@ -218,7 +219,6 @@ async def analyze_category_samples(
 
 @router.get(
     "/categories/{category_id}/analysis-status",
-    response_model=AnalysisStatusResponse,
     summary="Get analysis status",
 )
 async def get_category_analysis_status(
@@ -226,8 +226,30 @@ async def get_category_analysis_status(
     db: AsyncSession = Depends(get_db),
 ):
     """Get the current analysis status for a category."""
-    status_data = await get_analysis_status(db, category_id)
-    return AnalysisStatusResponse(**status_data)
+    try:
+        status_data = await get_analysis_status(db, category_id)
+        # Return in format frontend expects (hasAnalysis, sampleCount, lastUpdated)
+        return {
+            "hasAnalysis": status_data.get("has_analysis", False),
+            "has_analysis": status_data.get("has_analysis", False),
+            "analysis": status_data.get("analysis"),
+            "sampleCount": status_data.get("sample_count", 0),
+            "sample_count": status_data.get("sample_count", 0),
+            "samples_by_type": status_data.get("samples_by_type", {}),
+            "lastUpdated": status_data.get("analysis", {}).get("updated_at") if status_data.get("analysis") else None,
+        }
+    except Exception as e:
+        logger.error("analysis_status_error", category_id=category_id, error=str(e))
+        # Return default response instead of 500 error
+        return {
+            "hasAnalysis": False,
+            "has_analysis": False,
+            "analysis": None,
+            "sampleCount": 0,
+            "sample_count": 0,
+            "samples_by_type": {},
+            "lastUpdated": None,
+        }
 
 
 @router.delete(
@@ -419,7 +441,13 @@ async def generate_category_flashcards(
                 error="No content or documents provided",
             )
 
-        combined = "\n\n".join([doc.content for doc in documents])
+        # Use content_text field from Document model
+        combined = "\n\n".join([doc.content_text for doc in documents if doc.content_text])
+        if not combined.strip():
+            return GenerateFlashcardsResponse(
+                success=False,
+                error="Documents have not been processed yet. Please wait for processing to complete.",
+            )
         result = await generate_flashcards(
             db=db,
             category_id=category_id,

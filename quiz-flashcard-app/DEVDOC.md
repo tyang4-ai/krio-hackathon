@@ -13,6 +13,7 @@
 10. [Personalization System](#personalization-system)
 11. [Development Setup](#development-setup)
 12. [Deployment](#deployment)
+13. [API Contract Validation Guidelines](#api-contract-validation-guidelines)
 
 ---
 
@@ -2117,7 +2118,16 @@ Generate new questions that match this style while covering different concepts.
 
 ### Common Issues
 
-#### 1. Database Connection Errors
+#### 1. Frontend-Backend API Mismatch (v5.3.0 Fixes)
+**Symptom**: Various errors like "Cannot read properties of undefined reading 'length'" or 400 errors
+**Root Cause**: Data structure mismatch between frontend expectations and backend responses
+**Solutions**:
+- Use response unwrapping: `const data = response.data.data || response.data;`
+- Handle field naming: `data.snake_case || data.camelCase || defaultValue`
+- Check route paths match exactly between frontend and backend
+- See "API Contract Validation Guidelines" section for detailed patterns
+
+#### 2. Database Connection Errors
 **Symptom**: "Cannot read property 'prepare' of null"
 **Solution**: Ensure database is initialized before use
 ```javascript
@@ -2445,4 +2455,114 @@ docker-compose exec backend alembic downgrade -1
 ---
 
 **Last Updated**: 2025-11-25
-**Version**: 5.2.0 (Python Migration - AI Multi-Agent System Complete)
+**Version**: 5.3.0 (API Contract Validation + Bug Fixes)
+
+---
+
+## API Contract Validation Guidelines
+
+### CRITICAL: Frontend-Backend Data Structure Alignment
+
+When making changes to API endpoints (backend) or API calls (frontend), ALWAYS verify that the data structures match between frontend expectations and backend responses.
+
+**See**: `.claude/skills/api-contract-validation.md` for detailed guidelines
+
+### Common Issues Fixed (v5.3.0)
+
+#### 1. Response Wrapper Mismatch
+**Problem**: Frontend expected `response.data.data.field` but backend returns `{ field: value }` directly.
+
+**Solution** (implemented in `frontend/src/services/api.js`):
+```javascript
+// Response interceptor normalizes format
+api.interceptors.response.use(
+  (response) => {
+    if (response.data && !response.data.data && typeof response.data === 'object') {
+      const needsWrapping = !Array.isArray(response.data) &&
+        (response.data.categories !== undefined || ...);
+      if (needsWrapping) {
+        response.data = { data: response.data };
+      }
+    }
+    return response;
+  }
+);
+```
+
+#### 2. Field Naming Convention Mismatch
+**Problem**: Backend uses `snake_case` (Python), frontend expects `camelCase` (JavaScript).
+
+**Solution**: Use fallback patterns in frontend components:
+```javascript
+// Handle both naming conventions
+const score = data.integrity_score || data.integrityScore || 0;
+const count = data.total_violations || data.totalViolations || 0;
+const reviewed = stats?.reviewed_cards || stats?.reviewed || 0;
+```
+
+#### 3. Error Format Normalization
+**Problem**: FastAPI returns `{ detail: "error" }`, frontend expects `{ error: "error" }`.
+
+**Solution** (implemented in `frontend/src/services/api.js`):
+```javascript
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.data?.detail) {
+      error.response.data.error = error.response.data.detail;
+    }
+    return Promise.reject(error);
+  }
+);
+```
+
+#### 4. Route Path Mismatch
+**Problem**: Flashcard progress route `/flashcards/{id}/progress` vs `/categories/{categoryId}/flashcards/{id}/progress`.
+
+**Solution** (implemented in `frontend/src/services/api.js`):
+```javascript
+updateProgress: (id, data) => {
+  const categoryId = data.categoryId || data.category_id;
+  return api.post(`/categories/${categoryId}/flashcards/${id}/progress`, {
+    confidence_level: data.confidence || data.confidence_level
+  });
+}
+```
+
+#### 5. Array Response Handling
+**Problem**: Backend returns `{ flashcards: [...] }` but frontend accessed it as direct array.
+
+**Solution**: Use defensive unwrapping patterns:
+```javascript
+const cardsData = cardsResponse.data.data || cardsResponse.data;
+setFlashcards(cardsData.flashcards || cardsData || []);
+```
+
+### Files Modified for API Contract Fixes
+
+| File | Changes |
+|------|---------|
+| `frontend/src/services/api.js` | Added response interceptor, fixed updateProgress route |
+| `frontend/src/pages/Home.jsx` | Fixed categories data unwrapping |
+| `frontend/src/pages/CategoryDashboard.jsx` | Fixed documents, samples, analysis data unwrapping |
+| `frontend/src/pages/QuizPage.jsx` | Fixed category, stats, history data unwrapping |
+| `frontend/src/pages/QuizSession.jsx` | Fixed session, questions, handwritten data unwrapping |
+| `frontend/src/pages/QuizResults.jsx` | Fixed integrity report, partial grades, handwritten answers handling |
+| `frontend/src/pages/FlashcardsPage.jsx` | Fixed cards, stats data unwrapping and field naming |
+| `frontend/src/pages/NotebookPage.jsx` | Fixed entries, stats, most-missed data unwrapping |
+| `backend-python/routers/ai.py` | Made analyze-samples request body optional |
+| `backend-python/routers/documents.py` | Connected generate endpoints to AI agents |
+| `backend-python/agents/controller_agent.py` | Fixed Document model field names |
+| `backend-python/schemas/document.py` | Added missing request fields |
+
+### Validation Checklist
+
+Before committing any API-related change:
+
+- [ ] Route paths match between `frontend/src/services/api.js` and `backend-python/routers/*.py`
+- [ ] Request body field names match backend Pydantic schema in `backend-python/schemas/*.py`
+- [ ] Response structure matches frontend component expectations
+- [ ] Field names handled (snake_case vs camelCase fallbacks)
+- [ ] Response wrapping handled (`response.data.data || response.data`)
+- [ ] Error format normalized (FastAPI `detail` → frontend `error`)
+- [ ] Arrays properly unwrapped (`data.items || data || []`)
