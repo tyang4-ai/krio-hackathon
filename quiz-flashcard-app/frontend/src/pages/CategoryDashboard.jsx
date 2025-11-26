@@ -50,6 +50,12 @@ function CategoryDashboard() {
   const [analyzing, setAnalyzing] = useState(false);
   const [showAnalysisDetails, setShowAnalysisDetails] = useState(false);
 
+  // Progress tracking
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [sampleUploadProgress, setSampleUploadProgress] = useState(0);
+  const [generationProgress, setGenerationProgress] = useState(0);
+  const [analysisProgress, setAnalysisProgress] = useState(0);
+
   useEffect(() => {
     loadData();
   }, [categoryId]);
@@ -92,13 +98,29 @@ function CategoryDashboard() {
     if (!file) return;
 
     setUploading(true);
+    setUploadProgress(0);
+
+    // Simulate progress for better UX
+    const progressInterval = setInterval(() => {
+      setUploadProgress(prev => {
+        if (prev >= 90) return prev;
+        return prev + Math.random() * 15;
+      });
+    }, 200);
+
     try {
       await documentApi.upload(categoryId, file);
-      loadData();
+      setUploadProgress(100);
+      setTimeout(() => {
+        loadData();
+        setUploadProgress(0);
+      }, 500);
     } catch (error) {
       console.error('Error uploading file:', error);
       alert('Error uploading file: ' + error.message);
+      setUploadProgress(0);
     } finally {
+      clearInterval(progressInterval);
       setUploading(false);
       e.target.value = '';
     }
@@ -120,16 +142,31 @@ function CategoryDashboard() {
     const generatingKey = isFlashcards ? 'flashcards' : 'questions';
 
     setGenerating({ ...generating, [generatingKey]: true });
+    setGenerationProgress(0);
+
+    // Simulate progress - AI generation takes time
+    const progressInterval = setInterval(() => {
+      setGenerationProgress(prev => {
+        if (prev >= 85) return prev;
+        return prev + Math.random() * 8;
+      });
+    }, 500);
+
     try {
       let response;
       if (isFlashcards) {
         response = await documentApi.generateFlashcards(categoryId, {
           count: generateOptions.count,
+          difficulty: generateOptions.difficulty,
           custom_directions: generateOptions.customDirections
         });
         const data = response.data.data || response.data;
         const count = data.generated || data.flashcards?.length || 0;
-        alert(`Generated ${count} flashcards!`);
+        setGenerationProgress(100);
+        setTimeout(() => {
+          alert(`Generated ${count} flashcards!`);
+          setGenerationProgress(0);
+        }, 300);
       } else {
         response = await documentApi.generateQuestions(categoryId, {
           count: generateOptions.count,
@@ -139,13 +176,19 @@ function CategoryDashboard() {
         });
         const data = response.data.data || response.data;
         const count = data.generated || data.questions?.length || 0;
-        alert(`Generated ${count} questions!`);
+        setGenerationProgress(100);
+        setTimeout(() => {
+          alert(`Generated ${count} questions!`);
+          setGenerationProgress(0);
+        }, 300);
       }
       loadData();
     } catch (error) {
       console.error('Error generating content:', error);
       alert('Error generating content: ' + (error.response?.data?.error || error.message));
+      setGenerationProgress(0);
     } finally {
+      clearInterval(progressInterval);
       setGenerating({ ...generating, [generatingKey]: false });
     }
   };
@@ -192,14 +235,34 @@ function CategoryDashboard() {
     if (!file) return;
 
     setUploadingSamples(true);
+    setSampleUploadProgress(0);
+
+    // Simulate progress
+    const progressInterval = setInterval(() => {
+      setSampleUploadProgress(prev => {
+        if (prev >= 90) return prev;
+        return prev + Math.random() * 15;
+      });
+    }, 200);
+
     try {
       const response = await sampleQuestionApi.uploadFile(categoryId, file);
-      alert(response.data.message || `Imported ${response.data.samples?.length || 0} sample questions`);
+      // Handle both wrapped and unwrapped response formats
+      const data = response.data.data || response.data;
+      const count = data.samples?.length || 0;
+      const message = data.message || `Imported ${count} sample questions`;
+      setSampleUploadProgress(100);
+      setTimeout(() => {
+        alert(message);
+        setSampleUploadProgress(0);
+      }, 300);
       loadData();
     } catch (error) {
       console.error('Error uploading sample questions:', error);
-      alert('Error uploading file: ' + (error.response?.data?.error || error.message));
+      alert('Error uploading file: ' + (error.response?.data?.detail || error.response?.data?.error || error.message));
+      setSampleUploadProgress(0);
     } finally {
+      clearInterval(progressInterval);
       setUploadingSamples(false);
       e.target.value = '';
     }
@@ -218,12 +281,26 @@ function CategoryDashboard() {
     }
 
     setAnalyzing(true);
+    setAnalysisProgress(0);
+
+    // Simulate progress for AI analysis
+    const progressInterval = setInterval(() => {
+      setAnalysisProgress(prev => {
+        if (prev >= 85) return prev;
+        return prev + Math.random() * 10;
+      });
+    }, 400);
+
     try {
       const response = await analysisApi.triggerAnalysis(categoryId);
       const data = response.data.data || response.data;
       if (data.success) {
         const count = data.analyzed_count || data.analyzedCount || sampleQuestions.length;
-        alert(`Analysis complete! Analyzed ${count} sample questions.`);
+        setAnalysisProgress(100);
+        setTimeout(() => {
+          alert(`Analysis complete! Analyzed ${count} sample questions.`);
+          setAnalysisProgress(0);
+        }, 300);
         // Refresh analysis status
         const statusResponse = await analysisApi.getAnalysisStatus(categoryId);
         const statusData = statusResponse.data.data || statusResponse.data;
@@ -232,7 +309,9 @@ function CategoryDashboard() {
     } catch (error) {
       console.error('Error triggering analysis:', error);
       alert('Error analyzing samples: ' + (error.response?.data?.error || error.message));
+      setAnalysisProgress(0);
     } finally {
+      clearInterval(progressInterval);
       setAnalyzing(false);
     }
   };
@@ -295,11 +374,11 @@ function CategoryDashboard() {
     <div>
       <div className="mb-8">
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => navigate('/')}
           className="flex items-center text-gray-600 hover:text-gray-900 mb-4 transition-colors"
         >
           <ArrowLeft className="h-5 w-5 mr-2" />
-          Back
+          Back to Categories
         </button>
         <h1 className="text-3xl font-bold text-gray-900">{category.name}</h1>
         <p className="text-gray-600 mt-1">{category.description || 'No description'}</p>
@@ -365,7 +444,7 @@ function CategoryDashboard() {
         <div className="card">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold">Documents</h2>
-            <label className="btn-primary cursor-pointer flex items-center space-x-2">
+            <label htmlFor="documentUpload" className="btn-primary cursor-pointer flex items-center space-x-2">
               {uploading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
@@ -374,6 +453,8 @@ function CategoryDashboard() {
               <span>{uploading ? 'Uploading...' : 'Upload'}</span>
               <input
                 type="file"
+                id="documentUpload"
+                name="documentUpload"
                 className="hidden"
                 accept=".pdf,.doc,.docx,.txt,.md"
                 onChange={handleFileUpload}
@@ -381,6 +462,22 @@ function CategoryDashboard() {
               />
             </label>
           </div>
+
+          {/* Document Upload Progress Bar */}
+          {uploading && uploadProgress > 0 && (
+            <div className="mb-4">
+              <div className="flex justify-between text-xs text-gray-600 mb-1">
+                <span>Uploading document...</span>
+                <span>{Math.round(uploadProgress)}%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div
+                  className="bg-primary-500 h-2 rounded-full transition-all duration-200"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+            </div>
+          )}
 
           {documents.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
@@ -423,10 +520,12 @@ function CategoryDashboard() {
 
           <div className="space-y-4 mb-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="contentType" className="block text-sm font-medium text-gray-700 mb-1">
                 Content Type
               </label>
               <select
+                id="contentType"
+                name="contentType"
                 className="select"
                 value={generateOptions.contentType}
                 onChange={(e) => setGenerateOptions({ ...generateOptions, contentType: e.target.value })}
@@ -439,29 +538,41 @@ function CategoryDashboard() {
               </select>
             </div>
 
-            {generateOptions.contentType !== 'flashcards' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Difficulty
-                </label>
-                <select
-                  className="select"
-                  value={generateOptions.difficulty}
-                  onChange={(e) => setGenerateOptions({ ...generateOptions, difficulty: e.target.value })}
-                >
-                  <option value="easy">Easy</option>
-                  <option value="medium">Medium</option>
-                  <option value="hard">Hard</option>
-                </select>
-              </div>
-            )}
+            <div>
+              <label htmlFor="generateDifficulty" className="block text-sm font-medium text-gray-700 mb-1">
+                Difficulty
+              </label>
+              <select
+                id="generateDifficulty"
+                name="generateDifficulty"
+                className="select"
+                value={generateOptions.difficulty}
+                onChange={(e) => setGenerateOptions({ ...generateOptions, difficulty: e.target.value })}
+              >
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
+                {(generateOptions.contentType === 'flashcards' || generateOptions.contentType === 'multiple_choice') && (
+                  <option value="concepts">Concepts Only</option>
+                )}
+              </select>
+              {generateOptions.difficulty === 'concepts' && (
+                <p className="text-xs text-blue-600 mt-1">
+                  {generateOptions.contentType === 'flashcards'
+                    ? 'Focus on key terms and definitions (e.g., "Structure with 5 bonding pairs, 1 lone pair")'
+                    : 'Focus on testing key terminology, definitions, and core concepts'}
+                </p>
+              )}
+            </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="generateCount" className="block text-sm font-medium text-gray-700 mb-1">
                 Count
               </label>
               <input
                 type="number"
+                id="generateCount"
+                name="generateCount"
                 className="input"
                 min="1"
                 max="50"
@@ -507,6 +618,22 @@ function CategoryDashboard() {
             </span>
           </button>
 
+          {/* Generation Progress Bar */}
+          {(generating.questions || generating.flashcards) && generationProgress > 0 && (
+            <div className="mt-3">
+              <div className="flex justify-between text-xs text-gray-600 mb-1">
+                <span>Generating {generateOptions.contentType === 'flashcards' ? 'flashcards' : 'questions'}...</span>
+                <span>{Math.round(generationProgress)}%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div
+                  className="bg-primary-500 h-2 rounded-full transition-all duration-200"
+                  style={{ width: `${generationProgress}%` }}
+                />
+              </div>
+            </div>
+          )}
+
           {documents.length === 0 && (
             <p className="text-sm text-gray-500 mt-3 text-center">
               Upload documents first to generate content
@@ -525,34 +652,34 @@ function CategoryDashboard() {
             </p>
           </div>
           <div className="flex space-x-2">
-            {/* Analysis Button */}
-            <button
-              onClick={handleTriggerAnalysis}
-              disabled={analyzing || sampleQuestions.length === 0}
-              className={`flex items-center space-x-2 px-3 py-2 rounded-lg border transition-colors ${
-                analysisStatus?.hasAnalysis
-                  ? 'bg-green-50 border-green-300 text-green-700 hover:bg-green-100'
-                  : 'bg-purple-50 border-purple-300 text-purple-700 hover:bg-purple-100'
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
-              title={analysisStatus?.hasAnalysis ? 'Re-analyze patterns' : 'Analyze patterns'}
-            >
-              {analyzing ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : analysisStatus?.hasAnalysis ? (
-                <CheckCircle className="h-4 w-4" />
-              ) : (
-                <Brain className="h-4 w-4" />
-              )}
-              <span className="text-sm font-medium">
-                {analyzing ? 'Analyzing...' : analysisStatus?.hasAnalysis ? 'Analyzed' : 'Analyze'}
-              </span>
-            </button>
-
-            {analysisStatus?.hasAnalysis && (
-              <>
+            {/* Analysis Button with Eye Icon */}
+            <div className="flex">
+              <button
+                onClick={handleTriggerAnalysis}
+                disabled={analyzing || sampleQuestions.length === 0}
+                className={`flex items-center space-x-2 px-3 py-2 rounded-l-lg border transition-colors ${
+                  analysisStatus?.hasAnalysis
+                    ? 'bg-green-50 border-green-300 text-green-700 hover:bg-green-100'
+                    : 'bg-purple-50 border-purple-300 text-purple-700 hover:bg-purple-100'
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+                title={analysisStatus?.hasAnalysis ? 'Re-analyze patterns' : 'Analyze patterns'}
+              >
+                {analyzing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : analysisStatus?.hasAnalysis ? (
+                  <CheckCircle className="h-4 w-4" />
+                ) : (
+                  <Brain className="h-4 w-4" />
+                )}
+                <span className="text-sm font-medium">
+                  {analyzing ? 'Analyzing...' : analysisStatus?.hasAnalysis ? 'Analyzed' : 'Analyze'}
+                </span>
+              </button>
+              {/* Eye icon button - always next to analyze button when analysis exists */}
+              {analysisStatus?.hasAnalysis && (
                 <button
                   onClick={() => setShowAnalysisDetails(!showAnalysisDetails)}
-                  className={`flex items-center space-x-1 px-3 py-2 rounded-lg border transition-colors ${
+                  className={`flex items-center px-2 py-2 rounded-r-lg border border-l-0 transition-colors ${
                     showAnalysisDetails
                       ? 'bg-blue-100 border-blue-400 text-blue-700'
                       : 'bg-blue-50 border-blue-300 text-blue-600 hover:bg-blue-100'
@@ -560,19 +687,21 @@ function CategoryDashboard() {
                   title="View analysis details"
                 >
                   <Eye className="h-5 w-5" />
-                  <span className="text-sm font-medium">View Results</span>
                 </button>
-                <button
-                  onClick={handleClearAnalysis}
-                  className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
-                  title="Clear analysis"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                </button>
-              </>
+              )}
+            </div>
+
+            {analysisStatus?.hasAnalysis && (
+              <button
+                onClick={handleClearAnalysis}
+                className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                title="Clear analysis"
+              >
+                <RefreshCw className="h-4 w-4" />
+              </button>
             )}
 
-            <label className="btn-secondary cursor-pointer flex items-center space-x-2">
+            <label htmlFor="sampleFileUpload" className="btn-secondary cursor-pointer flex items-center space-x-2">
               {uploadingSamples ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
@@ -581,6 +710,8 @@ function CategoryDashboard() {
               <span>{uploadingSamples ? 'Uploading...' : 'Upload File'}</span>
               <input
                 type="file"
+                id="sampleFileUpload"
+                name="sampleFileUpload"
                 className="hidden"
                 accept=".json,.csv,.pdf,.docx"
                 onChange={handleSampleFileUpload}
@@ -596,6 +727,38 @@ function CategoryDashboard() {
             </button>
           </div>
         </div>
+
+        {/* Sample Upload Progress Bar */}
+        {uploadingSamples && sampleUploadProgress > 0 && (
+          <div className="mb-4">
+            <div className="flex justify-between text-xs text-gray-600 mb-1">
+              <span>Uploading sample questions...</span>
+              <span>{Math.round(sampleUploadProgress)}%</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div
+                className="bg-primary-500 h-2 rounded-full transition-all duration-200"
+                style={{ width: `${sampleUploadProgress}%` }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Analysis Progress Bar */}
+        {analyzing && analysisProgress > 0 && (
+          <div className="mb-4">
+            <div className="flex justify-between text-xs text-gray-600 mb-1">
+              <span>Analyzing sample questions...</span>
+              <span>{Math.round(analysisProgress)}%</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div
+                className="bg-purple-500 h-2 rounded-full transition-all duration-200"
+                style={{ width: `${analysisProgress}%` }}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Analysis Status Banner */}
         {analysisStatus?.hasAnalysis && (
@@ -785,10 +948,12 @@ function CategoryDashboard() {
             <div className="space-y-4">
               {/* Question Type Selector */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="sampleQuestionType" className="block text-sm font-medium text-gray-700 mb-1">
                   Question Type
                 </label>
                 <select
+                  id="sampleQuestionType"
+                  name="sampleQuestionType"
                   className="select"
                   value={newSample.question_type}
                   onChange={(e) => handleQuestionTypeChange(e.target.value)}
@@ -801,10 +966,12 @@ function CategoryDashboard() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="sampleQuestionText" className="block text-sm font-medium text-gray-700 mb-1">
                   Question
                 </label>
                 <textarea
+                  id="sampleQuestionText"
+                  name="sampleQuestionText"
                   className="input min-h-[80px]"
                   placeholder={newSample.question_type === 'fill_in_blank'
                     ? "Enter your question with _____ for the blank (e.g., 'The chemical formula for water is _____.')"
@@ -817,14 +984,16 @@ function CategoryDashboard() {
               {/* Options - Only for multiple choice and true/false */}
               {(newSample.question_type === 'multiple_choice' || newSample.question_type === 'true_false') && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <span className="block text-sm font-medium text-gray-700 mb-1">
                     Options
-                  </label>
+                  </span>
                   <div className="space-y-2">
                     {newSample.options.map((opt, index) => (
                       <input
                         key={index}
                         type="text"
+                        id={`sampleOption${index}`}
+                        name={`sampleOption${index}`}
                         className="input"
                         placeholder={`Option ${String.fromCharCode(65 + index)}`}
                         value={opt}
@@ -838,11 +1007,13 @@ function CategoryDashboard() {
 
               {/* Correct Answer */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="sampleCorrectAnswer" className="block text-sm font-medium text-gray-700 mb-1">
                   Correct Answer
                 </label>
                 {(newSample.question_type === 'multiple_choice' || newSample.question_type === 'true_false') ? (
                   <select
+                    id="sampleCorrectAnswer"
+                    name="sampleCorrectAnswer"
                     className="select"
                     value={newSample.correct_answer}
                     onChange={(e) => setNewSample({ ...newSample, correct_answer: e.target.value })}
@@ -863,6 +1034,8 @@ function CategoryDashboard() {
                   </select>
                 ) : (
                   <textarea
+                    id="sampleCorrectAnswer"
+                    name="sampleCorrectAnswer"
                     className="input min-h-[60px]"
                     placeholder={newSample.question_type === 'fill_in_blank'
                       ? "Enter the text that fills the blank (e.g., 'H₂O')"
@@ -874,10 +1047,12 @@ function CategoryDashboard() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="sampleExplanation" className="block text-sm font-medium text-gray-700 mb-1">
                   Explanation (optional)
                 </label>
                 <textarea
+                  id="sampleExplanation"
+                  name="sampleExplanation"
                   className="input min-h-[60px]"
                   placeholder="Why is this the correct answer..."
                   value={newSample.explanation}

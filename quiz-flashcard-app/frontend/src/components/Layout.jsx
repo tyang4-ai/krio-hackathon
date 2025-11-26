@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, Home } from 'lucide-react';
+import { Hammer, Home } from 'lucide-react';
 
 function Layout({ children }) {
   return (
@@ -10,10 +10,15 @@ function Layout({ children }) {
           <div className="flex justify-between h-16">
             <div className="flex items-center">
               <Link to="/" className="flex items-center space-x-2">
-                <BookOpen className="h-8 w-8 text-primary-500" />
-                <span className="text-xl font-bold text-primary-700">
-                  Scholarly
-                </span>
+                <Hammer className="h-8 w-8 text-primary-500" />
+                <div className="flex flex-col">
+                  <span className="text-xl font-bold text-primary-700 leading-tight">
+                    StudyForge
+                  </span>
+                  <span className="text-xs text-gray-500 hidden sm:block">
+                    Craft smarter quizzes & flashcards
+                  </span>
+                </div>
               </Link>
             </div>
             <div className="flex items-center">

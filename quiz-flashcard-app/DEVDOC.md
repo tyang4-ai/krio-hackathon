@@ -1,4 +1,4 @@
-# Scholarly - Quiz & Flashcard Generator - Developer Documentation
+# StudyForge - Quiz & Flashcard Generator - Developer Documentation
 
 ## Table of Contents
 1. [Project Overview](#project-overview)
@@ -19,7 +19,9 @@
 
 ## Project Overview
 
-Scholarly is an AI-powered educational platform that generates quiz questions and flashcards from uploaded documents. It features adaptive learning through user performance tracking and content personalization.
+StudyForge is an AI-powered educational platform that generates quiz questions and flashcards from uploaded documents. It features adaptive learning through user performance tracking and content personalization.
+
+**Tagline**: "Craft smarter quizzes and flashcards from any doc."
 
 ### Key Features
 - **Multi-format Document Support**: PDF, TXT, DOCX, MD
@@ -2458,11 +2460,67 @@ docker-compose exec backend alembic downgrade -1
 ---
 
 **Last Updated**: 2025-11-26
-**Version**: 5.4.0 (Moonshot Kimi K2 Integration + Bug Fixes)
+**Version**: 5.5.0 (StudyForge Rebrand + UX Improvements)
 
 ---
 
 ## Changelog
+
+### v5.5.0 (2025-11-26)
+
+**Rebranding**:
+- Renamed application from "Scholarly" to "StudyForge"
+- New tagline: "Craft smarter quizzes and flashcards from any doc."
+- Updated branding in Layout.jsx with Hammer icon
+- Updated page title in index.html
+
+**UX Improvements**:
+- **Eye Icon Button for AI Analysis**: Added dedicated eye icon button next to Analyze button to view AI analysis results (appears as button group when analysis exists)
+- **Progress Bars**: Added visual progress bars for:
+  - Document uploads
+  - Sample question file uploads
+  - Content generation (questions/flashcards)
+  - AI analysis of sample questions
+- **Back Button Navigation**: All back buttons now navigate to parent pages instead of using browser history:
+  - CategoryDashboard → Home
+  - QuizPage → CategoryDashboard
+  - FlashcardsPage → CategoryDashboard
+  - QuestionBank → CategoryDashboard
+  - NotebookPage → CategoryDashboard
+
+**New Features**:
+- **Concepts Only Mode for MCQs**: Added "Concepts Only" difficulty option for multiple choice questions (previously only available for flashcards)
+  - Focuses on testing key terminology, definitions, and core concepts
+  - Special prompts for vocabulary and definition-based questions
+
+**Improved Features**:
+- **Concepts Only Flashcards**: Enhanced prompts with multiple example formats:
+  - Term → Definition format
+  - Description → Term format (e.g., "Structure with 5 bonding pairs, 1 lone pair" → "Square pyramidal geometry")
+  - Formula/Symbol → Name format
+  - Property → Concept format
+  - Better suited for chemistry/science content with structural descriptions
+
+**Bug Fixes**:
+- **MCQ Generation Reliability**: Added `_repair_truncated_json()` method to fix truncated/malformed JSON responses from AI
+- **Timed Mode Timer**: Fixed timer not running issue:
+  - Improved dependency tracking for timer state initialization
+  - Timer now properly waits for initialization before starting countdown
+  - Fixed race condition between initialization and countdown effects
+  - Added console logging for debugging timer issues
+
+**Files Changed**:
+- `frontend/index.html` - Updated title to StudyForge
+- `frontend/src/components/Layout.jsx` - Rebranded to StudyForge with Hammer icon
+- `frontend/src/pages/CategoryDashboard.jsx` - Added eye icon button, progress bars, back button fix, concepts-only MCQ option
+- `frontend/src/pages/QuizSession.jsx` - Fixed timer initialization and countdown logic
+- `frontend/src/pages/QuizPage.jsx` - Fixed back button navigation
+- `frontend/src/pages/FlashcardsPage.jsx` - Fixed back button navigation
+- `frontend/src/pages/QuestionBank.jsx` - Fixed back button navigation
+- `frontend/src/pages/NotebookPage.jsx` - Fixed back button navigation
+- `backend-python/agents/generation_agent.py` - Added concepts-only MCQ prompts, improved flashcard prompts, added JSON repair
+
+---
 
 ### v5.4.0 (2025-11-26)
 

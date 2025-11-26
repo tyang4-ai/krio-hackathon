@@ -92,11 +92,11 @@ function QuizPage() {
   return (
     <div>
       <button
-        onClick={() => navigate(-1)}
+        onClick={() => navigate(`/category/${categoryId}`)}
         className="flex items-center text-gray-600 hover:text-gray-900 mb-4 transition-colors"
       >
         <ArrowLeft className="h-5 w-5 mr-2" />
-        Back
+        Back to Dashboard
       </button>
       <h1 className="text-3xl font-bold text-gray-900 mb-2">Quiz - {category?.name}</h1>
       <p className="text-gray-600 mb-8">Test your knowledge with customized quizzes</p>
@@ -159,13 +159,14 @@ function QuizPage() {
                 <h3 className="font-medium text-gray-800">Timer Settings</h3>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <span className="block text-sm font-medium text-gray-700 mb-2">
                     Timer Type
-                  </label>
+                  </span>
                   <div className="flex space-x-4">
-                    <label className="flex items-center">
+                    <label htmlFor="timerType-total" className="flex items-center">
                       <input
                         type="radio"
+                        id="timerType-total"
                         name="timerType"
                         value="total"
                         checked={settings.timerType === 'total'}
@@ -174,9 +175,10 @@ function QuizPage() {
                       />
                       <span className="text-sm">Total Time</span>
                     </label>
-                    <label className="flex items-center">
+                    <label htmlFor="timerType-per_question" className="flex items-center">
                       <input
                         type="radio"
+                        id="timerType-per_question"
                         name="timerType"
                         value="per_question"
                         checked={settings.timerType === 'per_question'}
@@ -190,11 +192,13 @@ function QuizPage() {
 
                 {settings.timerType === 'total' ? (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="totalTimeMinutes" className="block text-sm font-medium text-gray-700 mb-1">
                       Total Time (minutes)
                     </label>
                     <input
                       type="number"
+                      id="totalTimeMinutes"
+                      name="totalTimeMinutes"
                       className="input"
                       min="1"
                       max="180"
@@ -204,11 +208,13 @@ function QuizPage() {
                   </div>
                 ) : (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="perQuestionSeconds" className="block text-sm font-medium text-gray-700 mb-1">
                       Time Per Question (seconds)
                     </label>
                     <input
                       type="number"
+                      id="perQuestionSeconds"
+                      name="perQuestionSeconds"
                       className="input"
                       min="10"
                       max="600"
@@ -222,10 +228,12 @@ function QuizPage() {
 
             {/* Question Selection Mode */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="selectionMode" className="block text-sm font-medium text-gray-700 mb-1">
                 Question Selection
               </label>
               <select
+                id="selectionMode"
+                name="selectionMode"
                 className="select"
                 value={settings.selectionMode}
                 onChange={(e) => setSettings({ ...settings, selectionMode: e.target.value })}
@@ -237,11 +245,13 @@ function QuizPage() {
 
             {settings.selectionMode === 'mixed' ? (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="totalQuestions" className="block text-sm font-medium text-gray-700 mb-1">
                   Total Questions
                 </label>
                 <input
                   type="number"
+                  id="totalQuestions"
+                  name="totalQuestions"
                   className="input"
                   min="1"
                   max={stats?.total || 50}
@@ -255,11 +265,13 @@ function QuizPage() {
             ) : (
               <div className="space-y-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="multipleChoice" className="block text-sm font-medium text-gray-700 mb-1">
                     Multiple Choice Questions
                   </label>
                   <input
                     type="number"
+                    id="multipleChoice"
+                    name="multipleChoice"
                     className="input"
                     min="0"
                     max={stats?.by_type?.multiple_choice || 0}
@@ -272,11 +284,13 @@ function QuizPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="trueFalse" className="block text-sm font-medium text-gray-700 mb-1">
                     True/False Questions
                   </label>
                   <input
                     type="number"
+                    id="trueFalse"
+                    name="trueFalse"
                     className="input"
                     min="0"
                     max={stats?.by_type?.true_false || 0}
@@ -289,11 +303,13 @@ function QuizPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="writtenAnswer" className="block text-sm font-medium text-gray-700 mb-1">
                     Written Answer Questions
                   </label>
                   <input
                     type="number"
+                    id="writtenAnswer"
+                    name="writtenAnswer"
                     className="input"
                     min="0"
                     max={stats?.by_type?.written_answer || 0}
@@ -306,11 +322,13 @@ function QuizPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="fillInBlank" className="block text-sm font-medium text-gray-700 mb-1">
                     Fill in the Blank Questions
                   </label>
                   <input
                     type="number"
+                    id="fillInBlank"
+                    name="fillInBlank"
                     className="input"
                     min="0"
                     max={stats?.by_type?.fill_in_blank || 0}
@@ -331,10 +349,12 @@ function QuizPage() {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="difficulty" className="block text-sm font-medium text-gray-700 mb-1">
                 Difficulty
               </label>
               <select
+                id="difficulty"
+                name="difficulty"
                 className="select"
                 value={settings.difficulty}
                 onChange={(e) => setSettings({ ...settings, difficulty: e.target.value })}
@@ -350,9 +370,11 @@ function QuizPage() {
             <div className="border-t pt-4">
               <h3 className="text-sm font-medium text-gray-700 mb-3">Advanced Options</h3>
               <div className="space-y-3">
-                <label className="flex items-center space-x-3">
+                <label htmlFor="allowPartialCredit" className="flex items-center space-x-3">
                   <input
                     type="checkbox"
+                    id="allowPartialCredit"
+                    name="allowPartialCredit"
                     checked={settings.allowPartialCredit}
                     onChange={(e) => setSettings({ ...settings, allowPartialCredit: e.target.checked })}
                     className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
@@ -361,9 +383,11 @@ function QuizPage() {
                     Enable partial credit for complex questions
                   </span>
                 </label>
-                <label className="flex items-center space-x-3">
+                <label htmlFor="allowHandwrittenUpload" className="flex items-center space-x-3">
                   <input
                     type="checkbox"
+                    id="allowHandwrittenUpload"
+                    name="allowHandwrittenUpload"
                     checked={settings.allowHandwrittenUpload}
                     onChange={(e) => setSettings({ ...settings, allowHandwrittenUpload: e.target.checked })}
                     className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
