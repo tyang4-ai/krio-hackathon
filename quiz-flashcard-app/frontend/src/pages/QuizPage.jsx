@@ -9,6 +9,7 @@ function QuizPage() {
   const [category, setCategory] = useState(null);
   const [stats, setStats] = useState(null);
   const [history, setHistory] = useState([]);
+  const [chapters, setChapters] = useState([]);
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState({
     mode: 'practice', // 'practice', 'timed', 'exam'
@@ -25,7 +26,9 @@ function QuizPage() {
     perQuestionSeconds: 60,
     // Advanced options
     allowPartialCredit: true,
-    allowHandwrittenUpload: true
+    allowHandwrittenUpload: true,
+    // Chapter filter
+    chapter: '' // Empty = random from all chapters
   });
 
   useEffect(() => {
@@ -34,10 +37,11 @@ function QuizPage() {
 
   const loadData = async () => {
     try {
-      const [catResponse, statsResponse, historyResponse] = await Promise.all([
+      const [catResponse, statsResponse, historyResponse, chaptersResponse] = await Promise.all([
         categoryApi.getById(categoryId),
         quizApi.getStats(categoryId),
-        quizApi.getHistory(categoryId)
+        quizApi.getHistory(categoryId),
+        quizApi.getChapters(categoryId)
       ]);
       // Handle both wrapped and unwrapped response formats
       setCategory(catResponse.data.data || catResponse.data);
@@ -45,6 +49,9 @@ function QuizPage() {
       // History response has 'sessions' array, not 'data'
       const historyData = historyResponse.data.data || historyResponse.data;
       setHistory(historyData.sessions || historyData || []);
+      // Chapters response
+      const chaptersData = chaptersResponse.data.data || chaptersResponse.data;
+      setChapters(chaptersData.chapters || chaptersData || []);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -365,6 +372,30 @@ function QuizPage() {
                 <option value="hard">Hard ({stats?.hard || 0})</option>
               </select>
             </div>
+
+            {/* Chapter Filter */}
+            {chapters.length > 0 && (
+              <div>
+                <label htmlFor="chapter" className="block text-sm font-medium text-gray-700 mb-1">
+                  Chapter/Topic Filter
+                </label>
+                <select
+                  id="chapter"
+                  name="chapter"
+                  className="select"
+                  value={settings.chapter}
+                  onChange={(e) => setSettings({ ...settings, chapter: e.target.value })}
+                >
+                  <option value="">Random (All Chapters)</option>
+                  {chapters.map((chapter) => (
+                    <option key={chapter} value={chapter}>{chapter}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Select a chapter to filter questions, or leave as "Random" for all
+                </p>
+              </div>
+            )}
 
             {/* Advanced Options */}
             <div className="border-t pt-4">

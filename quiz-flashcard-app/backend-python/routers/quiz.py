@@ -206,6 +206,19 @@ async def get_question_stats(
     return QuestionStatsResponse(**stats)
 
 
+@router.get(
+    "/categories/{category_id}/questions/chapters",
+    summary="Get available chapters/tags for questions",
+)
+async def get_question_chapters(
+    category_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get all unique chapters/tags from questions in a category."""
+    chapters = await quiz_service.get_question_chapters(db, category_id)
+    return {"chapters": chapters, "total": len(chapters)}
+
+
 # ============== Quiz Sessions ==============
 
 

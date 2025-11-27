@@ -37,6 +37,7 @@ class DocumentService:
         file_type: str,
         file_size: int,
         content: bytes,
+        chapter: Optional[str] = None,
     ) -> Document:
         """
         Save an uploaded document.
@@ -49,6 +50,7 @@ class DocumentService:
             file_type: File extension
             file_size: Size in bytes
             content: File content
+            chapter: Optional chapter/topic name to associate with document
 
         Returns:
             Created Document model
@@ -69,6 +71,7 @@ class DocumentService:
             file_size=file_size,
             storage_path=storage_path,
             processed=False,
+            chapter=chapter,
         )
 
         db.add(document)
@@ -250,6 +253,7 @@ class DocumentService:
         db: AsyncSession,
         category_id: int,
         document_ids: Optional[List[int]] = None,
+        chapter: Optional[str] = None,
     ) -> str:
         """
         Get combined text content from documents in a category.
@@ -258,28 +262,77 @@ class DocumentService:
             db: Database session
             category_id: Category ID
             document_ids: Optional list of specific document IDs
+            chapter: Optional chapter to filter by - only includes documents
+                     that match this chapter
 
         Returns:
             Combined text content
         """
-        if document_ids:
-            result = await db.execute(
-                select(Document)
-                .where(Document.category_id == category_id)
-                .where(Document.id.in_(document_ids))
-                .where(Document.processed == True)
-            )
-        else:
-            result = await db.execute(
-                select(Document)
-                .where(Document.category_id == category_id)
-                .where(Document.processed == True)
-            )
+        query = select(Document).where(Document.category_id == category_id).where(Document.processed == True)
 
+        if document_ids:
+            query = query.where(Document.id.in_(document_ids))
+
+        if chapter:
+            query = query.where(Document.chapter == chapter)
+
+        result = await db.execute(query)
         documents = result.scalars().all()
         content_parts = [doc.content_text for doc in documents if doc.content_text]
 
         return "\n\n---\n\n".join(content_parts)
+
+    async def get_chapters_for_category(
+        self,
+        db: AsyncSession,
+        category_id: int,
+    ) -> List[str]:
+        """
+        Get all unique chapters for documents in a category.
+
+        Args:
+            db: Database session
+            category_id: Category ID
+
+        Returns:
+            List of unique chapter names
+        """
+        result = await db.execute(
+            select(Document.chapter)
+            .where(Document.category_id == category_id)
+            .where(Document.chapter.isnot(None))
+            .distinct()
+        )
+        chapters = [row[0] for row in result.all() if row[0]]
+        return sorted(chapters)
+
+    async def update_document_chapter(
+        self,
+        db: AsyncSession,
+        document_id: int,
+        chapter: Optional[str],
+    ) -> Optional[Document]:
+        """
+        Update the chapter field for a document.
+
+        Args:
+            db: Database session
+            document_id: Document ID
+            chapter: New chapter name (or None to clear)
+
+        Returns:
+            Updated document or None if not found
+        """
+        document = await self.get_document_by_id(db, document_id)
+        if not document:
+            return None
+
+        document.chapter = chapter
+        await db.flush()
+        await db.refresh(document)
+
+        logger.info("document_chapter_updated", document_id=document_id, chapter=chapter)
+        return document
 
     def generate_filename(self, original_name: str) -> str:
         """Generate a unique filename for storage."""

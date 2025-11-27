@@ -208,6 +208,25 @@ class QuizService:
 
         return stats
 
+    async def get_question_chapters(
+        self,
+        db: AsyncSession,
+        category_id: int,
+    ) -> List[str]:
+        """Get all unique chapters/tags from questions in a category."""
+        questions = await self.get_questions_by_category(db, category_id)
+
+        # Collect all unique tags
+        all_tags = set()
+        for q in questions:
+            if q.tags:
+                for tag in q.tags:
+                    if tag:  # Skip empty tags
+                        all_tags.add(tag)
+
+        # Sort alphabetically for consistency
+        return sorted(list(all_tags))
+
     # ============== Quiz Sessions ==============
 
     async def select_questions_for_quiz(
@@ -217,31 +236,35 @@ class QuizService:
         settings: QuizSettings,
     ) -> List[Question]:
         """Select questions for a quiz based on settings."""
+        # Determine chapter filtering
+        chapter_filter = settings.chapter or None
+        chapters_filter = settings.chapters or []
+
         if settings.selection_mode == "custom":
             # Custom mode: get specific counts of each type
             selected_questions = []
 
             if settings.multiple_choice > 0:
                 mc_questions = await self._get_questions_by_type_and_count(
-                    db, category_id, "multiple_choice", settings.multiple_choice, settings.difficulty
+                    db, category_id, "multiple_choice", settings.multiple_choice, settings.difficulty, chapter_filter, chapters_filter
                 )
                 selected_questions.extend(mc_questions)
 
             if settings.true_false > 0:
                 tf_questions = await self._get_questions_by_type_and_count(
-                    db, category_id, "true_false", settings.true_false, settings.difficulty
+                    db, category_id, "true_false", settings.true_false, settings.difficulty, chapter_filter, chapters_filter
                 )
                 selected_questions.extend(tf_questions)
 
             if settings.written_answer > 0:
                 wa_questions = await self._get_questions_by_type_and_count(
-                    db, category_id, "written_answer", settings.written_answer, settings.difficulty
+                    db, category_id, "written_answer", settings.written_answer, settings.difficulty, chapter_filter, chapters_filter
                 )
                 selected_questions.extend(wa_questions)
 
             if settings.fill_in_blank > 0:
                 fib_questions = await self._get_questions_by_type_and_count(
-                    db, category_id, "fill_in_blank", settings.fill_in_blank, settings.difficulty
+                    db, category_id, "fill_in_blank", settings.fill_in_blank, settings.difficulty, chapter_filter, chapters_filter
                 )
                 selected_questions.extend(fib_questions)
 
@@ -259,7 +282,17 @@ class QuizService:
             query = query.order_by(func.random()).limit(settings.total_questions)
 
             result = await db.execute(query)
-            return list(result.scalars().all())
+            questions = list(result.scalars().all())
+
+            # Apply chapter filter in Python (JSON filtering)
+            if chapter_filter or chapters_filter:
+                filter_tags = [chapter_filter] if chapter_filter else chapters_filter
+                questions = [
+                    q for q in questions
+                    if q.tags and any(tag in q.tags for tag in filter_tags)
+                ]
+
+            return questions
 
     async def _get_questions_by_type_and_count(
         self,
@@ -268,6 +301,8 @@ class QuizService:
         question_type: str,
         count: int,
         difficulty: Optional[str] = None,
+        chapter: Optional[str] = None,
+        chapters: Optional[List[str]] = None,
     ) -> List[Question]:
         """Get questions of a specific type with count limit."""
         query = (
@@ -279,10 +314,21 @@ class QuizService:
         if difficulty and difficulty != "mixed":
             query = query.where(Question.difficulty == difficulty)
 
-        query = query.order_by(func.random()).limit(count)
+        query = query.order_by(func.random())
 
         result = await db.execute(query)
-        return list(result.scalars().all())
+        questions = list(result.scalars().all())
+
+        # Apply chapter filter in Python (JSON filtering)
+        if chapter or chapters:
+            filter_tags = [chapter] if chapter else (chapters or [])
+            questions = [
+                q for q in questions
+                if q.tags and any(tag in q.tags for tag in filter_tags)
+            ]
+
+        # Return limited count after filtering
+        return questions[:count]
 
     async def create_quiz_session(
         self,

@@ -4,11 +4,13 @@ Document API routes.
 from pathlib import Path
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import get_db
 from schemas.document import (
+    ChapterBreakdownResponse,
+    ChapterInfo,
     DocumentListResponse,
     DocumentResponse,
     DocumentUploadResponse,
@@ -54,6 +56,7 @@ async def get_documents(
                 storage_path=doc.storage_path,
                 content_text=doc.content_text,
                 processed=doc.processed,
+                chapter=doc.chapter,
                 created_at=doc.created_at,
                 updated_at=doc.updated_at,
             )
@@ -71,6 +74,7 @@ async def get_documents(
 async def upload_document(
     category_id: int,
     file: UploadFile = File(...),
+    chapter: Optional[str] = Form(None),
     db: AsyncSession = Depends(get_db),
 ) -> DocumentUploadResponse:
     """
@@ -78,6 +82,11 @@ async def upload_document(
 
     Supported formats: PDF, DOCX, DOC, TXT, MD
     Max size: 50MB
+
+    Args:
+        chapter: Optional chapter/topic name to associate with this document.
+                 When generating content, you can filter by chapter to only
+                 use documents from that specific chapter.
     """
     # Verify category exists
     category = await category_service.get_category_by_id(db, category_id)
@@ -112,6 +121,7 @@ async def upload_document(
         file_type=file_type,
         file_size=file_size,
         content=content,
+        chapter=chapter,
     )
 
     # Process document to extract text
@@ -127,6 +137,7 @@ async def upload_document(
         original_name=document.original_name,
         file_type=document.file_type,
         file_size=document.file_size,
+        chapter=document.chapter,
     )
 
 
@@ -178,6 +189,7 @@ async def generate_questions_endpoint(
         difficulty=request.difficulty or "medium",
         question_type=request.question_type or "multiple_choice",
         custom_directions=request.custom_directions or "",
+        chapter=request.chapter,
     )
 
     await db.commit()
@@ -227,9 +239,9 @@ async def generate_flashcards_endpoint(
             detail=f"Category with ID {category_id} not found",
         )
 
-    # Get combined content
+    # Get combined content (filtered by chapter if specified)
     content = await document_service.get_combined_content_for_category(
-        db, category_id, request.document_ids
+        db, category_id, request.document_ids, chapter=request.chapter
     )
 
     if not content:
@@ -270,3 +282,103 @@ async def generate_flashcards_endpoint(
         ],
         "generated": len(flashcards),
     }
+
+
+@router.get("/api/categories/{category_id}/documents/chapters")
+async def get_document_chapters(
+    category_id: int,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """
+    Get all unique chapters from documents in a category.
+    """
+    # Verify category exists
+    category = await category_service.get_category_by_id(db, category_id)
+    if not category:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Category with ID {category_id} not found",
+        )
+
+    chapters = await document_service.get_chapters_for_category(db, category_id)
+    return {"chapters": chapters, "total": len(chapters)}
+
+
+@router.patch("/api/documents/{document_id}/chapter")
+async def update_document_chapter(
+    document_id: int,
+    chapter: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """
+    Update the chapter assignment for a document.
+    """
+    document = await document_service.update_document_chapter(db, document_id, chapter)
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Document with ID {document_id} not found",
+        )
+
+    await db.commit()
+    return {
+        "id": document.id,
+        "chapter": document.chapter,
+        "message": "Chapter updated successfully",
+    }
+
+
+@router.post(
+    "/api/documents/{document_id}/analyze-chapters",
+    response_model=ChapterBreakdownResponse,
+)
+async def analyze_document_chapters(
+    document_id: int,
+    db: AsyncSession = Depends(get_db),
+) -> ChapterBreakdownResponse:
+    """
+    Use AI to analyze a document and detect chapter/section boundaries.
+
+    This endpoint extracts the structure of a document, identifying chapters,
+    sections, or major topic divisions that the user can then use to split
+    the document or tag specific portions.
+    """
+    from agents import analyze_document_chapters as analyze_chapters_agent
+
+    document = await document_service.get_document_by_id(db, document_id)
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Document with ID {document_id} not found",
+        )
+
+    if not document.content_text:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Document has not been processed yet. Text content is required.",
+        )
+
+    # Use AI to analyze document structure
+    result = await analyze_chapters_agent(document.content_text)
+
+    if not result.get("success"):
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=result.get("error", "Chapter analysis failed"),
+        )
+
+    chapters = result.get("chapters", [])
+    return ChapterBreakdownResponse(
+        document_id=document.id,
+        original_name=document.original_name,
+        chapters=[
+            ChapterInfo(
+                title=ch.get("title", "Untitled"),
+                start_index=ch.get("start_index", 0),
+                end_index=ch.get("end_index", 0),
+                content_preview=ch.get("content_preview", "")[:200],
+            )
+            for ch in chapters
+        ],
+        total_chapters=len(chapters),
+    )

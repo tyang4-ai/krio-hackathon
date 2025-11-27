@@ -27,7 +27,10 @@ api.interceptors.response.use(
          response.data.session_id !== undefined ||
          response.data.success !== undefined ||
          response.data.id !== undefined ||
-         response.data.name !== undefined);
+         response.data.name !== undefined ||
+         response.data.hasAnalysis !== undefined ||
+         response.data.has_analysis !== undefined ||
+         response.data.message !== undefined);
 
       if (needsWrapping) {
         response.data = { data: response.data };
@@ -56,13 +59,22 @@ export const categoryApi = {
 // Documents
 export const documentApi = {
   getByCategory: (categoryId) => api.get(`/categories/${categoryId}/documents`),
-  upload: (categoryId, file) => {
+  upload: (categoryId, file, chapter = null) => {
     const formData = new FormData();
     formData.append('file', file);
+    if (chapter) {
+      formData.append('chapter', chapter);
+    }
     return api.post(`/categories/${categoryId}/documents`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
+  updateChapter: (documentId, chapter) =>
+    api.patch(`/documents/${documentId}/chapter`, { chapter }),
+  getChapters: (categoryId) =>
+    api.get(`/categories/${categoryId}/documents/chapters`),
+  analyzeChapters: (documentId) =>
+    api.post(`/documents/${documentId}/analyze-chapters`),
   delete: (id) => api.delete(`/documents/${id}`),
   generateQuestions: (categoryId, options) =>
     api.post(`/categories/${categoryId}/generate-questions`, options),
@@ -81,6 +93,8 @@ export const quizApi = {
   rateQuestion: (id, rating) => api.post(`/questions/${id}/rate`, { rating }),
   getStats: (categoryId) =>
     api.get(`/categories/${categoryId}/questions/stats`),
+  getChapters: (categoryId) =>
+    api.get(`/categories/${categoryId}/questions/chapters`),
   createSession: (categoryId, settings) =>
     api.post(`/categories/${categoryId}/quiz`, settings),
   submitAnswers: (sessionId, answers) =>
@@ -100,8 +114,8 @@ export const flashcardApi = {
   update: (id, data) => api.put(`/flashcards/${id}`, data),
   delete: (id) => api.delete(`/flashcards/${id}`),
   rateFlashcard: (id, rating) => api.post(`/flashcards/${id}/rate`, { rating }),
-  getForReview: (categoryId) =>
-    api.get(`/categories/${categoryId}/flashcards/review`),
+  getForReview: (categoryId, options) =>
+    api.get(`/categories/${categoryId}/flashcards/review`, { params: options }),
   updateProgress: (id, data) => {
     // Backend route requires category_id in path
     const categoryId = data.categoryId || data.category_id;
@@ -110,7 +124,9 @@ export const flashcardApi = {
     });
   },
   getStats: (categoryId) =>
-    api.get(`/categories/${categoryId}/flashcards/stats`)
+    api.get(`/categories/${categoryId}/flashcards/stats`),
+  getChapters: (categoryId) =>
+    api.get(`/categories/${categoryId}/flashcards/chapters`)
 };
 
 // Notebook

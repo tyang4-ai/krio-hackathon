@@ -34,6 +34,9 @@ class Document(BaseModel):
     content_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     processed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
+    # Chapter/section metadata
+    chapter: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+
     # Relationship
     category = relationship("Category", backref="documents")
 

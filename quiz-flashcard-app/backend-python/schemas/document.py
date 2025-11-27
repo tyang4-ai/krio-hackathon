@@ -16,6 +16,7 @@ class DocumentBase(BaseSchema):
     original_name: str
     file_type: str
     file_size: int
+    chapter: Optional[str] = None
 
 
 class DocumentResponse(DocumentBase, TimestampSchema):
@@ -43,6 +44,7 @@ class DocumentUploadResponse(BaseSchema):
     original_name: str
     file_type: str
     file_size: int
+    chapter: Optional[str] = None
     message: str = "Document uploaded successfully"
 
 
@@ -61,6 +63,7 @@ class GenerateQuestionsRequest(BaseSchema):
     )
     difficulty: Optional[str] = Field(None, description="easy, medium, hard")
     custom_directions: Optional[str] = Field(None, description="Additional instructions for AI")
+    chapter: Optional[str] = Field(None, description="Filter documents by chapter and tag generated content")
 
 
 class GenerateFlashcardsRequest(BaseSchema):
@@ -72,3 +75,29 @@ class GenerateFlashcardsRequest(BaseSchema):
     count: int = Field(10, ge=1, le=50, description="Number of flashcards to generate")
     difficulty: Optional[str] = Field(None, description="easy, medium, hard")
     custom_directions: Optional[str] = Field(None, description="Additional instructions for AI")
+    chapter: Optional[str] = Field(None, description="Filter documents by chapter and tag generated content")
+
+
+class ChapterBreakdownRequest(BaseSchema):
+    """Request to break down a document into chapters using AI."""
+
+    document_id: int = Field(..., description="Document ID to analyze")
+
+
+class ChapterInfo(BaseSchema):
+    """Information about a detected chapter."""
+
+    title: str
+    start_index: int
+    end_index: int
+    content_preview: str = Field(default="", max_length=200)
+
+
+class ChapterBreakdownResponse(BaseSchema):
+    """Response with detected chapters from document analysis."""
+
+    document_id: int
+    original_name: str
+    chapters: list[ChapterInfo]
+    total_chapters: int
+    message: str = "Document analyzed successfully"

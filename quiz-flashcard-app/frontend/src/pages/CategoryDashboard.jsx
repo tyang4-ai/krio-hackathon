@@ -34,8 +34,12 @@ function CategoryDashboard() {
     contentType: 'multiple_choice', // 'multiple_choice', 'flashcards', 'true_false', 'written_answer', 'fill_in_blank'
     count: 10,
     difficulty: 'medium',
-    customDirections: ''
+    customDirections: '',
+    chapter: '' // Chapter filter for generation
   });
+
+  // Chapter for document upload
+  const [uploadChapter, setUploadChapter] = useState('');
   const [showSampleModal, setShowSampleModal] = useState(false);
   const [newSample, setNewSample] = useState({
     question_text: '',
@@ -109,11 +113,12 @@ function CategoryDashboard() {
     }, 200);
 
     try {
-      await documentApi.upload(categoryId, file);
+      await documentApi.upload(categoryId, file, uploadChapter || null);
       setUploadProgress(100);
       setTimeout(() => {
         loadData();
         setUploadProgress(0);
+        setUploadChapter(''); // Reset chapter after upload
       }, 500);
     } catch (error) {
       console.error('Error uploading file:', error);
@@ -158,7 +163,8 @@ function CategoryDashboard() {
         response = await documentApi.generateFlashcards(categoryId, {
           count: generateOptions.count,
           difficulty: generateOptions.difficulty,
-          custom_directions: generateOptions.customDirections
+          custom_directions: generateOptions.customDirections,
+          chapter: generateOptions.chapter || null
         });
         const data = response.data.data || response.data;
         const count = data.generated || data.flashcards?.length || 0;
@@ -172,7 +178,8 @@ function CategoryDashboard() {
           count: generateOptions.count,
           difficulty: generateOptions.difficulty,
           question_type: generateOptions.contentType,
-          custom_directions: generateOptions.customDirections
+          custom_directions: generateOptions.customDirections,
+          chapter: generateOptions.chapter || null
         });
         const data = response.data.data || response.data;
         const count = data.generated || data.questions?.length || 0;
@@ -463,6 +470,25 @@ function CategoryDashboard() {
             </label>
           </div>
 
+          {/* Chapter Input for Upload */}
+          <div className="mb-4">
+            <label htmlFor="uploadChapter" className="block text-sm font-medium text-gray-700 mb-1">
+              Chapter/Topic (optional)
+            </label>
+            <input
+              type="text"
+              id="uploadChapter"
+              name="uploadChapter"
+              className="input"
+              placeholder="e.g., Chapter 1, Unit 3, Photosynthesis..."
+              value={uploadChapter}
+              onChange={(e) => setUploadChapter(e.target.value)}
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Organize notes by chapter. When generating, you can filter by chapter to only use relevant content.
+            </p>
+          </div>
+
           {/* Document Upload Progress Bar */}
           {uploading && uploadProgress > 0 && (
             <div className="mb-4">
@@ -496,10 +522,15 @@ function CategoryDashboard() {
                     <FileText className="h-5 w-5 text-gray-400" />
                     <div>
                       <p className="text-sm font-medium text-gray-900">{doc.original_name}</p>
-                      <p className="text-xs text-gray-500">
-                        {(doc.file_size / 1024).toFixed(1)} KB
-                        {doc.processed && ' • Processed'}
-                      </p>
+                      <div className="flex items-center gap-2 text-xs text-gray-500">
+                        <span>{(doc.file_size / 1024).toFixed(1)} KB</span>
+                        {doc.processed && <span>• Processed</span>}
+                        {doc.chapter && (
+                          <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                            {doc.chapter}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <button
@@ -582,6 +613,24 @@ function CategoryDashboard() {
                   setGenerateOptions({ ...generateOptions, count: isNaN(value) ? 1 : value });
                 }}
               />
+            </div>
+
+            <div>
+              <label htmlFor="generateChapter" className="block text-sm font-medium text-gray-700 mb-1">
+                Chapter/Topic Filter (optional)
+              </label>
+              <input
+                type="text"
+                id="generateChapter"
+                name="generateChapter"
+                className="input"
+                placeholder="e.g., Chapter 1, Photosynthesis, Unit 3..."
+                value={generateOptions.chapter}
+                onChange={(e) => setGenerateOptions({ ...generateOptions, chapter: e.target.value })}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Only use documents tagged with this chapter. Generated content will also be tagged.
+              </p>
             </div>
 
             <div>
