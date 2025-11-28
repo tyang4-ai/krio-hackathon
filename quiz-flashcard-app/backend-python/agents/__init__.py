@@ -42,6 +42,11 @@ from .controller_agent import (
     get_system_stats,
     trigger_analysis,
 )
+from .explanation_agent import (
+    ExplanationAgent,
+    get_explanation_agent,
+    explain_question,
+)
 
 __all__ = [
     # Base classes
@@ -82,4 +87,8 @@ __all__ = [
     "get_agent_activity",
     "get_system_stats",
     "trigger_analysis",
+    # Explanation Agent
+    "ExplanationAgent",
+    "get_explanation_agent",
+    "explain_question",
 ]

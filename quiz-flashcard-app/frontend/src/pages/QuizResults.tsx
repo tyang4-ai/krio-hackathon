@@ -5,6 +5,7 @@ import {
   FileText, Edit3, Check, X, Award, TrendingUp
 } from 'lucide-react';
 import { quizApi, quizEnhancedApi } from '../services/api';
+import ExplanationChat from '../components/ExplanationChat';
 import type { QuizSettings, HandwrittenAnswer, IntegrityReport, Question, QuestionType, Difficulty } from '../types';
 
 interface QuizResult {
@@ -45,6 +46,9 @@ function QuizResults(): React.ReactElement {
   const [editingHandwritten, setEditingHandwritten] = useState<number | null>(null);
   const [correctedText, setCorrectedText] = useState('');
   const [savingCorrection, setSavingCorrection] = useState(false);
+
+  // AI Explanation state
+  const [activeExplanationQuestion, setActiveExplanationQuestion] = useState<number | null>(null);
 
   useEffect(() => {
     loadResults();
@@ -536,6 +540,22 @@ function QuizResults(): React.ReactElement {
                       )}
                     </div>
                   )}
+
+                  {/* Ask AI Button */}
+                  <div className="mt-4 pt-3 border-t border-gray-100">
+                    <ExplanationChat
+                      question={{
+                        questionText: result.question_text,
+                        questionType: result.question_type,
+                        options: result.options,
+                        correctAnswer: result.correct_answer || '',
+                        userAnswer: result.user_answer,
+                        explanation: result.explanation,
+                      }}
+                      isCorrect={result.is_correct}
+                      onClose={() => setActiveExplanationQuestion(null)}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
