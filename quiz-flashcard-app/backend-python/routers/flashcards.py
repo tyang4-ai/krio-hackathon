@@ -1,5 +1,5 @@
 """
-Flashcard API endpoints with spaced repetition support.
+Flashcard API endpoints with SM-2 spaced repetition support.
 """
 from typing import List, Optional
 
@@ -16,6 +16,7 @@ from schemas.flashcard import (
     FlashcardUpdate,
     FlashcardProgressResponse,
     RateFlashcardRequest,
+    StudyProgressResponse,
     UpdateProgressRequest,
 )
 from services.flashcard_service import flashcard_service
@@ -212,7 +213,7 @@ async def get_flashcards_for_review(
 @router.post(
     "/categories/{category_id}/flashcards/{flashcard_id}/progress",
     response_model=FlashcardProgressResponse,
-    summary="Update flashcard progress (spaced repetition)",
+    summary="Update flashcard progress (SM-2 spaced repetition)",
 )
 async def update_flashcard_progress(
     category_id: int,
@@ -221,15 +222,18 @@ async def update_flashcard_progress(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Update flashcard progress with spaced repetition.
+    Update flashcard progress using SM-2 spaced repetition algorithm.
 
-    The next review date is calculated as: 2^confidence days from now
-    - Confidence 0: Review tomorrow (1 day)
-    - Confidence 1: Review in 2 days
-    - Confidence 2: Review in 4 days
-    - Confidence 3: Review in 8 days
-    - Confidence 4: Review in 16 days
-    - Confidence 5: Review in 32 days
+    SM-2 Algorithm uses quality ratings (0-5):
+    - 0-2: Failed recall - reset repetitions, review tomorrow
+    - 3-5: Successful recall - increase interval exponentially
+
+    The frontend sends confidence_level (1, 3, or 5) which maps to:
+    - 1 (Hard): Quality 1 - Resets repetitions, review tomorrow
+    - 3 (Medium): Quality 3 - Maintains learning, shorter interval
+    - 5 (Easy): Quality 5 - Perfect recall, longer interval
+
+    Interval progression: 1 day -> 6 days -> interval * EF (exponential growth)
     """
     # Verify flashcard exists
     flashcard = await flashcard_service.get_flashcard_by_id(db, flashcard_id)
@@ -244,7 +248,16 @@ async def update_flashcard_progress(
     )
     await db.commit()
 
-    return FlashcardProgressResponse.model_validate(progress)
+    return FlashcardProgressResponse(
+        flashcard_id=progress.flashcard_id,
+        confidence_level=progress.confidence_level,
+        times_reviewed=progress.times_reviewed,
+        last_reviewed=progress.last_reviewed,
+        next_review=progress.next_review,
+        easiness_factor=progress.easiness_factor,
+        repetition_count=progress.repetition_count,
+        interval_days=progress.interval_days,
+    )
 
 
 @router.get(
@@ -300,12 +313,26 @@ async def get_flashcard_chapters(
 
 @router.get(
     "/categories/{category_id}/study-progress",
-    summary="Get overall study progress",
+    response_model=StudyProgressResponse,
+    summary="Get overall study progress with SM-2 metrics",
 )
 async def get_study_progress(
     category_id: int,
     db: AsyncSession = Depends(get_db),
 ):
-    """Get overall study progress for a category."""
+    """
+    Get overall study progress for a category with SM-2 metrics.
+
+    Returns:
+    - total_cards: Total flashcards in category
+    - reviewed_count: Cards that have been reviewed at least once
+    - average_confidence: Average confidence level across reviewed cards
+    - completion_percentage: Percentage of cards reviewed
+    - average_easiness_factor: Average SM-2 EF (2.5 is default, higher = easier)
+    - average_interval_days: Average days between reviews
+    - mastered_count: Cards with interval >= 21 days (considered mastered)
+    - due_for_review: Cards that need to be reviewed now
+    - mastery_percentage: Percentage of cards mastered
+    """
     progress = await flashcard_service.get_study_progress(db, category_id)
-    return progress
+    return StudyProgressResponse(**progress)

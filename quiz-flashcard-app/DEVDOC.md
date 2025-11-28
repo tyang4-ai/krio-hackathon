@@ -2468,6 +2468,72 @@ docker-compose exec backend alembic downgrade -1
 
 ## Changelog
 
+### v6.3.0 (2025-11-28)
+
+**SM-2 Spaced Repetition Algorithm (Phase 4)**:
+- Replaced simple exponential review scheduling with the industry-standard SM-2 algorithm
+- Developed by Piotr Wozniak, SM-2 provides scientifically-optimized review intervals
+
+**SM-2 Algorithm Implementation**:
+- **Easiness Factor (EF)**: Starts at 2.5, adjusts based on recall quality (minimum 1.3)
+- **Quality Ratings**: Maps confidence (1=Hard, 3=Medium, 5=Easy) to SM-2 quality scale
+- **Interval Progression**:
+  - First successful review: 1 day
+  - Second successful review: 6 days
+  - Subsequent reviews: interval × EF (exponential growth)
+- **Failed Recall**: Resets repetition count, schedules for next day
+- **Mastery Threshold**: Cards with interval ≥ 21 days considered "mastered"
+
+**Backend Changes**:
+- `models/flashcard_progress.py` - Added SM-2 fields:
+  - `easiness_factor` (Float, default 2.5)
+  - `repetition_count` (Integer, tracks consecutive successes)
+  - `interval_days` (Integer, current review interval)
+- `services/flashcard_service.py` - Core SM-2 implementation:
+  - `calculate_sm2()` method with EF adjustment formula
+  - Updated `update_progress()` to use SM-2 calculations
+  - Enhanced `get_flashcard_stats()` with mastery metrics
+  - Enhanced `get_study_progress()` with SM-2 statistics
+- `schemas/flashcard.py` - Added response fields:
+  - `FlashcardProgressResponse`: easiness_factor, repetition_count, interval_days
+  - `StudyProgressResponse`: average_easiness_factor, average_interval_days, mastered_count, due_for_review, mastery_percentage
+
+**Database Migration**:
+- `alembic/versions/20251128_000002_005_add_sm2_fields_to_flashcard_progress.py`
+  - Adds easiness_factor, repetition_count, interval_days columns with defaults
+
+**New API Response Fields**:
+- `POST /api/categories/{id}/flashcards/{id}/progress` now returns:
+  - `easiness_factor`: Current difficulty multiplier
+  - `repetition_count`: Consecutive successful reviews
+  - `interval_days`: Days until next review
+- `GET /api/categories/{id}/study-progress` now returns:
+  - `mastered_count`: Cards with interval ≥ 21 days
+  - `due_for_review`: Cards needing review today
+  - `mastery_percentage`: Percentage of mastered cards
+  - `average_easiness_factor`: Mean EF across reviewed cards
+  - `average_interval_days`: Mean interval across reviewed cards
+
+**Frontend Enhancements** (`pages/FlashcardsPage.tsx`):
+- SM-2 statistics bar showing:
+  - Mastery percentage with progress indicator
+  - Average interval days
+  - Average easiness factor
+  - Reviewed percentage
+- Real-time review feedback:
+  - Shows next review date after each card review
+  - Displays new interval and EF values
+  - Color-coded difficulty indicators
+- SM-2 Info Modal:
+  - Explains the algorithm in user-friendly terms
+  - Shows EF adjustment formula
+  - Describes mastery progression
+
+**API Updates** (`services/api.ts`):
+- Added `getStudyProgress(categoryId)` method
+
+---
+
 ### v6.2.0 (2025-11-28)
 
 **Analytics Dashboard with AI Learning Score (Phase 3)**:

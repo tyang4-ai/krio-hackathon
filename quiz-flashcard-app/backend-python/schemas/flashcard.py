@@ -1,5 +1,6 @@
 """
 Pydantic schemas for Flashcard API requests/responses.
+Includes SM-2 spaced repetition algorithm fields.
 """
 from datetime import datetime
 from typing import Optional, List
@@ -50,13 +51,17 @@ class FlashcardListResponse(BaseSchema):
 
 
 class FlashcardProgressResponse(BaseSchema):
-    """Schema for flashcard progress (spaced repetition)."""
+    """Schema for flashcard progress with SM-2 spaced repetition fields."""
 
     flashcard_id: int
     confidence_level: float
     times_reviewed: int
     last_reviewed: Optional[datetime] = None
     next_review: Optional[datetime] = None
+    # SM-2 Algorithm fields
+    easiness_factor: float = Field(default=2.5, description="SM-2 easiness factor (min 1.3)")
+    repetition_count: int = Field(default=0, description="Successful repetitions in a row")
+    interval_days: int = Field(default=0, description="Days until next review")
 
 
 class FlashcardWithProgressResponse(FlashcardResponse):
@@ -66,12 +71,32 @@ class FlashcardWithProgressResponse(FlashcardResponse):
 
 
 class FlashcardStatsResponse(BaseSchema):
-    """Statistics for flashcards in a category."""
+    """Statistics for flashcards in a category with SM-2 metrics."""
 
     total: int
     by_difficulty: dict  # {"easy": 10, "medium": 20, "hard": 5}
     reviewed: int
     average_confidence: float
+    # SM-2 specific stats
+    average_easiness_factor: float = Field(default=0.0, description="Average EF across reviewed cards")
+    average_interval_days: float = Field(default=0.0, description="Average review interval")
+    mastered_count: int = Field(default=0, description="Cards with interval >= 21 days")
+    due_for_review: int = Field(default=0, description="Cards due for review now")
+
+
+class StudyProgressResponse(BaseSchema):
+    """Overall study progress for a category with SM-2 metrics."""
+
+    total_cards: int
+    reviewed_count: int
+    average_confidence: float
+    completion_percentage: float
+    # SM-2 metrics
+    average_easiness_factor: float = Field(default=0.0, description="Average EF")
+    average_interval_days: float = Field(default=0.0, description="Average interval")
+    mastered_count: int = Field(default=0, description="Cards mastered (interval >= 21 days)")
+    due_for_review: int = Field(default=0, description="Cards due now")
+    mastery_percentage: float = Field(default=0.0, description="Percentage of cards mastered")
 
 
 class UpdateProgressRequest(BaseSchema):
