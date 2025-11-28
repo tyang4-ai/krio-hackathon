@@ -54,6 +54,9 @@ class Settings(BaseSettings):
     # Security
     secret_key: str = "dev-secret-key-change-in-production"
 
+    # Google OAuth
+    google_client_id: Optional[str] = None
+
     # API Settings
     api_prefix: str = "/api"
 

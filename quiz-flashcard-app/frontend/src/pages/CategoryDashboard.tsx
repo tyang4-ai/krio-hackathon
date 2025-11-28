@@ -20,59 +20,110 @@ import {
   Eye
 } from 'lucide-react';
 import { categoryApi, documentApi, sampleQuestionApi, analysisApi } from '../services/api';
+import type { Category, Document, SampleQuestion, QuestionType, Difficulty } from '../types';
 
-function CategoryDashboard() {
-  const { categoryId } = useParams();
+interface CategoryStats {
+  document_count?: number;
+  question_count?: number;
+  flashcard_count?: number;
+  notebook_count?: number;
+}
+
+interface CategoryWithStats extends Category {
+  stats?: CategoryStats;
+}
+
+interface GenerateOptions {
+  contentType: QuestionType | 'flashcards';
+  count: number;
+  difficulty: Difficulty | 'concepts' | '';
+  customDirections: string;
+  chapter: string;
+}
+
+interface NewSample {
+  question_text: string;
+  question_type: QuestionType;
+  options: string[];
+  correct_answer: string;
+  explanation: string;
+}
+
+interface AnalysisStatus {
+  hasAnalysis: boolean;
+  analysis?: {
+    style_guide?: {
+      tone?: string;
+      vocabulary_level?: string;
+      question_length?: string;
+      explanation_style?: string;
+    };
+    patterns?: {
+      language_style?: string;
+      common_themes?: string[] | string;
+      difficulty_distribution?: Record<string, number>;
+    };
+    recommendations?: string[];
+  };
+  sampleCount?: number;
+  sample_count?: number;
+  lastUpdated?: string;
+}
+
+function CategoryDashboard(): React.ReactElement {
+  const { categoryId } = useParams<{ categoryId: string }>();
   const navigate = useNavigate();
-  const [category, setCategory] = useState(null);
-  const [documents, setDocuments] = useState([]);
-  const [sampleQuestions, setSampleQuestions] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
-  const [generating, setGenerating] = useState({ questions: false, flashcards: false });
-  const [generateOptions, setGenerateOptions] = useState({
-    contentType: 'multiple_choice', // 'multiple_choice', 'flashcards', 'true_false', 'written_answer', 'fill_in_blank'
+  const [category, setCategory] = useState<CategoryWithStats | null>(null);
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [sampleQuestions, setSampleQuestions] = useState<SampleQuestion[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [uploading, setUploading] = useState<boolean>(false);
+  const [generating, setGenerating] = useState<{ questions: boolean; flashcards: boolean }>({
+    questions: false,
+    flashcards: false
+  });
+  const [generateOptions, setGenerateOptions] = useState<GenerateOptions>({
+    contentType: 'multiple_choice',
     count: 10,
     difficulty: 'medium',
     customDirections: '',
-    chapter: '' // Chapter filter for generation
+    chapter: ''
   });
 
-  // Chapter for document upload
-  const [uploadChapter, setUploadChapter] = useState('');
-  const [showSampleModal, setShowSampleModal] = useState(false);
-  const [newSample, setNewSample] = useState({
+  const [uploadChapter, setUploadChapter] = useState<string>('');
+  const [showSampleModal, setShowSampleModal] = useState<boolean>(false);
+  const [newSample, setNewSample] = useState<NewSample>({
     question_text: '',
     question_type: 'multiple_choice',
     options: ['A) ', 'B) ', 'C) ', 'D) '],
     correct_answer: 'A',
     explanation: ''
   });
-  const [savingSample, setSavingSample] = useState(false);
-  const [uploadingSamples, setUploadingSamples] = useState(false);
-  const [analysisStatus, setAnalysisStatus] = useState(null);
-  const [analyzing, setAnalyzing] = useState(false);
-  const [showAnalysisDetails, setShowAnalysisDetails] = useState(false);
+  const [savingSample, setSavingSample] = useState<boolean>(false);
+  const [uploadingSamples, setUploadingSamples] = useState<boolean>(false);
+  const [analysisStatus, setAnalysisStatus] = useState<AnalysisStatus | null>(null);
+  const [analyzing, setAnalyzing] = useState<boolean>(false);
+  const [showAnalysisDetails, setShowAnalysisDetails] = useState<boolean>(false);
 
-  // Progress tracking
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [sampleUploadProgress, setSampleUploadProgress] = useState(0);
-  const [generationProgress, setGenerationProgress] = useState(0);
-  const [analysisProgress, setAnalysisProgress] = useState(0);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [sampleUploadProgress, setSampleUploadProgress] = useState<number>(0);
+  const [generationProgress, setGenerationProgress] = useState<number>(0);
+  const [analysisProgress, setAnalysisProgress] = useState<number>(0);
 
   useEffect(() => {
     loadData();
   }, [categoryId]);
 
-  const loadData = async () => {
+  const loadData = async (): Promise<void> => {
+    if (!categoryId) return;
+
     try {
-      // Load category, documents, and samples - these are required
       const [catResponse, docsResponse, samplesResponse] = await Promise.all([
-        categoryApi.getById(categoryId),
-        documentApi.getByCategory(categoryId),
-        sampleQuestionApi.getByCategory(categoryId),
+        categoryApi.getById(Number(categoryId)),
+        documentApi.getByCategory(Number(categoryId)),
+        sampleQuestionApi.getByCategory(Number(categoryId)),
       ]);
-      // Handle both wrapped and unwrapped response formats
+
       const catData = catResponse.data.data || catResponse.data;
       const docsData = docsResponse.data.data || docsResponse.data;
       const samplesData = samplesResponse.data.data || samplesResponse.data;
@@ -81,13 +132,11 @@ function CategoryDashboard() {
       setDocuments(docsData.documents || docsData || []);
       setSampleQuestions(samplesData.samples || samplesData || []);
 
-      // Analysis status is optional - endpoint may not exist yet
       try {
-        const analysisResponse = await analysisApi.getAnalysisStatus(categoryId);
+        const analysisResponse = await analysisApi.getAnalysisStatus(Number(categoryId));
         const analysisData = analysisResponse.data.data || analysisResponse.data;
         setAnalysisStatus(analysisData);
       } catch {
-        // Analysis endpoint not implemented yet - ignore
         setAnalysisStatus(null);
       }
     } catch (error) {
@@ -97,14 +146,13 @@ function CategoryDashboard() {
     }
   };
 
-  const handleFileUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
+    const file = e.target.files?.[0];
+    if (!file || !categoryId) return;
 
     setUploading(true);
     setUploadProgress(0);
 
-    // Simulate progress for better UX
     const progressInterval = setInterval(() => {
       setUploadProgress(prev => {
         if (prev >= 90) return prev;
@@ -113,14 +161,14 @@ function CategoryDashboard() {
     }, 200);
 
     try {
-      await documentApi.upload(categoryId, file, uploadChapter || null);
+      await documentApi.upload(Number(categoryId), file, uploadChapter || null);
       setUploadProgress(100);
       setTimeout(() => {
         loadData();
         setUploadProgress(0);
-        setUploadChapter(''); // Reset chapter after upload
+        setUploadChapter('');
       }, 500);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error uploading file:', error);
       alert('Error uploading file: ' + error.message);
       setUploadProgress(0);
@@ -131,7 +179,7 @@ function CategoryDashboard() {
     }
   };
 
-  const handleDeleteDocument = async (id) => {
+  const handleDeleteDocument = async (id: number): Promise<void> => {
     if (window.confirm('Are you sure you want to delete this document?')) {
       try {
         await documentApi.delete(id);
@@ -142,14 +190,15 @@ function CategoryDashboard() {
     }
   };
 
-  const handleGenerateContent = async () => {
+  const handleGenerateContent = async (): Promise<void> => {
+    if (!categoryId) return;
+
     const isFlashcards = generateOptions.contentType === 'flashcards';
     const generatingKey = isFlashcards ? 'flashcards' : 'questions';
 
     setGenerating({ ...generating, [generatingKey]: true });
     setGenerationProgress(0);
 
-    // Simulate progress - AI generation takes time
     const progressInterval = setInterval(() => {
       setGenerationProgress(prev => {
         if (prev >= 85) return prev;
@@ -160,29 +209,29 @@ function CategoryDashboard() {
     try {
       let response;
       if (isFlashcards) {
-        response = await documentApi.generateFlashcards(categoryId, {
+        response = await documentApi.generateFlashcards(Number(categoryId), {
           count: generateOptions.count,
-          difficulty: generateOptions.difficulty,
-          custom_directions: generateOptions.customDirections,
-          chapter: generateOptions.chapter || null
+          difficulty: generateOptions.difficulty as any,
+          customDirections: generateOptions.customDirections,
+          chapter: generateOptions.chapter || undefined
         });
         const data = response.data.data || response.data;
-        const count = data.generated || data.flashcards?.length || 0;
+        const count = (data as any).generated || (data as any).flashcards?.length || 0;
         setGenerationProgress(100);
         setTimeout(() => {
           alert(`Generated ${count} flashcards!`);
           setGenerationProgress(0);
         }, 300);
       } else {
-        response = await documentApi.generateQuestions(categoryId, {
+        response = await documentApi.generateQuestions(Number(categoryId), {
           count: generateOptions.count,
-          difficulty: generateOptions.difficulty,
-          question_type: generateOptions.contentType,
-          custom_directions: generateOptions.customDirections,
-          chapter: generateOptions.chapter || null
+          difficulty: generateOptions.difficulty as any,
+          contentType: generateOptions.contentType as QuestionType,
+          customDirections: generateOptions.customDirections,
+          chapter: generateOptions.chapter || undefined
         });
         const data = response.data.data || response.data;
-        const count = data.generated || data.questions?.length || 0;
+        const count = (data as any).generated || (data as any).questions?.length || 0;
         setGenerationProgress(100);
         setTimeout(() => {
           alert(`Generated ${count} questions!`);
@@ -190,7 +239,7 @@ function CategoryDashboard() {
         }, 300);
       }
       loadData();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating content:', error);
       alert('Error generating content: ' + (error.response?.data?.error || error.message));
       setGenerationProgress(0);
@@ -200,15 +249,15 @@ function CategoryDashboard() {
     }
   };
 
-  const handleAddSampleQuestion = async () => {
-    if (!newSample.question_text.trim()) {
+  const handleAddSampleQuestion = async (): Promise<void> => {
+    if (!categoryId || !newSample.question_text.trim()) {
       alert('Please enter a question');
       return;
     }
 
     setSavingSample(true);
     try {
-      await sampleQuestionApi.create(categoryId, newSample);
+      await sampleQuestionApi.create(Number(categoryId), newSample);
       setShowSampleModal(false);
       setNewSample({
         question_text: '',
@@ -218,7 +267,7 @@ function CategoryDashboard() {
         explanation: ''
       });
       loadData();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding sample question:', error);
       alert('Error adding sample question: ' + (error.response?.data?.error || error.message));
     } finally {
@@ -226,7 +275,7 @@ function CategoryDashboard() {
     }
   };
 
-  const handleDeleteSampleQuestion = async (id) => {
+  const handleDeleteSampleQuestion = async (id: number): Promise<void> => {
     if (window.confirm('Are you sure you want to delete this sample question?')) {
       try {
         await sampleQuestionApi.delete(id);
@@ -237,14 +286,13 @@ function CategoryDashboard() {
     }
   };
 
-  const handleSampleFileUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+  const handleSampleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
+    const file = e.target.files?.[0];
+    if (!file || !categoryId) return;
 
     setUploadingSamples(true);
     setSampleUploadProgress(0);
 
-    // Simulate progress
     const progressInterval = setInterval(() => {
       setSampleUploadProgress(prev => {
         if (prev >= 90) return prev;
@@ -253,18 +301,17 @@ function CategoryDashboard() {
     }, 200);
 
     try {
-      const response = await sampleQuestionApi.uploadFile(categoryId, file);
-      // Handle both wrapped and unwrapped response formats
+      const response = await sampleQuestionApi.uploadFile(Number(categoryId), file);
       const data = response.data.data || response.data;
-      const count = data.samples?.length || 0;
-      const message = data.message || `Imported ${count} sample questions`;
+      const count = (data as any).samples?.length || 0;
+      const message = (data as any).message || `Imported ${count} sample questions`;
       setSampleUploadProgress(100);
       setTimeout(() => {
         alert(message);
         setSampleUploadProgress(0);
       }, 300);
       loadData();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error uploading sample questions:', error);
       alert('Error uploading file: ' + (error.response?.data?.detail || error.response?.data?.error || error.message));
       setSampleUploadProgress(0);
@@ -275,14 +322,14 @@ function CategoryDashboard() {
     }
   };
 
-  const updateSampleOption = (index, value) => {
+  const updateSampleOption = (index: number, value: string): void => {
     const newOptions = [...newSample.options];
     newOptions[index] = value;
     setNewSample({ ...newSample, options: newOptions });
   };
 
-  const handleTriggerAnalysis = async () => {
-    if (sampleQuestions.length === 0) {
+  const handleTriggerAnalysis = async (): Promise<void> => {
+    if (!categoryId || sampleQuestions.length === 0) {
       alert('Add some sample questions first to analyze patterns');
       return;
     }
@@ -290,7 +337,6 @@ function CategoryDashboard() {
     setAnalyzing(true);
     setAnalysisProgress(0);
 
-    // Simulate progress for AI analysis
     const progressInterval = setInterval(() => {
       setAnalysisProgress(prev => {
         if (prev >= 85) return prev;
@@ -299,21 +345,20 @@ function CategoryDashboard() {
     }, 400);
 
     try {
-      const response = await analysisApi.triggerAnalysis(categoryId);
+      const response = await analysisApi.triggerAnalysis(Number(categoryId));
       const data = response.data.data || response.data;
-      if (data.success) {
-        const count = data.analyzed_count || data.analyzedCount || sampleQuestions.length;
+      if ((data as any).success) {
+        const count = (data as any).analyzed_count || (data as any).analyzedCount || sampleQuestions.length;
         setAnalysisProgress(100);
         setTimeout(() => {
           alert(`Analysis complete! Analyzed ${count} sample questions.`);
           setAnalysisProgress(0);
         }, 300);
-        // Refresh analysis status
-        const statusResponse = await analysisApi.getAnalysisStatus(categoryId);
+        const statusResponse = await analysisApi.getAnalysisStatus(Number(categoryId));
         const statusData = statusResponse.data.data || statusResponse.data;
         setAnalysisStatus(statusData);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error triggering analysis:', error);
       alert('Error analyzing samples: ' + (error.response?.data?.error || error.message));
       setAnalysisProgress(0);
@@ -323,19 +368,21 @@ function CategoryDashboard() {
     }
   };
 
-  const handleClearAnalysis = async () => {
+  const handleClearAnalysis = async (): Promise<void> => {
+    if (!categoryId) return;
+
     if (window.confirm('Clear analysis and force re-analysis next time?')) {
       try {
-        await analysisApi.clearAnalysis(categoryId);
-        setAnalysisStatus({ ...analysisStatus, hasAnalysis: false, analysis: null });
+        await analysisApi.clearAnalysis(Number(categoryId));
+        setAnalysisStatus({ ...analysisStatus, hasAnalysis: false, analysis: undefined } as AnalysisStatus);
       } catch (error) {
         console.error('Error clearing analysis:', error);
       }
     }
   };
 
-  const handleQuestionTypeChange = (type) => {
-    let options = [];
+  const handleQuestionTypeChange = (type: QuestionType): void => {
+    let options: string[] = [];
     let correctAnswer = '';
 
     switch (type) {
@@ -347,7 +394,7 @@ function CategoryDashboard() {
         options = ['A) True', 'B) False'];
         correctAnswer = 'A';
         break;
-      case 'written_answer':
+      case 'written':
       case 'fill_in_blank':
         options = [];
         correctAnswer = '';
@@ -470,7 +517,6 @@ function CategoryDashboard() {
             </label>
           </div>
 
-          {/* Chapter Input for Upload */}
           <div className="mb-4">
             <label htmlFor="uploadChapter" className="block text-sm font-medium text-gray-700 mb-1">
               Chapter/Topic (optional)
@@ -489,7 +535,6 @@ function CategoryDashboard() {
             </p>
           </div>
 
-          {/* Document Upload Progress Bar */}
           {uploading && uploadProgress > 0 && (
             <div className="mb-4">
               <div className="flex justify-between text-xs text-gray-600 mb-1">
@@ -523,8 +568,8 @@ function CategoryDashboard() {
                     <div>
                       <p className="text-sm font-medium text-gray-900">{doc.original_name}</p>
                       <div className="flex items-center gap-2 text-xs text-gray-500">
-                        <span>{(doc.file_size / 1024).toFixed(1)} KB</span>
-                        {doc.processed && <span>• Processed</span>}
+                        <span>{((doc as any).file_size / 1024).toFixed(1)} KB</span>
+                        {(doc as any).processed && <span>• Processed</span>}
                         {doc.chapter && (
                           <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
                             {doc.chapter}
@@ -559,11 +604,11 @@ function CategoryDashboard() {
                 name="contentType"
                 className="select"
                 value={generateOptions.contentType}
-                onChange={(e) => setGenerateOptions({ ...generateOptions, contentType: e.target.value })}
+                onChange={(e) => setGenerateOptions({ ...generateOptions, contentType: e.target.value as any })}
               >
                 <option value="multiple_choice">Multiple Choice</option>
                 <option value="true_false">True/False</option>
-                <option value="written_answer">Written Answer</option>
+                <option value="written">Written Answer</option>
                 <option value="fill_in_blank">Fill in the Blank</option>
                 <option value="flashcards">Flashcards</option>
               </select>
@@ -578,7 +623,7 @@ function CategoryDashboard() {
                 name="generateDifficulty"
                 className="select"
                 value={generateOptions.difficulty}
-                onChange={(e) => setGenerateOptions({ ...generateOptions, difficulty: e.target.value })}
+                onChange={(e) => setGenerateOptions({ ...generateOptions, difficulty: e.target.value as any })}
               >
                 <option value="easy">Easy</option>
                 <option value="medium">Medium</option>
@@ -667,7 +712,6 @@ function CategoryDashboard() {
             </span>
           </button>
 
-          {/* Generation Progress Bar */}
           {(generating.questions || generating.flashcards) && generationProgress > 0 && (
             <div className="mt-3">
               <div className="flex justify-between text-xs text-gray-600 mb-1">
@@ -691,7 +735,7 @@ function CategoryDashboard() {
         </div>
       </div>
 
-      {/* Sample Questions Section */}
+      {/* Sample Questions Section - continuing in next part due to length */}
       <div className="mt-8 card">
         <div className="flex justify-between items-center mb-4">
           <div>
@@ -701,7 +745,6 @@ function CategoryDashboard() {
             </p>
           </div>
           <div className="flex space-x-2">
-            {/* Analysis Button with Eye Icon */}
             <div className="flex">
               <button
                 onClick={handleTriggerAnalysis}
@@ -724,7 +767,6 @@ function CategoryDashboard() {
                   {analyzing ? 'Analyzing...' : analysisStatus?.hasAnalysis ? 'Analyzed' : 'Analyze'}
                 </span>
               </button>
-              {/* Eye icon button - always next to analyze button when analysis exists */}
               {analysisStatus?.hasAnalysis && (
                 <button
                   onClick={() => setShowAnalysisDetails(!showAnalysisDetails)}
@@ -777,7 +819,6 @@ function CategoryDashboard() {
           </div>
         </div>
 
-        {/* Sample Upload Progress Bar */}
         {uploadingSamples && sampleUploadProgress > 0 && (
           <div className="mb-4">
             <div className="flex justify-between text-xs text-gray-600 mb-1">
@@ -793,7 +834,6 @@ function CategoryDashboard() {
           </div>
         )}
 
-        {/* Analysis Progress Bar */}
         {analyzing && analysisProgress > 0 && (
           <div className="mb-4">
             <div className="flex justify-between text-xs text-gray-600 mb-1">
@@ -809,7 +849,6 @@ function CategoryDashboard() {
           </div>
         )}
 
-        {/* Analysis Status Banner */}
         {analysisStatus?.hasAnalysis && (
           <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
             <div className="flex items-center justify-between">
@@ -827,7 +866,6 @@ function CategoryDashboard() {
           </div>
         )}
 
-        {/* Analysis Details Panel */}
         {showAnalysisDetails && analysisStatus?.analysis && (
           <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <div className="flex items-center justify-between mb-3">
@@ -840,7 +878,6 @@ function CategoryDashboard() {
               </button>
             </div>
 
-            {/* Style Guide */}
             {analysisStatus.analysis.style_guide && (
               <div className="mb-4">
                 <h4 className="text-sm font-medium text-blue-800 mb-2">Detected Style Guide</h4>
@@ -873,7 +910,6 @@ function CategoryDashboard() {
               </div>
             )}
 
-            {/* Patterns */}
             {analysisStatus.analysis.patterns && (
               <div className="mb-4">
                 <h4 className="text-sm font-medium text-blue-800 mb-2">Detected Patterns</h4>
@@ -891,7 +927,6 @@ function CategoryDashboard() {
               </div>
             )}
 
-            {/* Recommendations */}
             {analysisStatus.analysis.recommendations && analysisStatus.analysis.recommendations.length > 0 && (
               <div>
                 <h4 className="text-sm font-medium text-blue-800 mb-2">Recommendations</h4>
@@ -929,35 +964,35 @@ function CategoryDashboard() {
                       <span className={`text-xs px-2 py-0.5 rounded-full ${
                         sample.question_type === 'multiple_choice' ? 'bg-blue-100 text-blue-700' :
                         sample.question_type === 'true_false' ? 'bg-purple-100 text-purple-700' :
-                        sample.question_type === 'written_answer' ? 'bg-green-100 text-green-700' :
+                        sample.question_type === 'written' ? 'bg-green-100 text-green-700' :
                         sample.question_type === 'fill_in_blank' ? 'bg-orange-100 text-orange-700' :
                         'bg-gray-100 text-gray-700'
                       }`}>
                         {sample.question_type === 'multiple_choice' ? 'Multiple Choice' :
                          sample.question_type === 'true_false' ? 'True/False' :
-                         sample.question_type === 'written_answer' ? 'Written Answer' :
+                         sample.question_type === 'written' ? 'Written Answer' :
                          sample.question_type === 'fill_in_blank' ? 'Fill in Blank' :
                          sample.question_type}
                       </span>
                     </div>
                     <p className="font-medium text-gray-900 mb-2">{sample.question_text}</p>
-                    {sample.options && sample.options.length > 0 && (
+                    {(sample as any).options && (sample as any).options.length > 0 && (
                       <div className="space-y-1 text-sm text-gray-600">
-                        {sample.options.map((opt, i) => (
-                          <p key={i} className={opt.startsWith(sample.correct_answer + ')') ? 'text-primary-600 font-medium' : ''}>
+                        {(sample as any).options.map((opt: string, i: number) => (
+                          <p key={i} className={(opt.startsWith((sample as any).correct_answer + ')') ? 'text-primary-600 font-medium' : '')}>
                             {opt}
                           </p>
                         ))}
                       </div>
                     )}
-                    {(sample.question_type === 'written_answer' || sample.question_type === 'fill_in_blank') && (
+                    {(sample.question_type === 'written' || sample.question_type === 'fill_in_blank') && sample.answer_text && (
                       <p className="text-sm text-primary-600 font-medium">
-                        Answer: {sample.correct_answer}
+                        Answer: {sample.answer_text}
                       </p>
                     )}
-                    {sample.explanation && (
+                    {(sample as any).explanation && (
                       <p className="mt-2 text-sm text-gray-500 italic">
-                        Explanation: {sample.explanation}
+                        Explanation: {(sample as any).explanation}
                       </p>
                     )}
                   </div>
@@ -995,7 +1030,6 @@ function CategoryDashboard() {
             </div>
 
             <div className="space-y-4">
-              {/* Question Type Selector */}
               <div>
                 <label htmlFor="sampleQuestionType" className="block text-sm font-medium text-gray-700 mb-1">
                   Question Type
@@ -1005,11 +1039,11 @@ function CategoryDashboard() {
                   name="sampleQuestionType"
                   className="select"
                   value={newSample.question_type}
-                  onChange={(e) => handleQuestionTypeChange(e.target.value)}
+                  onChange={(e) => handleQuestionTypeChange(e.target.value as QuestionType)}
                 >
                   <option value="multiple_choice">Multiple Choice</option>
                   <option value="true_false">True/False</option>
-                  <option value="written_answer">Written Answer</option>
+                  <option value="written">Written Answer</option>
                   <option value="fill_in_blank">Fill in the Blank</option>
                 </select>
               </div>
@@ -1030,7 +1064,6 @@ function CategoryDashboard() {
                 />
               </div>
 
-              {/* Options - Only for multiple choice and true/false */}
               {(newSample.question_type === 'multiple_choice' || newSample.question_type === 'true_false') && (
                 <div>
                   <span className="block text-sm font-medium text-gray-700 mb-1">
@@ -1054,7 +1087,6 @@ function CategoryDashboard() {
                 </div>
               )}
 
-              {/* Correct Answer */}
               <div>
                 <label htmlFor="sampleCorrectAnswer" className="block text-sm font-medium text-gray-700 mb-1">
                   Correct Answer

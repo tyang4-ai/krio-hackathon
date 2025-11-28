@@ -2,56 +2,77 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Play, History, Settings, ArrowLeft, Clock, Monitor, BookOpen, AlertTriangle } from 'lucide-react';
 import { quizApi, categoryApi } from '../services/api';
+import type { Category, QuizSession, QuizMode, TimerType, QuestionType, Difficulty, QuestionStats } from '../types';
 
-function QuizPage() {
-  const { categoryId } = useParams();
+interface CategoryWithStats extends Category {
+  stats?: {
+    question_count?: number;
+  };
+}
+
+interface QuizSettings {
+  mode: QuizMode;
+  difficulty: Difficulty | 'mixed';
+  selectionMode: 'mixed' | 'custom';
+  multipleChoice: number;
+  trueFalse: number;
+  writtenAnswer: number;
+  fillInBlank: number;
+  totalQuestions: number;
+  timerType: TimerType;
+  totalTimeMinutes: number;
+  perQuestionSeconds: number;
+  allowPartialCredit: boolean;
+  allowHandwrittenUpload: boolean;
+  chapter: string;
+}
+
+function QuizPage(): React.ReactElement {
+  const { categoryId } = useParams<{ categoryId: string }>();
   const navigate = useNavigate();
-  const [category, setCategory] = useState(null);
-  const [stats, setStats] = useState(null);
-  const [history, setHistory] = useState([]);
-  const [chapters, setChapters] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [settings, setSettings] = useState({
-    mode: 'practice', // 'practice', 'timed', 'exam'
+  const [category, setCategory] = useState<CategoryWithStats | null>(null);
+  const [stats, setStats] = useState<QuestionStats | null>(null);
+  const [history, setHistory] = useState<QuizSession[]>([]);
+  const [chapters, setChapters] = useState<string[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [settings, setSettings] = useState<QuizSettings>({
+    mode: 'practice',
     difficulty: 'mixed',
-    selectionMode: 'mixed', // 'mixed' or 'custom'
+    selectionMode: 'mixed',
     multipleChoice: 5,
     trueFalse: 3,
     writtenAnswer: 2,
     fillInBlank: 0,
     totalQuestions: 10,
-    // Timer settings
-    timerType: 'total', // 'total' or 'per_question'
+    timerType: 'total',
     totalTimeMinutes: 30,
     perQuestionSeconds: 60,
-    // Advanced options
     allowPartialCredit: true,
     allowHandwrittenUpload: true,
-    // Chapter filter
-    chapter: '' // Empty = random from all chapters
+    chapter: ''
   });
 
   useEffect(() => {
     loadData();
   }, [categoryId]);
 
-  const loadData = async () => {
+  const loadData = async (): Promise<void> => {
+    if (!categoryId) return;
+
     try {
       const [catResponse, statsResponse, historyResponse, chaptersResponse] = await Promise.all([
-        categoryApi.getById(categoryId),
-        quizApi.getStats(categoryId),
-        quizApi.getHistory(categoryId),
-        quizApi.getChapters(categoryId)
+        categoryApi.getById(Number(categoryId)),
+        quizApi.getStats(Number(categoryId)),
+        quizApi.getHistory(Number(categoryId)),
+        quizApi.getChapters(Number(categoryId))
       ]);
-      // Handle both wrapped and unwrapped response formats
+
       setCategory(catResponse.data.data || catResponse.data);
       setStats(statsResponse.data.data || statsResponse.data);
-      // History response has 'sessions' array, not 'data'
       const historyData = historyResponse.data.data || historyResponse.data;
-      setHistory(historyData.sessions || historyData || []);
-      // Chapters response
+      setHistory((historyData as any).sessions || historyData || []);
       const chaptersData = chaptersResponse.data.data || chaptersResponse.data;
-      setChapters(chaptersData.chapters || chaptersData || []);
+      setChapters((chaptersData as any).chapters || chaptersData || []);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -59,18 +80,20 @@ function QuizPage() {
     }
   };
 
-  const handleStartQuiz = async () => {
+  const handleStartQuiz = async (): Promise<void> => {
+    if (!categoryId) return;
+
     try {
-      const response = await quizApi.createSession(categoryId, settings);
+      const response = await quizApi.createSession(Number(categoryId), settings as any);
       const data = response.data.data || response.data;
-      navigate(`/category/${categoryId}/quiz/session/${data.session_id}`);
-    } catch (error) {
+      navigate(`/category/${categoryId}/quiz/session/${(data as any).session_id}`);
+    } catch (error: any) {
       console.error('Error starting quiz:', error);
       alert('Error starting quiz: ' + (error.response?.data?.error || error.message));
     }
   };
 
-  const getModeIcon = (mode) => {
+  const getModeIcon = (mode: QuizMode): React.ReactElement => {
     switch (mode) {
       case 'practice': return <BookOpen className="h-6 w-6" />;
       case 'timed': return <Clock className="h-6 w-6" />;
@@ -79,7 +102,7 @@ function QuizPage() {
     }
   };
 
-  const getModeDescription = (mode) => {
+  const getModeDescription = (mode: QuizMode): string => {
     switch (mode) {
       case 'practice': return 'No timer, learn at your own pace';
       case 'timed': return 'Race against the clock';
@@ -123,7 +146,7 @@ function QuizPage() {
                 Quiz Mode
               </label>
               <div className="grid grid-cols-3 gap-3">
-                {['practice', 'timed', 'exam'].map((mode) => (
+                {(['practice', 'timed', 'exam'] as QuizMode[]).map((mode) => (
                   <button
                     key={mode}
                     onClick={() => setSettings({ ...settings, mode })}
@@ -177,7 +200,7 @@ function QuizPage() {
                         name="timerType"
                         value="total"
                         checked={settings.timerType === 'total'}
-                        onChange={(e) => setSettings({ ...settings, timerType: e.target.value })}
+                        onChange={(e) => setSettings({ ...settings, timerType: e.target.value as TimerType })}
                         className="mr-2"
                       />
                       <span className="text-sm">Total Time</span>
@@ -189,7 +212,7 @@ function QuizPage() {
                         name="timerType"
                         value="per_question"
                         checked={settings.timerType === 'per_question'}
-                        onChange={(e) => setSettings({ ...settings, timerType: e.target.value })}
+                        onChange={(e) => setSettings({ ...settings, timerType: e.target.value as TimerType })}
                         className="mr-2"
                       />
                       <span className="text-sm">Per Question</span>
@@ -210,7 +233,7 @@ function QuizPage() {
                       min="1"
                       max="180"
                       value={settings.totalTimeMinutes}
-                      onChange={(e) => setSettings({ ...settings, totalTimeMinutes: parseInt(e.target.value) })}
+                      onChange={(e) => setSettings({ ...settings, totalTimeMinutes: parseInt(e.target.value) || 1 })}
                     />
                   </div>
                 ) : (
@@ -226,7 +249,7 @@ function QuizPage() {
                       min="10"
                       max="600"
                       value={settings.perQuestionSeconds}
-                      onChange={(e) => setSettings({ ...settings, perQuestionSeconds: parseInt(e.target.value) })}
+                      onChange={(e) => setSettings({ ...settings, perQuestionSeconds: parseInt(e.target.value) || 10 })}
                     />
                   </div>
                 )}
@@ -243,7 +266,7 @@ function QuizPage() {
                 name="selectionMode"
                 className="select"
                 value={settings.selectionMode}
-                onChange={(e) => setSettings({ ...settings, selectionMode: e.target.value })}
+                onChange={(e) => setSettings({ ...settings, selectionMode: e.target.value as 'mixed' | 'custom' })}
               >
                 <option value="mixed">Mixed & Randomized (All Types)</option>
                 <option value="custom">Custom Selection</option>
@@ -263,7 +286,7 @@ function QuizPage() {
                   min="1"
                   max={stats?.total || 50}
                   value={settings.totalQuestions}
-                  onChange={(e) => setSettings({ ...settings, totalQuestions: parseInt(e.target.value) })}
+                  onChange={(e) => setSettings({ ...settings, totalQuestions: parseInt(e.target.value) || 1 })}
                 />
                 <p className="text-xs text-gray-500 mt-1">
                   Available: {stats?.total || 0} questions (all types)
@@ -283,7 +306,7 @@ function QuizPage() {
                     min="0"
                     max={stats?.by_type?.multiple_choice || 0}
                     value={settings.multipleChoice}
-                    onChange={(e) => setSettings({ ...settings, multipleChoice: parseInt(e.target.value) })}
+                    onChange={(e) => setSettings({ ...settings, multipleChoice: parseInt(e.target.value) || 0 })}
                   />
                   <p className="text-xs text-gray-500 mt-1">
                     Available: {stats?.by_type?.multiple_choice || 0}
@@ -302,7 +325,7 @@ function QuizPage() {
                     min="0"
                     max={stats?.by_type?.true_false || 0}
                     value={settings.trueFalse}
-                    onChange={(e) => setSettings({ ...settings, trueFalse: parseInt(e.target.value) })}
+                    onChange={(e) => setSettings({ ...settings, trueFalse: parseInt(e.target.value) || 0 })}
                   />
                   <p className="text-xs text-gray-500 mt-1">
                     Available: {stats?.by_type?.true_false || 0}
@@ -319,12 +342,12 @@ function QuizPage() {
                     name="writtenAnswer"
                     className="input"
                     min="0"
-                    max={stats?.by_type?.written_answer || 0}
+                    max={(stats?.by_type as any)?.written || (stats?.by_type as any)?.written_answer || 0}
                     value={settings.writtenAnswer}
-                    onChange={(e) => setSettings({ ...settings, writtenAnswer: parseInt(e.target.value) })}
+                    onChange={(e) => setSettings({ ...settings, writtenAnswer: parseInt(e.target.value) || 0 })}
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Available: {stats?.by_type?.written_answer || 0}
+                    Available: {(stats?.by_type as any)?.written || (stats?.by_type as any)?.written_answer || 0}
                   </p>
                 </div>
 
@@ -340,7 +363,7 @@ function QuizPage() {
                     min="0"
                     max={stats?.by_type?.fill_in_blank || 0}
                     value={settings.fillInBlank}
-                    onChange={(e) => setSettings({ ...settings, fillInBlank: parseInt(e.target.value) })}
+                    onChange={(e) => setSettings({ ...settings, fillInBlank: parseInt(e.target.value) || 0 })}
                   />
                   <p className="text-xs text-gray-500 mt-1">
                     Available: {stats?.by_type?.fill_in_blank || 0}
@@ -364,12 +387,12 @@ function QuizPage() {
                 name="difficulty"
                 className="select"
                 value={settings.difficulty}
-                onChange={(e) => setSettings({ ...settings, difficulty: e.target.value })}
+                onChange={(e) => setSettings({ ...settings, difficulty: e.target.value as Difficulty | 'mixed' })}
               >
                 <option value="mixed">Mixed</option>
-                <option value="easy">Easy ({stats?.easy || 0})</option>
-                <option value="medium">Medium ({stats?.medium || 0})</option>
-                <option value="hard">Hard ({stats?.hard || 0})</option>
+                <option value="easy">Easy ({(stats as any)?.easy || 0})</option>
+                <option value="medium">Medium ({(stats as any)?.medium || 0})</option>
+                <option value="hard">Hard ({(stats as any)?.hard || 0})</option>
               </select>
             </div>
 
@@ -462,7 +485,7 @@ function QuizPage() {
           ) : (
             <div className="space-y-3">
               {history.slice(0, 10).map((quiz) => {
-                const quizSettings = quiz.settings || {};
+                const quizSettings = quiz.settings || {} as any;
                 return (
                   <div
                     key={quiz.id}
@@ -486,8 +509,8 @@ function QuizPage() {
                           )}
                         </div>
                         <p className="text-xs text-gray-500">
-                          {new Date(quiz.completed_at).toLocaleDateString()} at{' '}
-                          {new Date(quiz.completed_at).toLocaleTimeString()}
+                          {new Date(quiz.completed_at || quiz.started_at).toLocaleDateString()} at{' '}
+                          {new Date(quiz.completed_at || quiz.started_at).toLocaleTimeString()}
                         </p>
                       </div>
                       <div className={`text-lg font-bold ${

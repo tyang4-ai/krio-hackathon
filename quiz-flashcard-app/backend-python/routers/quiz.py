@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config.database import get_db
+from middleware.auth_middleware import get_optional_user
 from schemas.question import (
     QuestionCreate,
     QuestionListResponse,
@@ -299,10 +300,18 @@ async def submit_quiz(
     session_id: int,
     submit_data: SubmitQuizRequest,
     db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_optional_user),
 ):
     """Submit quiz answers and get results."""
     try:
-        results = await quiz_service.submit_quiz_answers(db, session_id, submit_data.answers)
+        user_id = current_user.id if current_user else None
+        results = await quiz_service.submit_quiz_answers(
+            db,
+            session_id,
+            submit_data.answers,
+            user_id=user_id,
+            time_per_question=submit_data.time_per_question,
+        )
         await db.commit()
 
         return SubmitQuizResponse(

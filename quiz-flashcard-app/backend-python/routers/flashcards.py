@@ -286,6 +286,19 @@ async def get_flashcard_stats(
 
 
 @router.get(
+    "/categories/{category_id}/flashcards/chapters",
+    summary="Get available chapters/tags for flashcards",
+)
+async def get_flashcard_chapters(
+    category_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get all unique chapters/tags from flashcards in a category."""
+    chapters = await flashcard_service.get_flashcard_chapters(db, category_id)
+    return {"chapters": chapters, "total": len(chapters)}
+
+
+@router.get(
     "/categories/{category_id}/study-progress",
     summary="Get overall study progress",
 )

@@ -157,12 +157,14 @@ quiz-flashcard-app/
 - **UUID**: uuid v4
 
 ### Frontend
-- **Framework**: React 18+
+- **Framework**: React 18+ with TypeScript
+- **Language**: TypeScript 5.x
 - **Routing**: React Router 6
 - **HTTP Client**: Axios
 - **Styling**: Tailwind CSS 3.x
 - **Icons**: Lucide React
 - **Build Tool**: Vite
+- **Authentication**: @react-oauth/google (Google OAuth 2.0)
 
 ### AI Providers
 - **Moonshot/Kimi K2** (primary - recommended for reasoning tasks)
@@ -2465,6 +2467,102 @@ docker-compose exec backend alembic downgrade -1
 ---
 
 ## Changelog
+
+### v6.1.0 (2025-11-28)
+
+**Data Tracking Enhancement (Phase 2)**:
+- Added `QuestionAttempt` model for tracking individual question responses
+- Enables detailed analytics for learning insights and performance tracking
+
+**New Backend Files**:
+- `models/question_attempt.py` - Tracks each question attempt with:
+  - User ID, session ID, question ID, category ID (foreign keys)
+  - Answer data: user_answer, correct_answer, is_correct
+  - Partial credit support: points_earned, points_possible
+  - Question metadata: question_type, difficulty (denormalized for fast queries)
+  - Time tracking: time_spent_seconds, answered_at timestamp
+- `services/analytics_service.py` - Comprehensive analytics calculations:
+  - `get_user_overview()` - Total attempts, accuracy, time spent, streak
+  - `get_category_performance()` - Per-category breakdown with mastery scores (0-5)
+  - `get_difficulty_breakdown()` - Easy/medium/hard performance
+  - `get_question_type_breakdown()` - Performance by question type
+  - `get_trend_data()` - Time-series data for charts (day/week/month granularity)
+  - `get_hardest_questions()` - Questions user struggles with most
+  - `calculate_learning_score()` - AI-style 0-100 score with letter grade and recommendations
+- `schemas/analytics.py` - Pydantic schemas for all analytics responses
+- `routers/analytics.py` - Analytics API endpoints
+
+**New API Endpoints**:
+- `GET /api/analytics/overview` - Overall performance summary
+- `GET /api/analytics/categories` - Per-category performance with mastery
+- `GET /api/analytics/difficulty` - Performance by difficulty level
+- `GET /api/analytics/question-types` - Performance by question type
+- `GET /api/analytics/trends` - Time-series performance data
+- `GET /api/analytics/hardest-questions` - Questions with lowest accuracy
+- `GET /api/analytics/learning-score` - AI-calculated learning score (0-100)
+- `GET /api/analytics/dashboard` - All analytics in single request
+- `GET /api/analytics/category/{id}` - Detailed category analytics
+
+**Learning Score Calculation**:
+- Accuracy score (40%): Based on overall correct answer rate
+- Consistency score (20%): Based on study streak days
+- Improvement score (20%): Compares first half vs second half of recent performance
+- Difficulty score (20%): Bonus for attempting and succeeding at hard questions
+- Includes letter grade (A+ to F) and personalized study recommendations
+
+**Database Migration**:
+- `alembic/versions/20251128_000001_004_add_question_attempts_table.py`
+- Creates `question_attempts` table with indexes for efficient queries
+
+**Modified Files**:
+- `services/quiz_service.py` - Now records QuestionAttempt on quiz submission
+- `routers/quiz.py` - Passes user_id and time_per_question to service
+- `schemas/quiz.py` - Added `time_per_question` field to SubmitQuizRequest
+- `models/__init__.py` - Exports QuestionAttempt
+- `routers/__init__.py` - Exports analytics_router
+- `main.py` - Registers analytics router
+
+---
+
+### v6.0.0 (2025-11-27)
+
+**TypeScript Migration (Phase 0)**:
+- Converted entire frontend codebase from JavaScript to TypeScript
+- Added comprehensive type definitions in `src/types/index.ts`
+- Created `tsconfig.json` and `tsconfig.node.json` configurations
+- Updated Vite config to TypeScript (`vite.config.ts`)
+- All components and pages now use `.tsx` extension
+- Full type safety for API responses and component props
+
+**Google OAuth Authentication (Phase 1)**:
+- Added user authentication with Google OAuth 2.0
+- New backend files:
+  - `models/user.py` - User model with Google OAuth fields
+  - `services/auth_service.py` - JWT token generation and Google token verification
+  - `routers/auth.py` - Auth endpoints (`/api/auth/google`, `/api/auth/verify`, `/api/auth/logout`)
+  - `middleware/auth_middleware.py` - JWT validation middleware with `get_current_user` and `get_optional_user` dependencies
+- New frontend files:
+  - `contexts/AuthContext.tsx` - Auth state management with localStorage persistence
+  - `pages/LoginPage.tsx` - Google Sign-In page with `@react-oauth/google`
+  - Updated `components/Layout.tsx` - User avatar display, sign in/out buttons
+  - Updated `services/api.ts` - Auth API endpoints, automatic Bearer token injection
+- Added `User` and `AuthResponse` types to TypeScript definitions
+- Environment variables: `GOOGLE_CLIENT_ID` (backend), `VITE_GOOGLE_CLIENT_ID` (frontend)
+- JWT tokens expire after 7 days
+
+**New Dependencies**:
+- Frontend: `@react-oauth/google` - Google OAuth for React
+- Backend: `google-auth`, `google-auth-oauthlib` - Google token verification
+
+**Files Changed**:
+- All `frontend/src/**/*.jsx` files converted to `.tsx`
+- `frontend/src/services/api.js` → `api.ts` with full type annotations
+- `frontend/package.json` - Added TypeScript and Google OAuth dependencies
+- `backend-python/requirements.txt` - Added google-auth packages
+- `backend-python/config/settings.py` - Added `google_client_id` setting
+- `.env.example` files created for both frontend and backend
+
+---
 
 ### v5.5.0 (2025-11-26)
 

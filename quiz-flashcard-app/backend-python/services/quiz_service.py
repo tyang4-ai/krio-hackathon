@@ -13,6 +13,7 @@ from models.question import Question
 from models.quiz_session import QuizSession
 from models.grading import ExamFocusEvent, PartialCreditGrade
 from models.notebook_entry import NotebookEntry
+from models.question_attempt import QuestionAttempt
 from schemas.question import QuestionCreate, QuestionUpdate
 from schemas.quiz import QuizSettings
 
@@ -375,8 +376,18 @@ class QuizService:
         db: AsyncSession,
         session_id: int,
         answers: Dict[str, str],
+        user_id: Optional[int] = None,
+        time_per_question: Optional[Dict[str, int]] = None,
     ) -> dict:
-        """Submit quiz answers and calculate score."""
+        """Submit quiz answers and calculate score.
+
+        Args:
+            db: Database session
+            session_id: Quiz session ID
+            answers: Dict mapping question_id to user's answer
+            user_id: Optional user ID for tracking
+            time_per_question: Optional dict mapping question_id to time spent in seconds
+        """
         session = await self.get_quiz_session(db, session_id)
         if not session:
             raise ValueError("Quiz session not found")
@@ -385,6 +396,7 @@ class QuizService:
         results = []
         correct_count = 0
         wrong_answers = []
+        question_attempts = []
 
         for question_id in question_ids:
             question = await self.get_question_by_id(db, question_id)
@@ -429,6 +441,29 @@ class QuizService:
                     "user_answer": user_answer,
                     "correct_answer": correct_answer,
                 })
+
+            # Get time spent on this question
+            time_spent = None
+            if time_per_question:
+                time_spent = time_per_question.get(str(question_id))
+
+            # Create question attempt for analytics
+            attempt = QuestionAttempt(
+                session_id=session_id,
+                question_id=question_id,
+                user_id=user_id,
+                category_id=session.category_id,
+                user_answer=user_answer or "",
+                correct_answer=correct_answer,
+                is_correct=is_correct,
+                points_earned=1.0 if is_correct else 0.0,
+                points_possible=1.0,
+                question_type=question.question_type,
+                difficulty=question.difficulty,
+                time_spent_seconds=time_spent,
+            )
+            question_attempts.append(attempt)
+            db.add(attempt)
 
             results.append({
                 "question_id": question_id,
@@ -477,6 +512,7 @@ class QuizService:
             session_id=session_id,
             score=correct_count,
             total=len(question_ids),
+            attempts_recorded=len(question_attempts),
         )
 
         return {
@@ -486,6 +522,7 @@ class QuizService:
             "percentage": round((correct_count / len(question_ids)) * 100) if question_ids else 0,
             "results": results,
             "notebook_entries_created": notebook_entries_created,
+            "attempts_recorded": len(question_attempts),
         }
 
     async def get_quiz_history(

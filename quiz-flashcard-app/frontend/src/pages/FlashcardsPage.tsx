@@ -2,42 +2,67 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { RotateCcw, ChevronLeft, ChevronRight, ThumbsUp, ThumbsDown, Meh, ArrowLeft } from 'lucide-react';
 import { flashcardApi, categoryApi } from '../services/api';
+import type { Flashcard, Category, FlashcardStats } from '../types';
 
-function FlashcardsPage() {
-  const { categoryId } = useParams();
+interface CategoryWithStats extends Category {
+  stats?: {
+    flashcard_count?: number;
+  };
+}
+
+function FlashcardsPage(): React.ReactElement {
+  const { categoryId } = useParams<{ categoryId: string }>();
   const navigate = useNavigate();
-  const [category, setCategory] = useState(null);
-  const [flashcards, setFlashcards] = useState([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isFlipped, setIsFlipped] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState(null);
-  const [studyMode, setStudyMode] = useState('all'); // 'all' or 'review'
+  const [category, setCategory] = useState<CategoryWithStats | null>(null);
+  const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
+  const [currentIndex, setCurrentIndex] = useState<number>(0);
+  const [isFlipped, setIsFlipped] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [stats, setStats] = useState<FlashcardStats | null>(null);
+  const [studyMode, setStudyMode] = useState<'all' | 'review'>('all');
+  const [chapters, setChapters] = useState<string[]>([]);
+  const [selectedChapter, setSelectedChapter] = useState<string>('');
 
   useEffect(() => {
     loadData();
-  }, [categoryId, studyMode]);
+  }, [categoryId, studyMode, selectedChapter]);
 
-  const loadData = async () => {
+  const loadData = async (): Promise<void> => {
+    if (!categoryId) return;
+
     setLoading(true);
     try {
-      const [catResponse, statsResponse] = await Promise.all([
-        categoryApi.getById(categoryId),
-        flashcardApi.getStats(categoryId)
+      const [catResponse, statsResponse, chaptersResponse] = await Promise.all([
+        categoryApi.getById(Number(categoryId)),
+        flashcardApi.getStats(Number(categoryId)),
+        flashcardApi.getChapters(Number(categoryId))
       ]);
       setCategory(catResponse.data.data || catResponse.data);
       setStats(statsResponse.data.data || statsResponse.data);
+      const chaptersData = chaptersResponse.data.data || chaptersResponse.data;
+      setChapters((chaptersData as any).chapters || chaptersData || []);
 
-      // Load flashcards based on study mode
+      const options: Record<string, any> = {};
+      if (selectedChapter) {
+        options.tags = [selectedChapter];
+      }
+
       let cardsResponse;
       if (studyMode === 'review') {
-        cardsResponse = await flashcardApi.getForReview(categoryId);
+        cardsResponse = await flashcardApi.getForReview(Number(categoryId), options);
       } else {
-        cardsResponse = await flashcardApi.getByCategory(categoryId);
+        cardsResponse = await flashcardApi.getByCategory(Number(categoryId), options);
       }
       const cardsData = cardsResponse.data.data || cardsResponse.data;
-      // Handle both array response and {flashcards: [...]} response
-      setFlashcards(cardsData.flashcards || cardsData || []);
+      let loadedCards = (cardsData as any).flashcards || cardsData || [];
+
+      if (selectedChapter && loadedCards.length > 0) {
+        loadedCards = loadedCards.filter((card: Flashcard) =>
+          card.tags && card.tags.includes(selectedChapter)
+        );
+      }
+
+      setFlashcards(loadedCards);
       setCurrentIndex(0);
       setIsFlipped(false);
     } catch (error) {
@@ -47,30 +72,32 @@ function FlashcardsPage() {
     }
   };
 
-  const handleFlip = () => {
+  const handleFlip = (): void => {
     setIsFlipped(!isFlipped);
   };
 
-  const handleNext = () => {
+  const handleNext = (): void => {
     if (currentIndex < flashcards.length - 1) {
       setCurrentIndex(currentIndex + 1);
       setIsFlipped(false);
     }
   };
 
-  const handlePrev = () => {
+  const handlePrev = (): void => {
     if (currentIndex > 0) {
       setCurrentIndex(currentIndex - 1);
       setIsFlipped(false);
     }
   };
 
-  const handleConfidence = async (level) => {
+  const handleConfidence = async (level: number): Promise<void> => {
+    if (!categoryId) return;
+
     const currentCard = flashcards[currentIndex];
     try {
       await flashcardApi.updateProgress(currentCard.id, {
         confidence: level,
-        categoryId
+        categoryId: Number(categoryId)
       });
       handleNext();
     } catch (error) {
@@ -78,7 +105,7 @@ function FlashcardsPage() {
     }
   };
 
-  const handleShuffle = () => {
+  const handleShuffle = (): void => {
     const shuffled = [...flashcards].sort(() => Math.random() - 0.5);
     setFlashcards(shuffled);
     setCurrentIndex(0);
@@ -106,14 +133,26 @@ function FlashcardsPage() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Flashcards - {category?.name}</h1>
           <p className="text-gray-600 mt-1">
-            {stats?.total || 0} total cards • {stats?.reviewed_cards || stats?.reviewed || 0} reviewed
+            {stats?.total || 0} total cards • {(stats as any)?.reviewed_cards || (stats as any)?.reviewed || 0} reviewed
           </p>
         </div>
         <div className="flex space-x-2">
+          {chapters.length > 0 && (
+            <select
+              className="select w-auto"
+              value={selectedChapter}
+              onChange={(e) => setSelectedChapter(e.target.value)}
+            >
+              <option value="">All Chapters</option>
+              {chapters.map((chapter) => (
+                <option key={chapter} value={chapter}>{chapter}</option>
+              ))}
+            </select>
+          )}
           <select
             className="select w-auto"
             value={studyMode}
-            onChange={(e) => setStudyMode(e.target.value)}
+            onChange={(e) => setStudyMode(e.target.value as 'all' | 'review')}
           >
             <option value="all">All Cards</option>
             <option value="review">Due for Review</option>
@@ -128,19 +167,19 @@ function FlashcardsPage() {
         <div className="card text-center py-12">
           <p className="text-gray-600 mb-2">No flashcards available</p>
           <p className="text-sm text-gray-500">
-            {studyMode === 'review'
+            {selectedChapter
+              ? `No flashcards found for chapter "${selectedChapter}". Try selecting "All Chapters".`
+              : studyMode === 'review'
               ? 'No cards due for review. Switch to "All Cards" mode.'
               : 'Generate flashcards from your documents to get started.'}
           </p>
         </div>
       ) : (
         <div className="max-w-2xl mx-auto">
-          {/* Progress */}
           <div className="mb-4 text-center text-sm text-gray-600">
             Card {currentIndex + 1} of {flashcards.length}
           </div>
 
-          {/* Flashcard */}
           <div
             onClick={handleFlip}
             className="card min-h-[300px] cursor-pointer flex items-center justify-center text-center mb-6 transition-all transform hover:scale-[1.01]"
@@ -165,7 +204,6 @@ function FlashcardsPage() {
             </div>
           </div>
 
-          {/* Navigation & Confidence */}
           <div className="flex justify-between items-center">
             <button
               onClick={handlePrev}
@@ -212,7 +250,6 @@ function FlashcardsPage() {
             </button>
           </div>
 
-          {/* Difficulty indicator */}
           <div className="mt-4 text-center">
             <span className={`px-2 py-1 text-xs rounded ${
               flashcards[currentIndex].difficulty === 'easy' ? 'bg-green-100 text-green-700' :

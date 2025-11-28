@@ -5,18 +5,44 @@ import {
   FileText, Edit3, Check, X, Award, TrendingUp
 } from 'lucide-react';
 import { quizApi, quizEnhancedApi } from '../services/api';
+import type { QuizSettings, HandwrittenAnswer, IntegrityReport, Question, QuestionType, Difficulty } from '../types';
 
-function QuizResults() {
-  const { categoryId, sessionId } = useParams();
+interface QuizResult {
+  question_id: number;
+  question_text: string;
+  question_type: QuestionType;
+  options: string[];
+  user_answer: string | undefined;
+  correct_answer: string | undefined;
+  is_correct: boolean;
+  explanation?: string;
+  difficulty?: Difficulty;
+  partial_credit: {
+    earned_points: number;
+    total_points: number;
+    breakdown: Array<{ component: string; earned: number; points: number }>;
+    feedback: string;
+  } | null;
+}
+
+interface Results {
+  score: number;
+  total: number;
+  percentage: number;
+  results: QuizResult[];
+}
+
+function QuizResults(): React.ReactElement {
+  const { categoryId, sessionId } = useParams<{ categoryId: string; sessionId: string }>();
   const navigate = useNavigate();
-  const [results, setResults] = useState(null);
-  const [settings, setSettings] = useState(null);
-  const [integrityReport, setIntegrityReport] = useState(null);
-  const [handwrittenAnswers, setHandwrittenAnswers] = useState([]);
+  const [results, setResults] = useState<Results | null>(null);
+  const [settings, setSettings] = useState<QuizSettings | null>(null);
+  const [integrityReport, setIntegrityReport] = useState<IntegrityReport | null>(null);
+  const [handwrittenAnswers, setHandwrittenAnswers] = useState<HandwrittenAnswer[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Handwriting correction state
-  const [editingHandwritten, setEditingHandwritten] = useState(null);
+  const [editingHandwritten, setEditingHandwritten] = useState<number | null>(null);
   const [correctedText, setCorrectedText] = useState('');
   const [savingCorrection, setSavingCorrection] = useState(false);
 
@@ -27,8 +53,8 @@ function QuizResults() {
   const loadResults = async () => {
     try {
       // Get the session data
-      const sessionResponse = await quizApi.getSession(sessionId);
-      const session = sessionResponse.data.data || sessionResponse.data;
+      const sessionResponse = await quizApi.getSession(Number(sessionId));
+      const session = (sessionResponse.data as any).data || sessionResponse.data;
       // Handle settings - could be string or object
       const parsedSettings = typeof session.settings === 'string'
         ? JSON.parse(session.settings)
@@ -36,26 +62,26 @@ function QuizResults() {
       setSettings(parsedSettings);
 
       // Get all questions for this category
-      const questionsResponse = await quizApi.getQuestions(categoryId);
-      const questionsData = questionsResponse.data.data || questionsResponse.data;
-      const allQuestions = questionsData.questions || questionsData || [];
+      const questionsResponse = await quizApi.getQuestions(Number(categoryId));
+      const questionsData = (questionsResponse.data as any).data || questionsResponse.data;
+      const allQuestions: Question[] = questionsData.questions || questionsData || [];
 
       // Parse session data - handle both string and object formats
-      const questionIds = typeof session.questions === 'string'
+      const questionIds: number[] = typeof session.questions === 'string'
         ? JSON.parse(session.questions)
         : session.questions;
-      const answers = typeof session.answers === 'string'
+      const answers: Record<number, string> = typeof session.answers === 'string'
         ? JSON.parse(session.answers)
         : (session.answers || {});
 
       // Try to get partial credit grades
-      let partialGrades = {};
+      const partialGrades: Record<number, any> = {};
       try {
-        const gradesResponse = await quizEnhancedApi.getPartialCreditGrades(sessionId);
-        const gradesData = gradesResponse.data.data || gradesResponse.data;
+        const gradesResponse = await quizEnhancedApi.getPartialCreditGrades(Number(sessionId));
+        const gradesData = (gradesResponse.data as any).data || gradesResponse.data;
         // Handle both array response and {grades: [...]} response
         const gradesArray = Array.isArray(gradesData) ? gradesData : (gradesData.grades || []);
-        gradesArray.forEach(g => {
+        gradesArray.forEach((g: any) => {
           partialGrades[g.question_id] = g;
         });
       } catch (e) {
@@ -64,8 +90,8 @@ function QuizResults() {
 
       // Try to get handwritten answers
       try {
-        const handwrittenResponse = await quizEnhancedApi.getHandwrittenAnswers(sessionId);
-        const handwrittenData = handwrittenResponse.data.data || handwrittenResponse.data;
+        const handwrittenResponse = await quizEnhancedApi.getHandwrittenAnswers(Number(sessionId));
+        const handwrittenData = (handwrittenResponse.data as any).data || handwrittenResponse.data;
         // Handle both array response and {answers: [...]} response
         const handwrittenArray = Array.isArray(handwrittenData) ? handwrittenData : (handwrittenData.answers || []);
         setHandwrittenAnswers(handwrittenArray);
@@ -74,7 +100,7 @@ function QuizResults() {
       }
 
       // Helper function to normalize answer for comparison
-      const normalizeAnswer = (answer) => {
+      const normalizeAnswer = (answer: string | undefined): string => {
         if (!answer) return '';
         let normalized = answer.toString().trim().toUpperCase();
         // Extract just the letter if format is "A)" or "A) Option"
@@ -87,7 +113,7 @@ function QuizResults() {
       };
 
       // Build results
-      const resultsList = questionIds.map(id => {
+      const resultsList: QuizResult[] = questionIds.map(id => {
         const question = allQuestions.find(q => q.id === id);
         const userAnswer = answers[id];
         const partialGrade = partialGrades[id];
@@ -102,7 +128,7 @@ function QuizResults() {
         return {
           question_id: id,
           question_text: question?.question_text || 'Question not found',
-          question_type: question?.question_type || 'multiple_choice',
+          question_type: (question?.question_type || 'multiple_choice') as QuestionType,
           options: question?.options || [],
           user_answer: userAnswer,
           correct_answer: question?.correct_answer,
@@ -148,8 +174,8 @@ function QuizResults() {
       // Get integrity report for exam mode
       if (parsedSettings.mode === 'exam') {
         try {
-          const integrityResponse = await quizEnhancedApi.getIntegrityReport(sessionId);
-          setIntegrityReport(integrityResponse.data.data);
+          const integrityResponse = await quizEnhancedApi.getIntegrityReport(Number(sessionId));
+          setIntegrityReport((integrityResponse.data as any).data);
         } catch (e) {
           // No integrity report
         }
@@ -161,23 +187,20 @@ function QuizResults() {
     }
   };
 
-  const handleStartCorrection = (handwritten) => {
+  const handleStartCorrection = (handwritten: HandwrittenAnswer): void => {
     setEditingHandwritten(handwritten.id);
     setCorrectedText(handwritten.recognized_text || '');
   };
 
-  const handleSaveCorrection = async (handwrittenId) => {
+  const handleSaveCorrection = async (handwrittenId: number): Promise<void> => {
     setSavingCorrection(true);
     try {
       // Find the original text for learning
       const original = handwrittenAnswers.find(h => h.id === handwrittenId);
-      const corrections = [];
+      const corrections: Record<string, string> = {};
 
       if (original?.recognized_text && correctedText !== original.recognized_text) {
-        corrections.push({
-          original: original.recognized_text,
-          corrected: correctedText
-        });
+        corrections[original.recognized_text] = correctedText;
       }
 
       await quizEnhancedApi.updateHandwrittenRecognition(handwrittenId, correctedText, corrections);
@@ -186,14 +209,14 @@ function QuizResults() {
       setHandwrittenAnswers(prev =>
         prev.map(h =>
           h.id === handwrittenId
-            ? { ...h, recognized_text: correctedText, user_corrections: JSON.stringify(corrections) }
+            ? { ...h, recognized_text: correctedText, user_corrections: corrections }
             : h
         )
       );
 
       setEditingHandwritten(null);
       setCorrectedText('');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving correction:', error);
       alert('Error saving correction: ' + (error.response?.data?.error || error.message));
     } finally {
@@ -201,7 +224,7 @@ function QuizResults() {
     }
   };
 
-  const getHandwrittenForQuestion = (questionId) => {
+  const getHandwrittenForQuestion = (questionId: number): HandwrittenAnswer | undefined => {
     return handwrittenAnswers.find(h => h.question_id === questionId);
   };
 
@@ -276,11 +299,11 @@ function QuizResults() {
       {/* Exam Integrity Report */}
       {integrityReport && (
         <div className={`card mb-8 ${
-          (integrityReport.total_violations || integrityReport.totalViolations || 0) === 0 ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'
+          (integrityReport.total_violations || 0) === 0 ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'
         }`}>
           <div className="flex items-center space-x-3 mb-4">
             <AlertTriangle className={`h-6 w-6 ${
-              (integrityReport.total_violations || integrityReport.totalViolations || 0) === 0 ? 'text-green-600' : 'text-red-600'
+              (integrityReport.total_violations || 0) === 0 ? 'text-green-600' : 'text-red-600'
             }`} />
             <h2 className="text-lg font-semibold">Exam Integrity Report</h2>
           </div>
@@ -288,35 +311,35 @@ function QuizResults() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center">
               <p className={`text-2xl font-bold ${
-                (integrityReport.integrity_score || integrityReport.integrityScore || 0) >= 80 ? 'text-green-600' :
-                (integrityReport.integrity_score || integrityReport.integrityScore || 0) >= 50 ? 'text-yellow-600' :
+                (integrityReport.integrity_score || 0) >= 80 ? 'text-green-600' :
+                (integrityReport.integrity_score || 0) >= 50 ? 'text-yellow-600' :
                 'text-red-600'
               }`}>
-                {integrityReport.integrity_score || integrityReport.integrityScore || 0}%
+                {integrityReport.integrity_score || 0}%
               </p>
               <p className="text-sm text-gray-600">Integrity Score</p>
             </div>
             <div className="text-center">
               <p className="text-2xl font-bold text-gray-800">
-                {integrityReport.total_violations || integrityReport.totalViolations || 0}
+                {integrityReport.total_violations || 0}
               </p>
               <p className="text-sm text-gray-600">Total Violations</p>
             </div>
             <div className="text-center">
               <p className="text-2xl font-bold text-gray-800">
-                {integrityReport.tab_switch_count || integrityReport.tabSwitchCount || 0}
+                {integrityReport.violation_breakdown?.tab_switch || 0}
               </p>
               <p className="text-sm text-gray-600">Tab Switches</p>
             </div>
             <div className="text-center">
               <p className="text-2xl font-bold text-gray-800">
-                {integrityReport.focus_lost_count || integrityReport.focusLostCount || 0}
+                {integrityReport.violation_breakdown?.focus_lost || 0}
               </p>
               <p className="text-sm text-gray-600">Focus Lost</p>
             </div>
           </div>
 
-          {(integrityReport.total_violations || integrityReport.totalViolations || 0) === 0 && (
+          {(integrityReport.total_violations || 0) === 0 && (
             <p className="text-sm text-green-700 mt-4 text-center">
               Excellent! You maintained focus throughout the exam.
             </p>
@@ -460,7 +483,7 @@ function QuizResults() {
                     </div>
                   )}
 
-                  {result.question_type === 'written_answer' || result.question_type === 'fill_in_blank' ? (
+                  {result.question_type === 'written' || result.question_type === 'fill_in_blank' ? (
                     <div className="space-y-3">
                       <div>
                         <p className="text-xs font-medium text-gray-600 mb-1">Your Answer:</p>

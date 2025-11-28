@@ -326,6 +326,25 @@ class FlashcardService:
             "average_confidence": round(avg_confidence, 2),
         }
 
+    async def get_flashcard_chapters(
+        self,
+        db: AsyncSession,
+        category_id: int,
+    ) -> List[str]:
+        """Get all unique chapters/tags from flashcards in a category."""
+        flashcards = await self.get_flashcards_by_category(db, category_id)
+
+        # Collect all unique tags
+        all_tags = set()
+        for f in flashcards:
+            if f.tags:
+                for tag in f.tags:
+                    if tag:  # Skip empty tags
+                        all_tags.add(tag)
+
+        # Sort alphabetically for consistency
+        return sorted(list(all_tags))
+
     async def get_study_progress(
         self,
         db: AsyncSession,

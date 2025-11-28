@@ -61,6 +61,7 @@ class GenerationAgent(BaseAgent):
                 - question_type: Type of questions to generate
                 - style_guide: Optional style guide from analysis
                 - custom_directions: Optional user instructions
+                - chapter: Optional chapter/topic to tag questions with
 
         Returns:
             Generated questions
@@ -71,6 +72,7 @@ class GenerationAgent(BaseAgent):
         question_type = input_data.get("question_type", "multiple_choice")
         style_guide = input_data.get("style_guide")
         custom_directions = input_data.get("custom_directions", "")
+        chapter = input_data.get("chapter", "")
 
         if not content:
             return {
@@ -84,6 +86,7 @@ class GenerationAgent(BaseAgent):
             count=count,
             difficulty=difficulty,
             question_type=question_type,
+            chapter=chapter,
         )
 
         # Build prompt
@@ -94,6 +97,7 @@ class GenerationAgent(BaseAgent):
             question_type=question_type,
             style_guide=style_guide,
             custom_directions=custom_directions,
+            chapter=chapter,
         )
 
         try:
@@ -125,12 +129,18 @@ class GenerationAgent(BaseAgent):
         question_type: str,
         style_guide: Optional[Dict[str, Any]] = None,
         custom_directions: str = "",
+        chapter: str = "",
     ) -> str:
         """Build the prompt for question generation."""
         # Truncate content if too long
         max_content_length = 7000
         if len(content) > max_content_length:
             content = content[:max_content_length] + "..."
+
+        # Chapter tagging instruction
+        chapter_instruction = ""
+        if chapter:
+            chapter_instruction = f'\nIMPORTANT: Tag ALL generated questions with "tags": ["{chapter}"] to categorize them under the chapter/topic: {chapter}\n'
 
         # Type-specific instructions
         type_instructions = {
@@ -191,16 +201,19 @@ Use this style guide based on the user's sample questions:
             "hard": "HARD: Complex analysis, synthesis of concepts, challenging scenarios"
         }.get(difficulty, "MEDIUM")
 
+        # Default tags for output
+        tags_output = f'["{chapter}"]' if chapter else '[]'
+
         # Build a simple, concise prompt to avoid truncation
         if question_type == "fill_in_blank":
             return f"""Generate {count} {difficulty.upper()} fill-in-the-blank questions from this content:
 
 {content}
-{custom_section}
+{custom_section}{chapter_instruction}
 Difficulty: {difficulty_guidance}
 
 Output ONLY valid JSON:
-{{"questions":[{{"question_text":"Statement with _____ blank","question_type":"fill_in_blank","difficulty":"{difficulty}","options":null,"correct_answer":"answer","explanation":"why"}}]}}
+{{"questions":[{{"question_text":"Statement with _____ blank","question_type":"fill_in_blank","difficulty":"{difficulty}","options":null,"correct_answer":"answer","explanation":"why","tags":{tags_output}}}]}}
 
 Rules: question_text has _____, options is null, correct_answer fills blank. All questions MUST be {difficulty} difficulty. Generate exactly {count}."""
 
@@ -208,11 +221,11 @@ Rules: question_text has _____, options is null, correct_answer fills blank. All
             return f"""Generate {count} {difficulty.upper()} written answer questions from this content:
 
 {content}
-{custom_section}
+{custom_section}{chapter_instruction}
 Difficulty: {difficulty_guidance}
 
 Output ONLY valid JSON:
-{{"questions":[{{"question_text":"Open-ended question?","question_type":"written_answer","difficulty":"{difficulty}","options":null,"correct_answer":"Model answer text","explanation":"Grading criteria"}}]}}
+{{"questions":[{{"question_text":"Open-ended question?","question_type":"written_answer","difficulty":"{difficulty}","options":null,"correct_answer":"Model answer text","explanation":"Grading criteria","tags":{tags_output}}}]}}
 
 Rules: options is null, correct_answer is model answer. All questions MUST be {difficulty} difficulty. Generate exactly {count}."""
 
@@ -220,11 +233,11 @@ Rules: options is null, correct_answer is model answer. All questions MUST be {d
             return f"""Generate {count} {difficulty.upper()} true/false questions from this content:
 
 {content}
-{custom_section}
+{custom_section}{chapter_instruction}
 Difficulty: {difficulty_guidance}
 
 Output ONLY valid JSON:
-{{"questions":[{{"question_text":"Statement to evaluate","question_type":"true_false","difficulty":"{difficulty}","options":["A) True","B) False"],"correct_answer":"A","explanation":"why"}}]}}
+{{"questions":[{{"question_text":"Statement to evaluate","question_type":"true_false","difficulty":"{difficulty}","options":["A) True","B) False"],"correct_answer":"A","explanation":"why","tags":{tags_output}}}]}}
 
 Rules: options always ["A) True","B) False"], correct_answer is "A" or "B". All questions MUST be {difficulty} difficulty. Generate exactly {count}."""
 
@@ -234,7 +247,7 @@ Rules: options always ["A) True","B) False"], correct_answer is "A" or "B". All 
                 return f"""Generate {count} CONCEPT-FOCUSED multiple choice questions from this content:
 
 {content}
-{custom_section}
+{custom_section}{chapter_instruction}
 
 Mode: CONCEPTS ONLY - Test key terminology, definitions, and core concepts.
 
@@ -251,18 +264,18 @@ Example question formats:
 - "What does the term 'photosynthesis' refer to?"
 
 Output ONLY valid JSON:
-{{"questions":[{{"question_text":"What is/Which term...?","question_type":"multiple_choice","difficulty":"concepts","options":["A) term1","B) term2","C) term3","D) term4"],"correct_answer":"A","explanation":"brief definition"}}]}}
+{{"questions":[{{"question_text":"What is/Which term...?","question_type":"multiple_choice","difficulty":"concepts","options":["A) term1","B) term2","C) term3","D) term4"],"correct_answer":"A","explanation":"brief definition","tags":{tags_output}}}]}}
 
 Rules: 4 options A-D, correct_answer is letter. Focus on testing terminology and definitions. Generate exactly {count}."""
 
             return f"""Generate {count} {difficulty.upper()} multiple choice questions from this content:
 
 {content}
-{custom_section}
+{custom_section}{chapter_instruction}
 Difficulty: {difficulty_guidance}
 
 Output ONLY valid JSON:
-{{"questions":[{{"question_text":"Question?","question_type":"multiple_choice","difficulty":"{difficulty}","options":["A) opt1","B) opt2","C) opt3","D) opt4"],"correct_answer":"A","explanation":"why"}}]}}
+{{"questions":[{{"question_text":"Question?","question_type":"multiple_choice","difficulty":"{difficulty}","options":["A) opt1","B) opt2","C) opt3","D) opt4"],"correct_answer":"A","explanation":"why","tags":{tags_output}}}]}}
 
 Rules: 4 options A-D, correct_answer is letter. All questions MUST be {difficulty} difficulty. Generate exactly {count}."""
 
@@ -353,6 +366,7 @@ Rules: 4 options A-D, correct_answer is letter. All questions MUST be {difficult
         count: int = 10,
         difficulty: str = "medium",
         custom_directions: str = "",
+        chapter: str = "",
     ) -> Dict[str, Any]:
         """
         Generate flashcards from content.
@@ -362,6 +376,7 @@ Rules: 4 options A-D, correct_answer is letter. All questions MUST be {difficult
             count: Number of flashcards to generate
             difficulty: Difficulty level (easy, medium, hard)
             custom_directions: Optional user instructions
+            chapter: Optional chapter/topic to tag flashcards with
 
         Returns:
             Generated flashcards
@@ -377,9 +392,10 @@ Rules: 4 options A-D, correct_answer is letter. All questions MUST be {difficult
             content_length=len(content),
             count=count,
             difficulty=difficulty,
+            chapter=chapter,
         )
 
-        prompt = self._build_flashcard_prompt(content, count, difficulty, custom_directions)
+        prompt = self._build_flashcard_prompt(content, count, difficulty, custom_directions, chapter)
 
         try:
             response = await self.generate_json(prompt, max_tokens=3000)
@@ -408,6 +424,7 @@ Rules: 4 options A-D, correct_answer is letter. All questions MUST be {difficult
         count: int,
         difficulty: str = "medium",
         custom_directions: str = "",
+        chapter: str = "",
     ) -> str:
         """Build prompt for flashcard generation."""
         max_content_length = 7000
@@ -418,12 +435,19 @@ Rules: 4 options A-D, correct_answer is letter. All questions MUST be {difficult
         if custom_directions:
             custom_section = f"\nAdditional Instructions:\n{custom_directions}\n"
 
+        # Chapter tagging instruction
+        chapter_instruction = ""
+        tags_value = '["vocabulary", "definition"]'
+        if chapter:
+            chapter_instruction = f'\nIMPORTANT: Tag ALL generated flashcards with the chapter/topic: "{chapter}"\n'
+            tags_value = f'["{chapter}", "vocabulary"]'
+
         # Special handling for "concepts" mode - focused on terminology and definitions
         if difficulty == "concepts":
             return f"""Create {count} CONCEPT-FOCUSED educational flashcards from this content:
 
 {content}
-{custom_section}
+{custom_section}{chapter_instruction}
 
 Mode: CONCEPTS ONLY - Focus exclusively on key terminology, definitions, and core concepts.
 
@@ -462,7 +486,7 @@ Respond with JSON in this format:
             "front_text": "Term, description, or formula",
             "back_text": "Definition, name, or explanation",
             "difficulty": "concepts",
-            "tags": ["vocabulary", "definition"]
+            "tags": {tags_value}
         }}
     ]
 }}"""
@@ -474,10 +498,13 @@ Respond with JSON in this format:
             "hard": "HARD: Complex relationships, analysis required, challenging concepts that require deep understanding"
         }.get(difficulty, "MEDIUM")
 
+        # Tags for standard mode
+        standard_tags = f'["{chapter}"]' if chapter else '["topic1", "topic2"]'
+
         return f"""Create {count} {difficulty.upper()} difficulty educational flashcards from this content:
 
 {content}
-{custom_section}
+{custom_section}{chapter_instruction}
 
 Difficulty Level: {difficulty_guidance}
 
@@ -495,7 +522,7 @@ Respond with JSON in this format:
             "front_text": "Question or term",
             "back_text": "Answer or definition",
             "difficulty": "{difficulty}",
-            "tags": ["topic1", "topic2"]
+            "tags": {standard_tags}
         }}
     ]
 }}"""
@@ -534,6 +561,7 @@ async def generate_questions(
     question_type: str = "multiple_choice",
     custom_directions: str = "",
     document_id: Optional[int] = None,
+    chapter: str = "",
 ) -> Dict[str, Any]:
     """
     Generate questions for a category.
@@ -549,6 +577,7 @@ async def generate_questions(
         question_type: Type of questions
         custom_directions: User instructions
         document_id: Optional document to link questions to
+        chapter: Optional chapter/topic to tag questions with
 
     Returns:
         Generation result with questions
@@ -570,6 +599,7 @@ async def generate_questions(
         "question_type": question_type,
         "style_guide": style_guide,
         "custom_directions": custom_directions,
+        "chapter": chapter,
     })
 
     if result["success"]:
@@ -626,6 +656,7 @@ async def generate_flashcards(
     difficulty: str = "medium",
     custom_directions: str = "",
     document_id: Optional[int] = None,
+    chapter: str = "",
 ) -> Dict[str, Any]:
     """
     Generate flashcards for a category.
@@ -638,6 +669,7 @@ async def generate_flashcards(
         difficulty: Difficulty level (easy, medium, hard)
         custom_directions: User instructions
         document_id: Optional document to link flashcards to
+        chapter: Optional chapter/topic to tag flashcards with
 
     Returns:
         Generation result with flashcards
@@ -648,6 +680,7 @@ async def generate_flashcards(
         count=count,
         difficulty=difficulty,
         custom_directions=custom_directions,
+        chapter=chapter,
     )
 
     if result["success"]:

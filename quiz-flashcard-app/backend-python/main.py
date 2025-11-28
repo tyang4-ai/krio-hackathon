@@ -20,6 +20,7 @@ from config import settings
 from config.database import init_db, close_db
 from routers import (
     health_router,
+    auth_router,
     categories_router,
     documents_router,
     flashcards_router,
@@ -27,6 +28,7 @@ from routers import (
     notebook_router,
     sample_questions_router,
     ai_router,
+    analytics_router,
 )
 
 # Configure structured logging
@@ -116,6 +118,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(health_router)
+app.include_router(auth_router)
 app.include_router(categories_router)
 app.include_router(documents_router)
 app.include_router(flashcards_router)
@@ -123,6 +126,7 @@ app.include_router(quiz_router)
 app.include_router(notebook_router)
 app.include_router(sample_questions_router)
 app.include_router(ai_router)
+app.include_router(analytics_router)
 
 
 @app.get("/")

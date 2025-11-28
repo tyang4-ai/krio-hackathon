@@ -1,32 +1,33 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Send, Clock, ArrowLeft, AlertTriangle, Upload, FileText, X } from 'lucide-react';
 import { quizApi, quizEnhancedApi } from '../services/api';
-import ScientificInput from '../components/ScientificInput';
+import type { Question, QuizSession as QuizSessionType, QuizSettings, FocusEventType, HandwrittenAnswer } from '../types';
 
-function QuizSession() {
-  const { categoryId, sessionId } = useParams();
+interface QuizWithQuestions extends QuizSessionType {
+  questions: Question[];
+}
+
+function QuizSession(): React.ReactElement {
+  const { categoryId, sessionId } = useParams<{ categoryId: string; sessionId: string }>();
   const navigate = useNavigate();
-  const [quiz, setQuiz] = useState(null);
-  const [settings, setSettings] = useState(null);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [answers, setAnswers] = useState({});
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
+  const [quiz, setQuiz] = useState<QuizWithQuestions | null>(null);
+  const [settings, setSettings] = useState<QuizSettings | null>(null);
+  const [currentIndex, setCurrentIndex] = useState<number>(0);
+  const [answers, setAnswers] = useState<Record<number, string>>({});
+  const [loading, setLoading] = useState<boolean>(true);
+  const [submitting, setSubmitting] = useState<boolean>(false);
 
-  // Timer state
-  const [timeRemaining, setTimeRemaining] = useState(null);
-  const [questionTimeRemaining, setQuestionTimeRemaining] = useState(null);
-  const timerRef = useRef(null);
+  const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
+  const [questionTimeRemaining, setQuestionTimeRemaining] = useState<number | null>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Focus tracking for exam mode
-  const [focusViolations, setFocusViolations] = useState(0);
-  const [showFocusWarning, setShowFocusWarning] = useState(false);
+  const [focusViolations, setFocusViolations] = useState<number>(0);
+  const [showFocusWarning, setShowFocusWarning] = useState<boolean>(false);
 
-  // Handwritten uploads
-  const [handwrittenFiles, setHandwrittenFiles] = useState({});
-  const [uploadingHandwritten, setUploadingHandwritten] = useState(false);
-  const fileInputRef = useRef(null);
+  const [handwrittenFiles, setHandwrittenFiles] = useState<Record<number, HandwrittenAnswer>>({});
+  const [uploadingHandwritten, setUploadingHandwritten] = useState<boolean>(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadQuiz();
@@ -37,22 +38,21 @@ function QuizSession() {
     };
   }, [sessionId]);
 
-  // Focus tracking for exam mode
   useEffect(() => {
     if (settings?.mode === 'exam') {
-      const handleVisibilityChange = () => {
+      const handleVisibilityChange = (): void => {
         if (document.hidden) {
           recordFocusEvent('tab_switch');
         }
       };
 
-      const handleWindowBlur = () => {
+      const handleWindowBlur = (): void => {
         recordFocusEvent('window_blur');
         setShowFocusWarning(true);
         setTimeout(() => setShowFocusWarning(false), 3000);
       };
 
-      const handleMouseLeave = (e) => {
+      const handleMouseLeave = (e: MouseEvent): void => {
         if (e.clientY <= 0 || e.clientX <= 0 ||
             e.clientX >= window.innerWidth || e.clientY >= window.innerHeight) {
           recordFocusEvent('focus_lost', { x: e.clientX, y: e.clientY });
@@ -73,63 +73,48 @@ function QuizSession() {
     }
   }, [settings?.mode, sessionId]);
 
-  const recordFocusEvent = async (eventType, details = {}) => {
+  const recordFocusEvent = async (eventType: FocusEventType, details: Record<string, unknown> = {}): Promise<void> => {
+    if (!sessionId) return;
+
     try {
-      await quizEnhancedApi.recordFocusEvent(sessionId, eventType, details);
+      await quizEnhancedApi.recordFocusEvent(Number(sessionId), eventType, details);
       setFocusViolations(prev => prev + 1);
     } catch (error) {
       console.error('Error recording focus event:', error);
     }
   };
 
-  // Initialize timer values when settings are loaded
   useEffect(() => {
     if (!settings || settings.mode === 'practice') return;
 
-    console.log('Timer initialization - mode:', settings.mode, 'timerType:', settings.timerType);
-
-    // Set initial timer value based on timer type
     if (settings.timerType === 'total') {
-      const totalSeconds = (settings.totalTimeMinutes || 30) * 60;
-      console.log('Setting total time:', totalSeconds, 'seconds');
+      const totalSeconds = ((settings as any).totalTimeMinutes || 30) * 60;
       setTimeRemaining(totalSeconds);
     } else if (settings.timerType === 'per_question') {
-      const perQuestionSecs = settings.perQuestionSeconds || 60;
-      console.log('Setting per-question time:', perQuestionSecs, 'seconds');
+      const perQuestionSecs = (settings as any).perQuestionSeconds || 60;
       setQuestionTimeRemaining(perQuestionSecs);
     }
-  }, [settings?.mode, settings?.timerType, settings?.totalTimeMinutes, settings?.perQuestionSeconds]);
+  }, [settings?.mode, settings?.timerType, (settings as any)?.totalTimeMinutes, (settings as any)?.perQuestionSeconds]);
 
-  // Timer countdown effect - MUST run after initialization
   useEffect(() => {
-    // Only start timer for timed/exam modes
     if (!settings || settings.mode === 'practice') {
-      console.log('Timer not starting - practice mode or no settings');
       return;
     }
 
-    // Check if we have timer values initialized
     const isTotalTimer = settings.timerType === 'total';
     const isPerQuestionTimer = settings.timerType === 'per_question';
 
     if (!isTotalTimer && !isPerQuestionTimer) {
-      console.log('Timer not starting - no timer type set');
       return;
     }
 
-    // Wait for timer to be initialized
     if (isTotalTimer && timeRemaining === null) {
-      console.log('Waiting for total timer initialization...');
       return;
     }
     if (isPerQuestionTimer && questionTimeRemaining === null) {
-      console.log('Waiting for per-question timer initialization...');
       return;
     }
 
-    console.log('Starting timer countdown - type:', settings.timerType);
-
-    // Clear any existing timer
     if (timerRef.current) {
       clearInterval(timerRef.current);
     }
@@ -139,8 +124,8 @@ function QuizSession() {
         setTimeRemaining(prev => {
           if (prev === null || prev === undefined) return prev;
           if (prev <= 1) {
-            clearInterval(timerRef.current);
-            handleSubmit(true); // Auto-submit
+            if (timerRef.current) clearInterval(timerRef.current);
+            handleSubmit(true);
             return 0;
           }
           return prev - 1;
@@ -149,12 +134,11 @@ function QuizSession() {
         setQuestionTimeRemaining(prev => {
           if (prev === null || prev === undefined) return prev;
           if (prev <= 1) {
-            // Move to next question or submit
-            if (currentIndex < quiz?.questions?.length - 1) {
+            if (currentIndex < (quiz?.questions?.length || 0) - 1) {
               setCurrentIndex(i => i + 1);
-              return settings.perQuestionSeconds || 60;
+              return (settings as any).perQuestionSeconds || 60;
             } else {
-              clearInterval(timerRef.current);
+              if (timerRef.current) clearInterval(timerRef.current);
               handleSubmit(true);
               return 0;
             }
@@ -171,16 +155,17 @@ function QuizSession() {
     };
   }, [settings?.mode, settings?.timerType, timeRemaining !== null, questionTimeRemaining !== null, quiz?.questions?.length]);
 
-  // Reset per-question timer when changing questions
   useEffect(() => {
-    if (settings?.timerType === 'per_question' && settings?.perQuestionSeconds) {
-      setQuestionTimeRemaining(settings.perQuestionSeconds);
+    if (settings?.timerType === 'per_question' && (settings as any)?.perQuestionSeconds) {
+      setQuestionTimeRemaining((settings as any).perQuestionSeconds);
     }
-  }, [currentIndex, settings?.timerType, settings?.perQuestionSeconds]);
+  }, [currentIndex, settings?.timerType, (settings as any)?.perQuestionSeconds]);
 
-  const loadQuiz = async () => {
+  const loadQuiz = async (): Promise<void> => {
+    if (!sessionId || !categoryId) return;
+
     try {
-      const response = await quizApi.getSession(sessionId);
+      const response = await quizApi.getSession(Number(sessionId));
       const session = response.data.data || response.data;
 
       if (session.completed) {
@@ -188,36 +173,33 @@ function QuizSession() {
         return;
       }
 
-      // Handle settings - could be string or object
       const parsedSettings = typeof session.settings === 'string'
         ? JSON.parse(session.settings)
         : session.settings;
       setSettings(parsedSettings);
 
-      // Handle questions - could be string or object/array
       const questionIds = typeof session.questions === 'string'
         ? JSON.parse(session.questions)
         : session.questions;
-      const questionsResponse = await quizApi.getQuestions(categoryId);
+      const questionsResponse = await quizApi.getQuestions(Number(categoryId));
       const questionsData = questionsResponse.data.data || questionsResponse.data;
-      const allQuestions = questionsData.questions || questionsData || [];
+      const allQuestions = (questionsData as any).questions || questionsData || [];
 
       const sessionQuestions = questionIds
-        .map(id => allQuestions.find(q => q.id === id))
-        .filter(q => q);
+        .map((id: number) => allQuestions.find((q: Question) => q.id === id))
+        .filter((q: Question) => q);
 
       setQuiz({
         ...session,
         questions: sessionQuestions
       });
 
-      // Load existing handwritten answers
       try {
-        const handwrittenResponse = await quizEnhancedApi.getHandwrittenAnswers(sessionId);
+        const handwrittenResponse = await quizEnhancedApi.getHandwrittenAnswers(Number(sessionId));
         const handwrittenData = handwrittenResponse.data.data || handwrittenResponse.data;
-        const handwrittenArray = Array.isArray(handwrittenData) ? handwrittenData : (handwrittenData.answers || []);
-        const handwritten = {};
-        handwrittenArray.forEach(h => {
+        const handwrittenArray = Array.isArray(handwrittenData) ? handwrittenData : ((handwrittenData as any).answers || []);
+        const handwritten: Record<number, HandwrittenAnswer> = {};
+        handwrittenArray.forEach((h: HandwrittenAnswer) => {
           handwritten[h.question_id] = h;
         });
         setHandwrittenFiles(handwritten);
@@ -231,24 +213,24 @@ function QuizSession() {
     }
   };
 
-  const handleSelectAnswer = (questionId, answer) => {
+  const handleSelectAnswer = (questionId: number, answer: string): void => {
     setAnswers({ ...answers, [questionId]: answer });
   };
 
-  const handleHandwrittenUpload = async (questionId, file) => {
-    if (!file || file.type !== 'application/pdf') {
+  const handleHandwrittenUpload = async (questionId: number, file: File): Promise<void> => {
+    if (!file || file.type !== 'application/pdf' || !sessionId) {
       alert('Please upload a PDF file');
       return;
     }
 
     setUploadingHandwritten(true);
     try {
-      const response = await quizEnhancedApi.uploadHandwrittenAnswer(sessionId, questionId, file);
+      const response = await quizEnhancedApi.uploadHandwrittenAnswer(Number(sessionId), questionId, file);
       setHandwrittenFiles({
         ...handwrittenFiles,
         [questionId]: response.data.data
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error uploading handwritten answer:', error);
       alert('Error uploading file: ' + (error.response?.data?.error || error.message));
     } finally {
@@ -256,13 +238,15 @@ function QuizSession() {
     }
   };
 
-  const removeHandwrittenFile = (questionId) => {
+  const removeHandwrittenFile = (questionId: number): void => {
     const updated = { ...handwrittenFiles };
     delete updated[questionId];
     setHandwrittenFiles(updated);
   };
 
-  const handleSubmit = async (autoSubmit = false) => {
+  const handleSubmit = async (autoSubmit: boolean = false): Promise<void> => {
+    if (!sessionId || !categoryId || !quiz) return;
+
     if (!autoSubmit) {
       const unanswered = quiz.questions.filter(q => !answers[q.id] && !handwrittenFiles[q.id]).length;
       if (unanswered > 0) {
@@ -274,14 +258,13 @@ function QuizSession() {
 
     setSubmitting(true);
     try {
-      // Use enhanced submit if partial credit is enabled
-      if (settings?.allowPartialCredit) {
-        await quizEnhancedApi.submitWithGrading(sessionId, answers, true);
+      if ((settings as any)?.allowPartialCredit) {
+        await quizEnhancedApi.submitWithGrading(Number(sessionId), answers, true);
       } else {
-        await quizApi.submitAnswers(sessionId, answers);
+        await quizApi.submitAnswers(Number(sessionId), answers);
       }
       navigate(`/category/${categoryId}/quiz/results/${sessionId}`);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error submitting quiz:', error);
       alert('Error submitting quiz: ' + (error.response?.data?.error || error.message));
     } finally {
@@ -289,13 +272,13 @@ function QuizSession() {
     }
   };
 
-  const formatTime = (seconds) => {
+  const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const getTimerColor = (seconds, total) => {
+  const getTimerColor = (seconds: number, total: number): string => {
     const percentage = seconds / total;
     if (percentage > 0.5) return 'text-green-600';
     if (percentage > 0.25) return 'text-yellow-600';
@@ -316,11 +299,10 @@ function QuizSession() {
 
   const currentQuestion = quiz.questions[currentIndex];
   const answeredCount = Object.keys(answers).length + Object.keys(handwrittenFiles).length;
-  const totalTime = settings?.timerType === 'total' ? settings.totalTimeMinutes * 60 : settings?.perQuestionSeconds;
+  const totalTime = settings?.timerType === 'total' ? (settings as any).totalTimeMinutes * 60 : (settings as any)?.perQuestionSeconds;
 
   return (
     <div className="max-w-3xl mx-auto">
-      {/* Focus Warning Overlay */}
       {showFocusWarning && settings?.mode === 'exam' && (
         <div className="fixed inset-0 bg-red-500 bg-opacity-20 z-50 flex items-center justify-center pointer-events-none">
           <div className="bg-red-600 text-white px-8 py-4 rounded-lg shadow-xl flex items-center space-x-3">
@@ -342,14 +324,12 @@ function QuizSession() {
         Back to Quiz Settings
       </button>
 
-      {/* Timer and Mode Display */}
       {settings?.mode !== 'practice' && (
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            {/* Total or Per-Question Timer */}
             <div className={`flex items-center space-x-2 px-4 py-2 rounded-lg bg-gray-100 ${
               getTimerColor(
-                settings.timerType === 'total' ? timeRemaining : questionTimeRemaining,
+                settings.timerType === 'total' ? (timeRemaining || 0) : (questionTimeRemaining || 0),
                 totalTime
               )
             }`}>
@@ -365,7 +345,6 @@ function QuizSession() {
               </span>
             </div>
 
-            {/* Mode Badge */}
             <span className={`px-3 py-1 rounded-full text-sm font-medium ${
               settings.mode === 'exam'
                 ? 'bg-purple-100 text-purple-700'
@@ -375,7 +354,6 @@ function QuizSession() {
             </span>
           </div>
 
-          {/* Focus Violations Counter (Exam Mode) */}
           {settings.mode === 'exam' && (
             <div className={`flex items-center space-x-2 px-3 py-1 rounded-lg ${
               focusViolations === 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
@@ -389,7 +367,6 @@ function QuizSession() {
         </div>
       )}
 
-      {/* Progress Bar */}
       <div className="mb-6">
         <div className="flex justify-between text-sm text-gray-600 mb-2">
           <span>Question {currentIndex + 1} of {quiz.questions.length}</span>
@@ -403,7 +380,6 @@ function QuizSession() {
         </div>
       </div>
 
-      {/* Question Card */}
       <div className="card mb-6">
         <div className="flex items-center justify-between mb-4">
           <span className={`px-2 py-1 text-xs rounded ${
@@ -422,17 +398,17 @@ function QuizSession() {
           {currentQuestion.question_text}
         </h2>
 
-        {currentQuestion.question_type === 'written_answer' ? (
+        {currentQuestion.question_type === 'written' ? (
           <div className="space-y-4">
-            <ScientificInput
+            <textarea
               value={answers[currentQuestion.id] || ''}
-              onChange={(newValue) => handleSelectAnswer(currentQuestion.id, newValue)}
+              onChange={(e) => handleSelectAnswer(currentQuestion.id, e.target.value)}
               placeholder="Type your answer here..."
               disabled={!!handwrittenFiles[currentQuestion.id]}
+              className="input min-h-[150px]"
             />
 
-            {/* Handwritten Upload Option */}
-            {settings?.allowHandwrittenUpload && (
+            {(settings as any)?.allowHandwrittenUpload && (
               <div className="border-t pt-4">
                 <p className="text-sm text-gray-600 mb-2">Or upload a handwritten answer (PDF):</p>
 
@@ -446,7 +422,7 @@ function QuizSession() {
                         </p>
                         {handwrittenFiles[currentQuestion.id].recognized_text && (
                           <p className="text-xs text-green-600 mt-1">
-                            Recognized: "{handwrittenFiles[currentQuestion.id].recognized_text.substring(0, 50)}..."
+                            Recognized: "{handwrittenFiles[currentQuestion.id].recognized_text?.substring(0, 50)}..."
                           </p>
                         )}
                       </div>
@@ -465,7 +441,7 @@ function QuizSession() {
                       ref={fileInputRef}
                       accept="application/pdf"
                       onChange={(e) => {
-                        if (e.target.files[0]) {
+                        if (e.target.files?.[0]) {
                           handleHandwrittenUpload(currentQuestion.id, e.target.files[0]);
                         }
                       }}
@@ -500,13 +476,15 @@ function QuizSession() {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Your Answer:
             </label>
-            <ScientificInput
+            <input
+              type="text"
               value={answers[currentQuestion.id] || ''}
-              onChange={(newValue) => handleSelectAnswer(currentQuestion.id, newValue)}
+              onChange={(e) => handleSelectAnswer(currentQuestion.id, e.target.value)}
               placeholder="Enter the answer to fill in the blank..."
+              className="input"
             />
             <p className="text-xs text-gray-500 mt-2">
-              Fill in the blank with the appropriate answer. Use the toolbar for scientific notation, formulas, and symbols.
+              Fill in the blank with the appropriate answer.
             </p>
           </div>
         ) : currentQuestion.options && currentQuestion.options.length > 0 ? (
@@ -537,7 +515,6 @@ function QuizSession() {
         )}
       </div>
 
-      {/* Navigation */}
       <div className="flex justify-between items-center">
         <button
           onClick={() => setCurrentIndex(Math.max(0, currentIndex - 1))}

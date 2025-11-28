@@ -2,18 +2,33 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Folder, FileText, HelpCircle, BookOpen, Trash2 } from 'lucide-react';
 import { categoryApi } from '../services/api';
+import type { Category } from '../types';
 
-function Home() {
-  const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [newCategory, setNewCategory] = useState({ name: '', description: '', color: '#033B4C' });
+interface CategoryStats {
+  document_count?: number;
+  question_count?: number;
+  flashcard_count?: number;
+}
+
+interface CategoryWithStats extends Category {
+  stats?: CategoryStats;
+}
+
+function Home(): React.ReactElement {
+  const [categories, setCategories] = useState<CategoryWithStats[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [showModal, setShowModal] = useState<boolean>(false);
+  const [newCategory, setNewCategory] = useState<Partial<Category> & { color?: string }>({
+    name: '',
+    description: '',
+    color: '#033B4C'
+  });
 
   useEffect(() => {
     loadCategories();
   }, []);
 
-  const loadCategories = async () => {
+  const loadCategories = async (): Promise<void> => {
     try {
       const response = await categoryApi.getAll();
       // Handle both wrapped and unwrapped response formats
@@ -26,8 +41,8 @@ function Home() {
     }
   };
 
-  const handleCreateCategory = async () => {
-    if (!newCategory.name.trim()) {
+  const handleCreateCategory = async (): Promise<void> => {
+    if (!newCategory.name?.trim()) {
       alert('Please enter a category name');
       return;
     }
@@ -36,13 +51,13 @@ function Home() {
       setShowModal(false);
       setNewCategory({ name: '', description: '', color: '#033B4C' });
       loadCategories();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating category:', error);
       alert('Error creating category: ' + (error.response?.data?.error || error.message));
     }
   };
 
-  const handleDeleteCategory = async (id, e) => {
+  const handleDeleteCategory = async (id: number, e: React.MouseEvent<HTMLButtonElement>): Promise<void> => {
     e.preventDefault();
     e.stopPropagation();
     if (window.confirm('Are you sure you want to delete this category? All data will be lost.')) {
@@ -107,9 +122,9 @@ function Home() {
               </button>
               <div
                 className="w-12 h-12 rounded-lg flex items-center justify-center mb-4"
-                style={{ backgroundColor: category.color + '20' }}
+                style={{ backgroundColor: (category as any).color + '20' }}
               >
-                <Folder className="h-6 w-6" style={{ color: category.color }} />
+                <Folder className="h-6 w-6" style={{ color: (category as any).color }} />
               </div>
               <h3 className="text-lg font-semibold text-gray-900 mb-1">{category.name}</h3>
               <p className="text-gray-600 text-sm mb-4 line-clamp-2">
@@ -157,7 +172,7 @@ function Home() {
                   <input
                     type="text"
                     className="input"
-                    value={newCategory.name}
+                    value={newCategory.name || ''}
                     onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
                     placeholder="e.g., Biology 101"
                     required
@@ -170,7 +185,7 @@ function Home() {
                   <textarea
                     className="input"
                     rows={3}
-                    value={newCategory.description}
+                    value={newCategory.description || ''}
                     onChange={(e) => setNewCategory({ ...newCategory, description: e.target.value })}
                     placeholder="Brief description of the category"
                   />
@@ -182,7 +197,7 @@ function Home() {
                   <input
                     type="color"
                     className="w-full h-10 rounded cursor-pointer"
-                    value={newCategory.color}
+                    value={newCategory.color || '#033B4C'}
                     onChange={(e) => setNewCategory({ ...newCategory, color: e.target.value })}
                   />
                 </div>

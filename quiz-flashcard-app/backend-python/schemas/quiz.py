@@ -24,8 +24,32 @@ class QuizSettings(BaseSchema):
     written_answer: int = Field(0, ge=0, description="Number of written answer questions")
     fill_in_blank: int = Field(0, ge=0, description="Number of fill-in-blank questions")
 
-    # Timed mode
+    # Chapter/tag filtering
+    chapter: Optional[str] = Field(None, description="Filter questions by chapter/tag")
+    chapters: Optional[List[str]] = Field(None, description="Filter by multiple chapters/tags")
+
+    # Timer settings (NEW - matches frontend)
+    timerType: Optional[str] = Field("total", description="Timer type: 'total' or 'per_question'")
+    totalTimeMinutes: Optional[int] = Field(30, ge=1, le=180, description="Total time in minutes")
+    perQuestionSeconds: Optional[int] = Field(60, ge=10, le=600, description="Time per question in seconds")
+
+    # Legacy field
     time_limit: Optional[int] = Field(None, description="Time limit in minutes (for timed mode)")
+
+    # Advanced options
+    allowPartialCredit: Optional[bool] = Field(False, description="Enable partial credit grading")
+    allowHandwrittenUpload: Optional[bool] = Field(False, description="Enable handwritten answer upload")
+
+    # Handle both camelCase and snake_case from frontend
+    selectionMode: Optional[str] = Field(None, description="Alias for selection_mode")
+    multipleChoice: Optional[int] = Field(None, description="Alias for multiple_choice")
+    trueFalse: Optional[int] = Field(None, description="Alias for true_false")
+    writtenAnswer: Optional[int] = Field(None, description="Alias for written_answer")
+    fillInBlank: Optional[int] = Field(None, description="Alias for fill_in_blank")
+    totalQuestions: Optional[int] = Field(None, description="Alias for total_questions")
+
+    class Config:
+        extra = "allow"  # Allow extra fields from frontend
 
 
 class QuizQuestionResponse(BaseSchema):
@@ -51,6 +75,9 @@ class SubmitQuizRequest(BaseSchema):
     """Request to submit quiz answers."""
 
     answers: Dict[str, str] = Field(..., description="Map of question_id to user answer")
+    time_per_question: Optional[Dict[str, int]] = Field(
+        None, description="Map of question_id to time spent in seconds"
+    )
 
 
 class QuizResultItem(BaseSchema):

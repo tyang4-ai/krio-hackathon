@@ -15,11 +15,15 @@ from .sample_question import SampleQuestion
 from .ai_analysis import AIAnalysisResult, AgentMessage
 
 # User data
+from .user import User
 from .user_preferences import UserPreference, QuestionPerformance
 
 # Handwriting and grading
 from .handwriting import HandwrittenAnswer, HandwritingCorrection
 from .grading import PartialCreditGrade, ExamFocusEvent
+
+# Analytics
+from .question_attempt import QuestionAttempt
 
 __all__ = [
     "Base",
@@ -36,6 +40,7 @@ __all__ = [
     "AIAnalysisResult",
     "AgentMessage",
     # User data
+    "User",
     "UserPreference",
     "QuestionPerformance",
     # Handwriting and grading
@@ -43,4 +48,6 @@ __all__ = [
     "HandwritingCorrection",
     "PartialCreditGrade",
     "ExamFocusEvent",
+    # Analytics
+    "QuestionAttempt",
 ]

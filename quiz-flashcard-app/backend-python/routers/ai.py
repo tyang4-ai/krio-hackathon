@@ -80,6 +80,7 @@ class GenerateQuestionsRequest(BaseModel):
     difficulty: str = Field("medium", description="easy, medium, or hard")
     question_type: str = Field("multiple_choice", description="Question type")
     custom_directions: str = Field("", description="Additional instructions")
+    chapter: str = Field("", description="Chapter/topic to tag questions with")
 
 
 class GeneratedQuestion(BaseModel):
@@ -106,7 +107,9 @@ class GenerateFlashcardsRequest(BaseModel):
     content: Optional[str] = Field(None, description="Text content to generate from")
     document_ids: Optional[List[int]] = Field(None, description="Document IDs to use")
     count: int = Field(10, ge=1, le=50, description="Number of flashcards")
+    difficulty: str = Field("medium", description="Difficulty level: easy, medium, hard")
     custom_directions: str = Field("", description="Additional instructions")
+    chapter: str = Field("", description="Chapter/topic to tag flashcards with")
 
 
 class GeneratedFlashcard(BaseModel):
@@ -331,6 +334,7 @@ async def generate_category_questions(
             difficulty=request.difficulty,
             question_type=request.question_type,
             custom_directions=request.custom_directions,
+            chapter=request.chapter,
         )
     elif request.document_ids:
         # Use specific documents
@@ -342,6 +346,7 @@ async def generate_category_questions(
             difficulty=request.difficulty,
             question_type=request.question_type,
             custom_directions=request.custom_directions,
+            chapter=request.chapter,
         )
     else:
         # Use all documents in category
@@ -353,6 +358,7 @@ async def generate_category_questions(
             difficulty=request.difficulty,
             question_type=request.question_type,
             custom_directions=request.custom_directions,
+            chapter=request.chapter,
         )
 
     await db.commit()
@@ -423,7 +429,9 @@ async def generate_category_flashcards(
             category_id=category_id,
             content=request.content,
             count=request.count,
+            difficulty=request.difficulty,
             custom_directions=request.custom_directions,
+            chapter=request.chapter,
         )
     else:
         # Get all documents for category
@@ -453,7 +461,9 @@ async def generate_category_flashcards(
             category_id=category_id,
             content=combined,
             count=request.count,
+            difficulty=request.difficulty,
             custom_directions=request.custom_directions,
+            chapter=request.chapter,
         )
 
     await db.commit()

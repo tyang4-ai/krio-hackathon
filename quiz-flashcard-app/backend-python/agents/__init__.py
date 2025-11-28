@@ -9,6 +9,11 @@ from .analysis_agent import (
     clear_analysis,
     get_analysis_status,
 )
+from .chapter_agent import (
+    ChapterAgent,
+    chapter_agent,
+    analyze_document_chapters,
+)
 from .generation_agent import (
     GenerationAgent,
     generation_agent,
@@ -49,6 +54,10 @@ __all__ = [
     "analyze_samples",
     "clear_analysis",
     "get_analysis_status",
+    # Chapter Agent
+    "ChapterAgent",
+    "chapter_agent",
+    "analyze_document_chapters",
     # Generation Agent
     "GenerationAgent",
     "generation_agent",

@@ -2,42 +2,64 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { CheckCircle, Trash2, AlertTriangle, Filter, ArrowLeft } from 'lucide-react';
 import { notebookApi, categoryApi } from '../services/api';
+import { Category, NotebookEntry } from '../types';
 
-function NotebookPage() {
-  const { categoryId } = useParams();
+interface NotebookStats {
+  total_entries: number;
+  reviewed_entries: number;
+  unreviewed_entries: number;
+}
+
+interface MostMissedItem {
+  id: number;
+  question_text: string;
+  times_missed: number;
+}
+
+interface NotebookEntryExtended extends Omit<NotebookEntry, 'question'> {
+  question_text: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+  options?: string[];
+  explanation?: string;
+}
+
+type FilterType = 'all' | 'reviewed' | 'unreviewed';
+
+function NotebookPage(): React.ReactElement {
+  const { categoryId } = useParams<{ categoryId: string }>();
   const navigate = useNavigate();
-  const [category, setCategory] = useState(null);
-  const [entries, setEntries] = useState([]);
-  const [mostMissed, setMostMissed] = useState([]);
-  const [stats, setStats] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('all'); // 'all', 'reviewed', 'unreviewed'
+  const [category, setCategory] = useState<Category | null>(null);
+  const [entries, setEntries] = useState<NotebookEntryExtended[]>([]);
+  const [mostMissed, setMostMissed] = useState<MostMissedItem[]>([]);
+  const [stats, setStats] = useState<NotebookStats | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [filter, setFilter] = useState<FilterType>('all');
 
   useEffect(() => {
     loadData();
   }, [categoryId, filter]);
 
-  const loadData = async () => {
+  const loadData = async (): Promise<void> => {
     try {
       const [catResponse, statsResponse, missedResponse] = await Promise.all([
-        categoryApi.getById(categoryId),
-        notebookApi.getStats(categoryId),
-        notebookApi.getMostMissed(categoryId, 5)
+        categoryApi.getById(categoryId!),
+        notebookApi.getStats(categoryId!),
+        notebookApi.getMostMissed(categoryId!, 5)
       ]);
       // Handle both wrapped and unwrapped response formats
       setCategory(catResponse.data.data || catResponse.data);
       setStats(statsResponse.data.data || statsResponse.data);
       const missedData = missedResponse.data.data || missedResponse.data;
-      setMostMissed(missedData.questions || missedData || []);
+      setMostMissed((missedData as any).questions || missedData || []);
 
       // Load entries with filter
-      const options = {};
+      const options: { reviewed?: boolean } = {};
       if (filter === 'reviewed') options.reviewed = true;
       if (filter === 'unreviewed') options.reviewed = false;
 
-      const entriesResponse = await notebookApi.getByCategory(categoryId, options);
+      const entriesResponse = await notebookApi.getByCategory(categoryId!, options);
       const entriesData = entriesResponse.data.data || entriesResponse.data;
-      setEntries(entriesData.entries || entriesData || []);
+      setEntries((entriesData as any).entries || entriesData || []);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -45,7 +67,7 @@ function NotebookPage() {
     }
   };
 
-  const handleMarkReviewed = async (id) => {
+  const handleMarkReviewed = async (id: number): Promise<void> => {
     try {
       await notebookApi.markReviewed(id);
       loadData();
@@ -54,7 +76,7 @@ function NotebookPage() {
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id: number): Promise<void> => {
     if (window.confirm('Are you sure you want to delete this entry?')) {
       try {
         await notebookApi.delete(id);
@@ -65,10 +87,10 @@ function NotebookPage() {
     }
   };
 
-  const handleClearAll = async () => {
+  const handleClearAll = async (): Promise<void> => {
     if (window.confirm('Are you sure you want to clear all notebook entries? This cannot be undone.')) {
       try {
-        await notebookApi.clear(categoryId);
+        await notebookApi.clear(categoryId!);
         loadData();
       } catch (error) {
         console.error('Error clearing notebook:', error);
@@ -131,7 +153,7 @@ function NotebookPage() {
             <h2 className="text-lg font-semibold">Most Missed Questions</h2>
           </div>
           <div className="space-y-2">
-            {mostMissed.map((item, index) => (
+            {mostMissed.map((item) => (
               <div key={item.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                 <div className="flex-1">
                   <p className="text-sm font-medium text-gray-900 line-clamp-1">
@@ -153,7 +175,7 @@ function NotebookPage() {
         <select
           className="select w-auto"
           value={filter}
-          onChange={(e) => setFilter(e.target.value)}
+          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilter(e.target.value as FilterType)}
         >
           <option value="all">All Entries</option>
           <option value="unreviewed">Need Review</option>

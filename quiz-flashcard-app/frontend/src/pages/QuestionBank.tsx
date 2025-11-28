@@ -2,33 +2,55 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Edit2, Trash2, Save, X, Star, CheckSquare, Square } from 'lucide-react';
 import { quizApi, categoryApi } from '../services/api';
+import { Question, QuestionType, Difficulty, Category } from '../types';
 
-function QuestionBank() {
-  const { categoryId } = useParams();
+interface EditForm {
+  question_text: string;
+  question_type: QuestionType;
+  difficulty: Difficulty;
+  options: string[];
+  correct_answer: string;
+  explanation: string;
+}
+
+interface FilterState {
+  type: QuestionType | 'all';
+  difficulty: Difficulty | 'all';
+}
+
+function QuestionBank(): React.ReactElement {
+  const { categoryId } = useParams<{ categoryId: string }>();
   const navigate = useNavigate();
-  const [category, setCategory] = useState(null);
-  const [questions, setQuestions] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [editingId, setEditingId] = useState(null);
-  const [editForm, setEditForm] = useState({});
-  const [selectedQuestions, setSelectedQuestions] = useState(new Set());
-  const [filter, setFilter] = useState({ type: 'all', difficulty: 'all' });
+  const [category, setCategory] = useState<Category | null>(null);
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState<EditForm>({
+    question_text: '',
+    question_type: 'multiple_choice',
+    difficulty: 'medium',
+    options: [],
+    correct_answer: '',
+    explanation: ''
+  });
+  const [selectedQuestions, setSelectedQuestions] = useState<Set<number>>(new Set());
+  const [filter, setFilter] = useState<FilterState>({ type: 'all', difficulty: 'all' });
 
   useEffect(() => {
     loadData();
   }, [categoryId]);
 
-  const loadData = async () => {
+  const loadData = async (): Promise<void> => {
     try {
       const [catResponse, questionsResponse] = await Promise.all([
-        categoryApi.getById(categoryId),
-        quizApi.getQuestions(categoryId)
+        categoryApi.getById(categoryId!),
+        quizApi.getQuestions(categoryId!)
       ]);
       // Handle both wrapped and unwrapped response formats
       setCategory(catResponse.data.data || catResponse.data);
       const questionsData = questionsResponse.data.data || questionsResponse.data;
       // Handle both {questions: [...]} and direct array response
-      setQuestions(questionsData.questions || questionsData || []);
+      setQuestions((questionsData as any).questions || questionsData || []);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -36,7 +58,7 @@ function QuestionBank() {
     }
   };
 
-  const handleEdit = (question) => {
+  const handleEdit = (question: Question): void => {
     setEditingId(question.id);
     setEditForm({
       question_text: question.question_text,
@@ -48,18 +70,18 @@ function QuestionBank() {
     });
   };
 
-  const handleSave = async (id) => {
+  const handleSave = async (id: number): Promise<void> => {
     try {
       await quizApi.updateQuestion(id, editForm);
       setEditingId(null);
       loadData();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating question:', error);
       alert('Error updating question: ' + (error.response?.data?.error || error.message));
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id: number): Promise<void> => {
     if (window.confirm('Are you sure you want to delete this question?')) {
       try {
         await quizApi.deleteQuestion(id);
@@ -70,7 +92,7 @@ function QuestionBank() {
     }
   };
 
-  const handleBulkDelete = async () => {
+  const handleBulkDelete = async (): Promise<void> => {
     if (selectedQuestions.size === 0) {
       alert('No questions selected');
       return;
@@ -83,14 +105,14 @@ function QuestionBank() {
         );
         setSelectedQuestions(new Set());
         loadData();
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error deleting questions:', error);
         alert('Error deleting questions: ' + error.message);
       }
     }
   };
 
-  const handleBulkUpdateDifficulty = async (newDifficulty) => {
+  const handleBulkUpdateDifficulty = async (newDifficulty: Difficulty): Promise<void> => {
     if (selectedQuestions.size === 0) {
       alert('No questions selected');
       return;
@@ -105,13 +127,13 @@ function QuestionBank() {
       );
       setSelectedQuestions(new Set());
       loadData();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating questions:', error);
       alert('Error updating questions: ' + error.message);
     }
   };
 
-  const handleRating = async (questionId, rating) => {
+  const handleRating = async (questionId: number, rating: number): Promise<void> => {
     try {
       await quizApi.rateQuestion(questionId, rating);
       loadData();
@@ -120,7 +142,7 @@ function QuestionBank() {
     }
   };
 
-  const toggleSelection = (id) => {
+  const toggleSelection = (id: number): void => {
     const newSelection = new Set(selectedQuestions);
     if (newSelection.has(id)) {
       newSelection.delete(id);
@@ -130,7 +152,7 @@ function QuestionBank() {
     setSelectedQuestions(newSelection);
   };
 
-  const toggleSelectAll = () => {
+  const toggleSelectAll = (): void => {
     if (selectedQuestions.size === filteredQuestions.length) {
       setSelectedQuestions(new Set());
     } else {
@@ -138,7 +160,7 @@ function QuestionBank() {
     }
   };
 
-  const updateOption = (index, value) => {
+  const updateOption = (index: number, value: string): void => {
     const newOptions = [...editForm.options];
     newOptions[index] = value;
     setEditForm({ ...editForm, options: newOptions });
@@ -181,7 +203,7 @@ function QuestionBank() {
               <select
                 className="select w-auto"
                 value={filter.type}
-                onChange={(e) => setFilter({ ...filter, type: e.target.value })}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilter({ ...filter, type: e.target.value as QuestionType | 'all' })}
               >
                 <option value="all">All Types</option>
                 <option value="multiple_choice">Multiple Choice</option>
@@ -196,7 +218,7 @@ function QuestionBank() {
               <select
                 className="select w-auto"
                 value={filter.difficulty}
-                onChange={(e) => setFilter({ ...filter, difficulty: e.target.value })}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilter({ ...filter, difficulty: e.target.value as Difficulty | 'all' })}
               >
                 <option value="all">All Difficulties</option>
                 <option value="easy">Easy</option>
@@ -211,9 +233,9 @@ function QuestionBank() {
               <span className="text-sm text-gray-600">{selectedQuestions.size} selected</span>
               <select
                 className="select w-auto"
-                onChange={(e) => {
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
                   if (e.target.value) {
-                    handleBulkUpdateDifficulty(e.target.value);
+                    handleBulkUpdateDifficulty(e.target.value as Difficulty);
                     e.target.value = '';
                   }
                 }}
@@ -278,7 +300,7 @@ function QuestionBank() {
                           <textarea
                             className="input min-h-[80px]"
                             value={editForm.question_text}
-                            onChange={(e) => setEditForm({ ...editForm, question_text: e.target.value })}
+                            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setEditForm({ ...editForm, question_text: e.target.value })}
                           />
                         </div>
 
@@ -290,7 +312,7 @@ function QuestionBank() {
                             <select
                               className="select"
                               value={editForm.question_type}
-                              onChange={(e) => setEditForm({ ...editForm, question_type: e.target.value })}
+                              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setEditForm({ ...editForm, question_type: e.target.value as QuestionType })}
                             >
                               <option value="multiple_choice">Multiple Choice</option>
                               <option value="true_false">True/False</option>
@@ -306,7 +328,7 @@ function QuestionBank() {
                             <select
                               className="select"
                               value={editForm.difficulty}
-                              onChange={(e) => setEditForm({ ...editForm, difficulty: e.target.value })}
+                              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setEditForm({ ...editForm, difficulty: e.target.value as Difficulty })}
                             >
                               <option value="easy">Easy</option>
                               <option value="medium">Medium</option>
@@ -327,7 +349,7 @@ function QuestionBank() {
                                   type="text"
                                   className="input"
                                   value={option}
-                                  onChange={(e) => updateOption(index, e.target.value)}
+                                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateOption(index, e.target.value)}
                                 />
                               ))}
                             </div>
@@ -342,7 +364,7 @@ function QuestionBank() {
                             type="text"
                             className="input"
                             value={editForm.correct_answer}
-                            onChange={(e) => setEditForm({ ...editForm, correct_answer: e.target.value })}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm({ ...editForm, correct_answer: e.target.value })}
                           />
                         </div>
 
@@ -353,7 +375,7 @@ function QuestionBank() {
                           <textarea
                             className="input min-h-[60px]"
                             value={editForm.explanation}
-                            onChange={(e) => setEditForm({ ...editForm, explanation: e.target.value })}
+                            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setEditForm({ ...editForm, explanation: e.target.value })}
                           />
                         </div>
 

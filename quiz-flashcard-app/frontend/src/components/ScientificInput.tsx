@@ -1,4 +1,17 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, ChangeEvent } from 'react';
+
+interface ScientificInputProps {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+}
+
+type FormatMode = 'superscript' | 'subscript' | null;
+
+interface Symbol {
+  label: string;
+  value: string;
+}
 
 /**
  * ScientificInput - Rich text input with scientific notation support
@@ -9,12 +22,12 @@ import React, { useState, useRef } from 'react';
  * - Arrows and Greek letters for scientific notation
  * Perfect for chemistry, physics, math, and other scientific subjects
  */
-function ScientificInput({ value, onChange, placeholder = "Enter your answer..." }) {
-  const inputRef = useRef(null);
-  const [formatMode, setFormatMode] = useState(null); // 'superscript' or 'subscript'
+function ScientificInput({ value, onChange, placeholder = "Enter your answer..." }: ScientificInputProps): React.ReactElement {
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [formatMode, setFormatMode] = useState<FormatMode>(null);
 
   // Character mappings
-  const normalToSuperscript = {
+  const normalToSuperscript: Record<string, string> = {
     '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴',
     '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹',
     '+': '⁺', '-': '⁻', '=': '⁼', '(': '⁽', ')': '⁾',
@@ -25,7 +38,7 @@ function ScientificInput({ value, onChange, placeholder = "Enter your answer..."
     'v': 'ᵛ', 'w': 'ʷ', 'x': 'ˣ', 'y': 'ʸ', 'z': 'ᶻ'
   };
 
-  const normalToSubscript = {
+  const normalToSubscript: Record<string, string> = {
     '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄',
     '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉',
     '+': '₊', '-': '₋', '=': '₌', '(': '₍', ')': '₎',
@@ -35,7 +48,7 @@ function ScientificInput({ value, onChange, placeholder = "Enter your answer..."
     'v': 'ᵥ', 'x': 'ₓ'
   };
 
-  const insertSymbol = (symbol) => {
+  const insertSymbol = (symbol: string): void => {
     const input = inputRef.current;
     if (!input) return;
 
@@ -53,7 +66,7 @@ function ScientificInput({ value, onChange, placeholder = "Enter your answer..."
     }, 0);
   };
 
-  const toggleFormat = (mode) => {
+  const toggleFormat = (mode: 'superscript' | 'subscript'): void => {
     const input = inputRef.current;
     if (!input) return;
 
@@ -80,15 +93,15 @@ function ScientificInput({ value, onChange, placeholder = "Enter your answer..."
     }, 0);
   };
 
-  const convertToSuperscript = (text) => {
+  const convertToSuperscript = (text: string): string => {
     return text.split('').map(char => normalToSuperscript[char] || char).join('');
   };
 
-  const convertToSubscript = (text) => {
+  const convertToSubscript = (text: string): string => {
     return text.split('').map(char => normalToSubscript[char] || char).join('');
   };
 
-  const handleInputChange = (e) => {
+  const handleInputChange = (e: ChangeEvent<HTMLTextAreaElement>): void => {
     let newValue = e.target.value;
     const cursorPos = e.target.selectionStart;
 
@@ -112,7 +125,7 @@ function ScientificInput({ value, onChange, placeholder = "Enter your answer..."
         onChange(newValue);
         setTimeout(() => {
           const newPos = lastCaretIndex + converted.length;
-          inputRef.current.setSelectionRange(newPos, newPos);
+          inputRef.current?.setSelectionRange(newPos, newPos);
         }, 0);
         return;
       }
@@ -152,7 +165,7 @@ function ScientificInput({ value, onChange, placeholder = "Enter your answer..."
           onChange(newValue);
           setTimeout(() => {
             const newPos = beforeNumerator.length + convertedNumerator.length + 1 + convertedDenominator.length;
-            inputRef.current.setSelectionRange(newPos, newPos);
+            inputRef.current?.setSelectionRange(newPos, newPos);
           }, 0);
           return;
         }
@@ -171,7 +184,7 @@ function ScientificInput({ value, onChange, placeholder = "Enter your answer..."
 
         onChange(newValue);
         setTimeout(() => {
-          inputRef.current.setSelectionRange(cursorPos, cursorPos);
+          inputRef.current?.setSelectionRange(cursorPos, cursorPos);
         }, 0);
         return;
       }
@@ -181,7 +194,7 @@ function ScientificInput({ value, onChange, placeholder = "Enter your answer..."
   };
 
   // Symbol categories
-  const symbols = {
+  const symbols: Record<string, Symbol[]> = {
     arrows: [
       { label: '→', value: '→' },
       { label: '←', value: '←' },

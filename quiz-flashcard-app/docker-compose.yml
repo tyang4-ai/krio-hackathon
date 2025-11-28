@@ -16,6 +16,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - scholarly-network
     logging:
       driver: "json-file"
       options:
@@ -32,6 +34,8 @@ services:
       - .env
     environment:
       - DATABASE_URL=postgresql+asyncpg://scholarly:localdev123@postgres:5432/scholarly
+      # Disable watchfiles on Windows to avoid WatchfilesRustInternalError
+      - WATCHFILES_FORCE_POLLING=true
     depends_on:
       postgres:
         condition: service_healthy
@@ -39,6 +43,8 @@ services:
       - ./backend-python:/app
       - ./uploads:/app/uploads
       - ./logs:/app/logs
+    networks:
+      - scholarly-network
     restart: unless-stopped
     logging:
       driver: "json-file"
@@ -60,12 +66,18 @@ services:
     volumes:
       - ./frontend:/app
       - /app/node_modules
+    networks:
+      - scholarly-network
     restart: unless-stopped
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
+
+networks:
+  scholarly-network:
+    driver: bridge
 
 volumes:
   postgres_data:

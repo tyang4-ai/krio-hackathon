@@ -307,6 +307,7 @@ async def generate_from_documents(
     difficulty: str = "medium",
     question_type: str = "multiple_choice",
     custom_directions: str = "",
+    chapter: str = "",
 ) -> Dict[str, Any]:
     """
     Generate questions from category documents.
@@ -319,22 +320,30 @@ async def generate_from_documents(
         difficulty: Difficulty level
         question_type: Question type
         custom_directions: Additional instructions
+        chapter: Optional chapter/topic to tag questions with
 
     Returns:
         Generation result
     """
-    # Get documents
+    # Get documents - filter by chapter if specified
     query = select(Document).where(Document.category_id == category_id)
     if document_ids:
         query = query.where(Document.id.in_(document_ids))
+
+    # Filter by chapter if specified - only use documents from that chapter
+    if chapter:
+        query = query.where(Document.chapter == chapter)
 
     result = await db.execute(query)
     documents = result.scalars().all()
 
     if not documents:
+        error_msg = "No documents found"
+        if chapter:
+            error_msg = f"No documents found for chapter '{chapter}'. Upload documents with this chapter tag or select a different chapter."
         return {
             "success": False,
-            "error": "No documents found",
+            "error": error_msg,
         }
 
     # Combine document content (use content_text and original_name from Document model)
@@ -358,6 +367,7 @@ async def generate_from_documents(
         question_type=question_type,
         custom_directions=custom_directions,
         document_id=documents[0].id if len(documents) == 1 else None,
+        chapter=chapter,
     )
 
 
