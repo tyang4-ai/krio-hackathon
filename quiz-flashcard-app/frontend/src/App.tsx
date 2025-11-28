@@ -11,6 +11,7 @@ import NotebookPage from './pages/NotebookPage';
 import QuizSession from './pages/QuizSession';
 import QuizResults from './pages/QuizResults';
 import LoginPage from './pages/LoginPage';
+import AnalyticsDashboard from './pages/AnalyticsDashboard';
 
 function App(): React.ReactElement {
   return (
@@ -20,6 +21,7 @@ function App(): React.ReactElement {
           <Route path="/login" element={<LoginPage />} />
           <Route element={<Layout />}>
             <Route path="/" element={<Home />} />
+            <Route path="/analytics" element={<AnalyticsDashboard />} />
             <Route path="/category/:categoryId" element={<CategoryDashboard />} />
             <Route path="/category/:categoryId/quiz" element={<QuizPage />} />
             <Route path="/category/:categoryId/quiz/session/:sessionId" element={<QuizSession />} />

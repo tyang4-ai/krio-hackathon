@@ -29,6 +29,10 @@ function QuizSession(): React.ReactElement {
   const [uploadingHandwritten, setUploadingHandwritten] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Time tracking per question
+  const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
+  const [timeSpentPerQuestion, setTimeSpentPerQuestion] = useState<Record<number, number>>({});
+
   useEffect(() => {
     loadQuiz();
     return () => {
@@ -161,6 +165,30 @@ function QuizSession(): React.ReactElement {
     }
   }, [currentIndex, settings?.timerType, (settings as any)?.perQuestionSeconds]);
 
+  // Track time spent on each question when navigating
+  useEffect(() => {
+    if (!quiz?.questions?.length) return;
+
+    const currentQuestion = quiz.questions[currentIndex];
+    if (!currentQuestion) return;
+
+    // Record time spent on previous question when moving to new question
+    return () => {
+      const timeSpent = Math.round((Date.now() - questionStartTime) / 1000);
+      if (timeSpent > 0 && currentQuestion) {
+        setTimeSpentPerQuestion(prev => ({
+          ...prev,
+          [currentQuestion.id]: (prev[currentQuestion.id] || 0) + timeSpent
+        }));
+      }
+    };
+  }, [currentIndex, quiz?.questions]);
+
+  // Reset start time when question changes
+  useEffect(() => {
+    setQuestionStartTime(Date.now());
+  }, [currentIndex]);
+
   const loadQuiz = async (): Promise<void> => {
     if (!sessionId || !categoryId) return;
 
@@ -256,13 +284,19 @@ function QuizSession(): React.ReactElement {
       }
     }
 
+    // Capture time spent on current question before submitting
+    const currentQuestion = quiz.questions[currentIndex];
+    const finalTimeSpent = { ...timeSpentPerQuestion };
+    if (currentQuestion) {
+      const timeOnCurrent = Math.round((Date.now() - questionStartTime) / 1000);
+      finalTimeSpent[currentQuestion.id] = (finalTimeSpent[currentQuestion.id] || 0) + timeOnCurrent;
+    }
+
     setSubmitting(true);
     try {
-      if ((settings as any)?.allowPartialCredit) {
-        await quizEnhancedApi.submitWithGrading(Number(sessionId), answers, true);
-      } else {
-        await quizApi.submitAnswers(Number(sessionId), answers);
-      }
+      // Note: submitWithGrading endpoint not yet implemented in Python backend
+      // Always use the regular submit endpoint for now
+      await quizApi.submitAnswers(Number(sessionId), answers, finalTimeSpent);
       navigate(`/category/${categoryId}/quiz/results/${sessionId}`);
     } catch (error: any) {
       console.error('Error submitting quiz:', error);

@@ -243,3 +243,76 @@ export interface GenerateOptions {
   documentId?: number;
   useAnalysis?: boolean;
 }
+
+// Analytics types
+export interface AnalyticsOverview {
+  total_attempts: number;
+  correct_count: number;
+  accuracy: number;
+  total_time_minutes: number;
+  avg_time_per_question: number;
+  sessions_completed: number;
+  streak_days: number;
+  period_days: number;
+}
+
+export interface CategoryPerformance {
+  category_id: number;
+  category_name: string;
+  color: string;
+  total_attempts: number;
+  correct_count: number;
+  accuracy: number;
+  avg_time: number;
+  mastery_score: number; // 0-5
+}
+
+export interface DifficultyBreakdown {
+  total: number;
+  correct: number;
+  accuracy: number;
+}
+
+export interface QuestionTypeBreakdown {
+  total: number;
+  correct: number;
+  accuracy: number;
+  avg_time: number;
+}
+
+export interface TrendDataPoint {
+  date: string;
+  attempts: number;
+  correct: number;
+  accuracy: number;
+}
+
+export interface HardestQuestion {
+  question_id: number;
+  question_text: string;
+  question_type: string;
+  difficulty: string;
+  attempts: number;
+  correct: number;
+  accuracy: number;
+}
+
+export interface LearningScore {
+  total_score: number;
+  accuracy_score: number;
+  consistency_score: number;
+  improvement_score: number;
+  difficulty_score: number;
+  grade: string;
+  recommendation: string;
+}
+
+export interface AnalyticsDashboard {
+  overview: AnalyticsOverview;
+  category_performance: CategoryPerformance[];
+  difficulty_breakdown: Record<string, DifficultyBreakdown>;
+  question_type_breakdown: Record<string, QuestionTypeBreakdown>;
+  trend_data: TrendDataPoint[];
+  hardest_questions: HardestQuestion[];
+  learning_score: LearningScore;
+}
