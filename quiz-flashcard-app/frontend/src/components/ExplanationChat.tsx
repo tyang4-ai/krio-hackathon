@@ -29,6 +29,67 @@ const QUICK_PROMPTS = [
   "Can you give me an example?",
 ];
 
+// Simple markdown renderer for chat messages
+function renderMarkdown(text: string): React.ReactNode {
+  // Split by code blocks first
+  const parts = text.split(/(`[^`]+`)/g);
+
+  return parts.map((part, index) => {
+    // Handle inline code
+    if (part.startsWith('`') && part.endsWith('`')) {
+      return (
+        <code key={index} className="bg-gray-200 text-gray-800 px-1 py-0.5 rounded text-xs font-mono">
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+
+    // Handle bold and italic in regular text
+    const elements: React.ReactNode[] = [];
+    let remaining = part;
+    let keyCounter = 0;
+
+    while (remaining.length > 0) {
+      // Check for bold (**text**)
+      const boldMatch = remaining.match(/\*\*([^*]+)\*\*/);
+      // Check for italic (*text*)
+      const italicMatch = remaining.match(/\*([^*]+)\*/);
+
+      if (boldMatch && boldMatch.index !== undefined) {
+        // Add text before the match
+        if (boldMatch.index > 0) {
+          elements.push(remaining.slice(0, boldMatch.index));
+        }
+        // Add bold text
+        elements.push(
+          <strong key={`${index}-${keyCounter++}`} className="font-semibold">
+            {boldMatch[1]}
+          </strong>
+        );
+        remaining = remaining.slice(boldMatch.index + boldMatch[0].length);
+      } else if (italicMatch && italicMatch.index !== undefined) {
+        // Add text before the match
+        if (italicMatch.index > 0) {
+          elements.push(remaining.slice(0, italicMatch.index));
+        }
+        // Add italic text
+        elements.push(
+          <em key={`${index}-${keyCounter++}`} className="italic">
+            {italicMatch[1]}
+          </em>
+        );
+        remaining = remaining.slice(italicMatch.index + italicMatch[0].length);
+      } else {
+        // No more matches, add remaining text
+        elements.push(remaining);
+        break;
+      }
+    }
+
+    return <span key={index}>{elements}</span>;
+  });
+}
+
 function ExplanationChat({ question, isCorrect, onClose }: ExplanationChatProps): React.ReactElement {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
@@ -200,7 +261,7 @@ function ExplanationChat({ question, isCorrect, onClose }: ExplanationChatProps)
                   : 'bg-gray-100 text-gray-800 rounded-bl-md'
               }`}
             >
-              <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+              <div className="text-sm whitespace-pre-wrap">{renderMarkdown(message.content)}</div>
             </div>
           </div>
         ))}
