@@ -225,7 +225,9 @@ export const flashcardApi = {
   getStats: (categoryId: number): Promise<AxiosResponse<{ data: FlashcardStats }>> =>
     api.get(`/categories/${categoryId}/flashcards/stats`),
   getChapters: (categoryId: number): Promise<AxiosResponse<{ data: ChaptersResponse }>> =>
-    api.get(`/categories/${categoryId}/flashcards/chapters`)
+    api.get(`/categories/${categoryId}/flashcards/chapters`),
+  getStudyProgress: (categoryId: number): Promise<AxiosResponse<{ data: unknown }>> =>
+    api.get(`/categories/${categoryId}/study-progress`)
 };
 
 // Notebook
