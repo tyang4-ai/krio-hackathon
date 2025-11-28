@@ -1,6 +1,8 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { ErrorProvider } from './contexts/ErrorContext';
+import ErrorBoundary from './components/ErrorBoundary';
 import Layout from './components/Layout';
 import Home from './pages/Home';
 import CategoryDashboard from './pages/CategoryDashboard';
@@ -15,24 +17,28 @@ import AnalyticsDashboard from './pages/AnalyticsDashboard';
 
 function App(): React.ReactElement {
   return (
-    <AuthProvider>
-      <Router>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route element={<Layout />}>
-            <Route path="/" element={<Home />} />
-            <Route path="/analytics" element={<AnalyticsDashboard />} />
-            <Route path="/category/:categoryId" element={<CategoryDashboard />} />
-            <Route path="/category/:categoryId/quiz" element={<QuizPage />} />
-            <Route path="/category/:categoryId/quiz/session/:sessionId" element={<QuizSession />} />
-            <Route path="/category/:categoryId/quiz/results/:sessionId" element={<QuizResults />} />
-            <Route path="/category/:categoryId/question-bank" element={<QuestionBank />} />
-            <Route path="/category/:categoryId/flashcards" element={<FlashcardsPage />} />
-            <Route path="/category/:categoryId/notebook" element={<NotebookPage />} />
-          </Route>
-        </Routes>
-      </Router>
-    </AuthProvider>
+    <ErrorBoundary>
+      <ErrorProvider>
+        <AuthProvider>
+          <Router>
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+              <Route element={<Layout />}>
+                <Route path="/" element={<Home />} />
+                <Route path="/analytics" element={<AnalyticsDashboard />} />
+                <Route path="/category/:categoryId" element={<CategoryDashboard />} />
+                <Route path="/category/:categoryId/quiz" element={<QuizPage />} />
+                <Route path="/category/:categoryId/quiz/session/:sessionId" element={<QuizSession />} />
+                <Route path="/category/:categoryId/quiz/results/:sessionId" element={<QuizResults />} />
+                <Route path="/category/:categoryId/question-bank" element={<QuestionBank />} />
+                <Route path="/category/:categoryId/flashcards" element={<FlashcardsPage />} />
+                <Route path="/category/:categoryId/notebook" element={<NotebookPage />} />
+              </Route>
+            </Routes>
+          </Router>
+        </AuthProvider>
+      </ErrorProvider>
+    </ErrorBoundary>
   );
 }
 

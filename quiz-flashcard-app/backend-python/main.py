@@ -2,8 +2,10 @@
 Scholarly Quiz & Flashcard App - FastAPI Backend
 Main application entry point
 """
+import logging
 import sys
 from contextlib import asynccontextmanager
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 # Add the backend-python directory to path for imports
@@ -18,6 +20,7 @@ from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 
 from config import settings
 from config.database import init_db, close_db
+from middleware import LoggingMiddleware, PerformanceMiddleware, setup_exception_handlers, setup_rate_limiting
 from routers import (
     health_router,
     auth_router,
@@ -31,9 +34,39 @@ from routers import (
     analytics_router,
 )
 
-# Configure structured logging
-structlog.configure(
-    processors=[
+
+def setup_logging():
+    """Configure structured logging with file and console output."""
+    # Create logs directory if it doesn't exist
+    logs_dir = Path(__file__).parent / "logs"
+    logs_dir.mkdir(exist_ok=True)
+
+    # Set up Python's standard logging
+    log_level = logging.DEBUG if settings.debug else logging.INFO
+
+    # Configure root logger
+    root_logger = logging.getLogger()
+    root_logger.setLevel(log_level)
+
+    # Console handler (always enabled)
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(log_level)
+
+    # File handler with rotation (10MB max, keep 5 files)
+    file_handler = RotatingFileHandler(
+        logs_dir / "scholarly.log",
+        maxBytes=10 * 1024 * 1024,  # 10MB
+        backupCount=5,
+        encoding="utf-8",
+    )
+    file_handler.setLevel(log_level)
+
+    # Add handlers to root logger
+    root_logger.addHandler(console_handler)
+    root_logger.addHandler(file_handler)
+
+    # Configure structlog
+    shared_processors = [
         structlog.stdlib.filter_by_level,
         structlog.stdlib.add_logger_name,
         structlog.stdlib.add_log_level,
@@ -42,13 +75,25 @@ structlog.configure(
         structlog.processors.StackInfoRenderer(),
         structlog.processors.format_exc_info,
         structlog.processors.UnicodeDecoder(),
-        structlog.dev.ConsoleRenderer()
-    ],
-    wrapper_class=structlog.stdlib.BoundLogger,
-    context_class=dict,
-    logger_factory=structlog.stdlib.LoggerFactory(),
-    cache_logger_on_first_use=True,
-)
+    ]
+
+    # Use JSON renderer for production, console for development
+    if settings.is_development:
+        renderer = structlog.dev.ConsoleRenderer()
+    else:
+        renderer = structlog.processors.JSONRenderer()
+
+    structlog.configure(
+        processors=shared_processors + [renderer],
+        wrapper_class=structlog.stdlib.BoundLogger,
+        context_class=dict,
+        logger_factory=structlog.stdlib.LoggerFactory(),
+        cache_logger_on_first_use=True,
+    )
+
+
+# Initialize logging
+setup_logging()
 
 logger = structlog.get_logger()
 
@@ -115,6 +160,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Add logging middleware (after CORS)
+app.add_middleware(LoggingMiddleware)
+
+# Add performance tracking middleware
+performance_middleware = PerformanceMiddleware(app, track_endpoints=True)
+
+# Setup rate limiting (before exception handlers)
+setup_rate_limiting(app)
+
+# Register exception handlers
+setup_exception_handlers(app)
 
 # Include routers
 app.include_router(health_router)

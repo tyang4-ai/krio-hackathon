@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Folder, FileText, HelpCircle, BookOpen, Trash2, BarChart3 } from 'lucide-react';
 import { categoryApi } from '../services/api';
+import { useError } from '../contexts/ErrorContext';
 import type { Category } from '../types';
 
 interface CategoryStats {
@@ -23,6 +24,7 @@ function Home(): React.ReactElement {
     description: '',
     color: '#033B4C'
   });
+  const { showSuccess, showWarning, handleApiError } = useError();
 
   useEffect(() => {
     loadCategories();
@@ -35,7 +37,7 @@ function Home(): React.ReactElement {
       const data = response.data.data || response.data;
       setCategories(data.categories || data || []);
     } catch (error) {
-      console.error('Error loading categories:', error);
+      handleApiError(error, 'Failed to load categories');
     } finally {
       setLoading(false);
     }
@@ -43,17 +45,17 @@ function Home(): React.ReactElement {
 
   const handleCreateCategory = async (): Promise<void> => {
     if (!newCategory.name?.trim()) {
-      alert('Please enter a category name');
+      showWarning('Validation Error', 'Please enter a category name');
       return;
     }
     try {
       await categoryApi.create(newCategory);
       setShowModal(false);
       setNewCategory({ name: '', description: '', color: '#033B4C' });
+      showSuccess('Category Created', `"${newCategory.name}" has been created successfully`);
       loadCategories();
-    } catch (error: any) {
-      console.error('Error creating category:', error);
-      alert('Error creating category: ' + (error.response?.data?.error || error.message));
+    } catch (error) {
+      handleApiError(error, 'Failed to create category');
     }
   };
 
@@ -63,9 +65,10 @@ function Home(): React.ReactElement {
     if (window.confirm('Are you sure you want to delete this category? All data will be lost.')) {
       try {
         await categoryApi.delete(id);
+        showSuccess('Category Deleted', 'The category has been deleted');
         loadCategories();
       } catch (error) {
-        console.error('Error deleting category:', error);
+        handleApiError(error, 'Failed to delete category');
       }
     }
   };

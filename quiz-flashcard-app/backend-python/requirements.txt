@@ -32,6 +32,9 @@ passlib[bcrypt]==1.7.4
 google-auth==2.27.0
 google-auth-oauthlib==1.2.0
 
+# Rate Limiting
+slowapi==0.1.9
+
 # Testing
 pytest==7.4.4
 pytest-asyncio==0.23.3

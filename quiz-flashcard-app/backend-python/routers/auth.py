@@ -2,10 +2,11 @@
 Authentication router for Google OAuth login.
 """
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config.database import get_db
+from middleware import limiter, RateLimits
 from schemas.auth import GoogleAuthRequest, AuthResponse, UserResponse
 from services.auth_service import auth_service
 
@@ -15,8 +16,10 @@ router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 
 @router.post("/google", response_model=AuthResponse)
+@limiter.limit(RateLimits.AUTH_STRICT)
 async def google_login(
-    request: GoogleAuthRequest,
+    request: Request,
+    auth_request: GoogleAuthRequest,
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -26,7 +29,7 @@ async def google_login(
     Creates a new user if this is their first login.
     """
     # Verify the Google token
-    google_info = await auth_service.verify_google_token(request.credential)
+    google_info = await auth_service.verify_google_token(auth_request.credential)
     if not google_info:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -97,7 +100,9 @@ async def verify_token(
 
 
 @router.get("/verify")
+@limiter.limit(RateLimits.AUTH)
 async def verify_token_get(
+    request: Request,
     token: str,
     db: AsyncSession = Depends(get_db),
 ):

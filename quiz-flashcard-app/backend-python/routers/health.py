@@ -69,6 +69,20 @@ async def liveness_check() -> dict:
     return {"alive": True}
 
 
+@router.get("/metrics")
+async def get_metrics() -> dict:
+    """
+    Get application performance metrics.
+
+    Returns request counts, error rates, and response time statistics
+    for each endpoint.
+    """
+    # Import here to avoid circular import
+    from main import performance_middleware
+
+    return performance_middleware.get_metrics()
+
+
 @router.get("/sentry-debug")
 async def trigger_error():
     """

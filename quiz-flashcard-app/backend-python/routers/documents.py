@@ -4,10 +4,11 @@ Document API routes.
 from pathlib import Path
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import get_db
+from middleware import limiter, RateLimits
 from schemas.document import (
     ChapterBreakdownResponse,
     ChapterInfo,
@@ -71,7 +72,9 @@ async def get_documents(
     response_model=DocumentUploadResponse,
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit(RateLimits.UPLOAD)
 async def upload_document(
+    request: Request,
     category_id: int,
     file: UploadFile = File(...),
     chapter: Optional[str] = Form(None),

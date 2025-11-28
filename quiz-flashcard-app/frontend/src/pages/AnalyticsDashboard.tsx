@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ReactECharts from 'echarts-for-react';
-import { ArrowLeft, TrendingUp, Target, Clock, Award, Calendar, BookOpen, Brain, Flame, X, Info } from 'lucide-react';
+import { ArrowLeft, TrendingUp, Target, Clock, Award, Calendar, BookOpen, Brain, Flame, X, Info, Download } from 'lucide-react';
 import { analyticsApi, categoryApi } from '../services/api';
+import { exportAnalyticsToPDF } from '../services/pdfExport';
+import { useError } from '../contexts/ErrorContext';
 import type { AnalyticsDashboard as AnalyticsDashboardType, Category } from '../types';
 
 // Score explanation data based on learning science research
@@ -70,6 +72,8 @@ function AnalyticsDashboard(): React.ReactElement {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [explanationModal, setExplanationModal] = useState<ExplanationKey | null>(null);
+  const [exporting, setExporting] = useState<boolean>(false);
+  const { showSuccess, showError } = useError();
 
   useEffect(() => {
     loadData();
@@ -101,6 +105,25 @@ function AnalyticsDashboard(): React.ReactElement {
       setError(err.response?.data?.detail || err.message || 'Failed to load analytics');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleExportPDF = async (): Promise<void> => {
+    if (!dashboard) return;
+
+    setExporting(true);
+    try {
+      const categoryName = selectedCategory
+        ? categories.find(c => c.id === selectedCategory)?.name
+        : undefined;
+
+      await exportAnalyticsToPDF(dashboard, categoryName, days);
+      showSuccess('Export Complete', 'Your analytics report has been downloaded');
+    } catch (err) {
+      console.error('Error exporting PDF:', err);
+      showError('Export Failed', 'Could not generate the PDF report');
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -350,10 +373,19 @@ function AnalyticsDashboard(): React.ReactElement {
     };
   };
 
+  const getScoreColor = (score: number): string => {
+    if (score < 30) return '#ef4444'; // red
+    if (score < 50) return '#f59e0b'; // orange
+    if (score < 70) return '#eab308'; // yellow
+    if (score < 85) return '#22c55e'; // green
+    return '#10b981'; // emerald
+  };
+
   const getLearningScoreGaugeOption = () => {
     if (!dashboard?.learning_score) return null;
 
     const score = dashboard.learning_score.total_score;
+    const scoreColor = getScoreColor(score);
 
     return {
       series: [
@@ -361,11 +393,11 @@ function AnalyticsDashboard(): React.ReactElement {
           type: 'gauge',
           startAngle: 180,
           endAngle: 0,
-          center: ['50%', '85%'],
-          radius: '110%',
+          center: ['50%', '70%'],
+          radius: '100%',
           min: 0,
           max: 100,
-          splitNumber: 4,
+          splitNumber: 2,
           axisLine: {
             lineStyle: {
               width: 20,
@@ -396,26 +428,18 @@ function AnalyticsDashboard(): React.ReactElement {
             }
           },
           axisLabel: {
-            color: '#6b7280',
-            fontSize: 11,
-            distance: -35,
-            formatter: (value: number) => {
-              if (value === 0 || value === 50 || value === 100) {
-                return value.toString();
-              }
-              return '';
-            }
+            show: false
           },
           title: {
             show: false
           },
           detail: {
             valueAnimation: true,
-            fontSize: 28,
+            fontSize: 24,
             fontWeight: 'bold',
             formatter: '{value}',
-            color: '#1f2937',
-            offsetCenter: [0, '-20%']
+            color: scoreColor,
+            offsetCenter: [0, '30%']
           },
           data: [
             {
@@ -487,6 +511,16 @@ function AnalyticsDashboard(): React.ReactElement {
             <option value={90}>Last 90 days</option>
             <option value={365}>Last year</option>
           </select>
+
+          <button
+            onClick={handleExportPDF}
+            disabled={exporting || !dashboard}
+            className="btn-secondary flex items-center gap-2"
+            title="Export analytics report as PDF"
+          >
+            <Download className={`h-4 w-4 ${exporting ? 'animate-pulse' : ''}`} />
+            {exporting ? 'Exporting...' : 'Export PDF'}
+          </button>
         </div>
       </div>
 
@@ -495,7 +529,7 @@ function AnalyticsDashboard(): React.ReactElement {
         <div className="card mb-6 bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-200">
           <div className="flex flex-col md:flex-row items-center gap-6">
             <div
-              className="w-48 h-32 flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+              className="w-48 h-40 flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
               onClick={() => setExplanationModal('total')}
               title="Click to learn more about your Learning Score"
             >

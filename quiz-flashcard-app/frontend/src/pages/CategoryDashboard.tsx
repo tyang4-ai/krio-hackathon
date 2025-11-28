@@ -347,6 +347,8 @@ function CategoryDashboard(): React.ReactElement {
     try {
       const response = await analysisApi.triggerAnalysis(Number(categoryId));
       const data = response.data.data || response.data;
+      console.log('Analysis response:', data);
+
       if ((data as any).success) {
         const count = (data as any).analyzed_count || (data as any).analyzedCount || sampleQuestions.length;
         setAnalysisProgress(100);
@@ -354,14 +356,30 @@ function CategoryDashboard(): React.ReactElement {
           alert(`Analysis complete! Analyzed ${count} sample questions.`);
           setAnalysisProgress(0);
         }, 300);
+      } else {
+        const errorMsg = (data as any).error || 'Unknown error during analysis';
+        alert('Analysis failed: ' + errorMsg);
+        setAnalysisProgress(0);
+      }
+
+      // Always refresh status after analysis attempt
+      const statusResponse = await analysisApi.getAnalysisStatus(Number(categoryId));
+      const statusData = statusResponse.data.data || statusResponse.data;
+      console.log('Analysis status:', statusData);
+      setAnalysisStatus(statusData);
+    } catch (error: any) {
+      console.error('Error triggering analysis:', error);
+      alert('Error analyzing samples: ' + (error.response?.data?.detail || error.response?.data?.error || error.message));
+      setAnalysisProgress(0);
+
+      // Still try to refresh status
+      try {
         const statusResponse = await analysisApi.getAnalysisStatus(Number(categoryId));
         const statusData = statusResponse.data.data || statusResponse.data;
         setAnalysisStatus(statusData);
+      } catch {
+        // Ignore status fetch error
       }
-    } catch (error: any) {
-      console.error('Error triggering analysis:', error);
-      alert('Error analyzing samples: ' + (error.response?.data?.error || error.message));
-      setAnalysisProgress(0);
     } finally {
       clearInterval(progressInterval);
       setAnalyzing(false);
@@ -737,14 +755,14 @@ function CategoryDashboard(): React.ReactElement {
 
       {/* Sample Questions Section - continuing in next part due to length */}
       <div className="mt-8 card">
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
           <div>
             <h2 className="text-xl font-semibold">Sample Questions</h2>
             <p className="text-sm text-gray-600 mt-1">
               Upload example questions to help the AI match your preferred style
             </p>
           </div>
-          <div className="flex space-x-2">
+          <div className="flex flex-wrap gap-2">
             <div className="flex">
               <button
                 onClick={handleTriggerAnalysis}

@@ -10,9 +10,11 @@ This router provides all AI-powered functionality including:
 from typing import List, Optional
 
 import structlog
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from middleware import limiter, RateLimits
 
 from agents import (
     analyze_samples,
@@ -195,9 +197,11 @@ class SystemStatsResponse(BaseModel):
     response_model=dict,
     summary="Analyze sample questions",
 )
+@limiter.limit(RateLimits.AI_ANALYZE)
 async def analyze_category_samples(
+    request: Request,
     category_id: int,
-    request: Optional[AnalyzeRequest] = None,
+    analyze_request: Optional[AnalyzeRequest] = None,
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -206,7 +210,7 @@ async def analyze_category_samples(
     The analysis extracts patterns and style guides that will be
     used to generate consistent questions.
     """
-    force = request.force if request else False
+    force = analyze_request.force if analyze_request else False
     result = await trigger_analysis(db, category_id, force=force)
     await db.commit()
 
@@ -310,9 +314,11 @@ async def get_category_ai_stats(
     response_model=GenerateQuestionsResponse,
     summary="Generate questions",
 )
+@limiter.limit(RateLimits.AI_GENERATE)
 async def generate_category_questions(
+    request: Request,
     category_id: int,
-    request: GenerateQuestionsRequest,
+    gen_request: GenerateQuestionsRequest,
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -324,29 +330,29 @@ async def generate_category_questions(
     - All documents in category (if neither specified)
     """
     # Determine content source
-    if request.content:
+    if gen_request.content:
         # Use provided content
         result = await generate_questions(
             db=db,
             category_id=category_id,
-            content=request.content,
-            count=request.count,
-            difficulty=request.difficulty,
-            question_type=request.question_type,
-            custom_directions=request.custom_directions,
-            chapter=request.chapter,
+            content=gen_request.content,
+            count=gen_request.count,
+            difficulty=gen_request.difficulty,
+            question_type=gen_request.question_type,
+            custom_directions=gen_request.custom_directions,
+            chapter=gen_request.chapter,
         )
-    elif request.document_ids:
+    elif gen_request.document_ids:
         # Use specific documents
         result = await generate_from_documents(
             db=db,
             category_id=category_id,
-            document_ids=request.document_ids,
-            count=request.count,
-            difficulty=request.difficulty,
-            question_type=request.question_type,
-            custom_directions=request.custom_directions,
-            chapter=request.chapter,
+            document_ids=gen_request.document_ids,
+            count=gen_request.count,
+            difficulty=gen_request.difficulty,
+            question_type=gen_request.question_type,
+            custom_directions=gen_request.custom_directions,
+            chapter=gen_request.chapter,
         )
     else:
         # Use all documents in category
@@ -354,11 +360,11 @@ async def generate_category_questions(
             db=db,
             category_id=category_id,
             document_ids=None,
-            count=request.count,
-            difficulty=request.difficulty,
-            question_type=request.question_type,
-            custom_directions=request.custom_directions,
-            chapter=request.chapter,
+            count=gen_request.count,
+            difficulty=gen_request.difficulty,
+            question_type=gen_request.question_type,
+            custom_directions=gen_request.custom_directions,
+            chapter=gen_request.chapter,
         )
 
     await db.commit()
@@ -411,9 +417,11 @@ async def generate_category_questions(
     response_model=GenerateFlashcardsResponse,
     summary="Generate flashcards",
 )
+@limiter.limit(RateLimits.AI_GENERATE)
 async def generate_category_flashcards(
+    request: Request,
     category_id: int,
-    request: GenerateFlashcardsRequest,
+    fc_request: GenerateFlashcardsRequest,
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -423,15 +431,15 @@ async def generate_category_flashcards(
     - Provided text content
     - All documents in category (if no content provided)
     """
-    if request.content:
+    if fc_request.content:
         result = await generate_flashcards(
             db=db,
             category_id=category_id,
-            content=request.content,
-            count=request.count,
-            difficulty=request.difficulty,
-            custom_directions=request.custom_directions,
-            chapter=request.chapter,
+            content=fc_request.content,
+            count=fc_request.count,
+            difficulty=fc_request.difficulty,
+            custom_directions=fc_request.custom_directions,
+            chapter=fc_request.chapter,
         )
     else:
         # Get all documents for category
@@ -460,10 +468,10 @@ async def generate_category_flashcards(
             db=db,
             category_id=category_id,
             content=combined,
-            count=request.count,
-            difficulty=request.difficulty,
-            custom_directions=request.custom_directions,
-            chapter=request.chapter,
+            count=fc_request.count,
+            difficulty=fc_request.difficulty,
+            custom_directions=fc_request.custom_directions,
+            chapter=fc_request.chapter,
         )
 
     await db.commit()
@@ -511,10 +519,12 @@ async def generate_category_flashcards(
     response_model=GradeAnswerResponse,
     summary="Grade an answer",
 )
+@limiter.limit(RateLimits.AI_GRADE)
 async def grade_quiz_answer(
+    request: Request,
     session_id: int,
     question_id: int,
-    request: GradeAnswerRequest,
+    grade_request: GradeAnswerRequest,
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -525,14 +535,14 @@ async def grade_quiz_answer(
     partial credit grading.
     """
     # Use recognized text if handwritten
-    answer_text = request.recognized_text if request.is_handwritten else request.user_answer
+    answer_text = grade_request.recognized_text if grade_request.is_handwritten else grade_request.user_answer
 
     result = await grade_answer(
         db=db,
         session_id=session_id,
         question_id=question_id,
         user_answer=answer_text,
-        use_partial_credit=request.use_partial_credit,
+        use_partial_credit=grade_request.use_partial_credit,
     )
 
     await db.commit()
@@ -580,7 +590,9 @@ async def get_quiz_partial_grades(
     "/quiz/{session_id}/question/{question_id}/handwritten",
     summary="Upload handwritten answer",
 )
+@limiter.limit(RateLimits.UPLOAD)
 async def upload_handwritten_answer(
+    request: Request,
     session_id: int,
     question_id: int,
     file: UploadFile = File(...),
