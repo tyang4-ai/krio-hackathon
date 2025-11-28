@@ -432,7 +432,7 @@ function QuizSession(): React.ReactElement {
           {currentQuestion.question_text}
         </h2>
 
-        {currentQuestion.question_type === 'written' ? (
+        {(currentQuestion.question_type === 'written' || currentQuestion.question_type === 'written_answer') ? (
           <div className="space-y-4">
             <textarea
               value={answers[currentQuestion.id] || ''}

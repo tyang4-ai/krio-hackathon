@@ -37,7 +37,7 @@ export interface Document {
   content_length?: number;
 }
 
-export type QuestionType = 'multiple_choice' | 'true_false' | 'written' | 'fill_in_blank';
+export type QuestionType = 'multiple_choice' | 'true_false' | 'written' | 'written_answer' | 'fill_in_blank';
 export type Difficulty = 'easy' | 'medium' | 'hard';
 
 export interface Question {

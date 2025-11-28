@@ -4,7 +4,7 @@ Pydantic schemas for Quiz Session API requests/responses.
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from .base import BaseSchema
 from .question import QuestionResponse
@@ -53,21 +53,25 @@ class QuizSettings(BaseSchema):
     class Config:
         extra = "allow"  # Allow extra fields from frontend
 
-    def __init__(self, **data):
-        # Map camelCase to snake_case before validation
-        if data.get("selectionMode") and not data.get("selection_mode"):
-            data["selection_mode"] = data["selectionMode"]
-        if data.get("totalQuestions") is not None and data.get("total_questions") == 10:
-            data["total_questions"] = data["totalQuestions"]
-        if data.get("multipleChoice") is not None and data.get("multiple_choice") == 0:
-            data["multiple_choice"] = data["multipleChoice"]
-        if data.get("trueFalse") is not None and data.get("true_false") == 0:
-            data["true_false"] = data["trueFalse"]
-        if data.get("writtenAnswer") is not None and data.get("written_answer") == 0:
-            data["written_answer"] = data["writtenAnswer"]
-        if data.get("fillInBlank") is not None and data.get("fill_in_blank") == 0:
-            data["fill_in_blank"] = data["fillInBlank"]
-        super().__init__(**data)
+    @model_validator(mode='before')
+    @classmethod
+    def map_camel_to_snake(cls, data: Any) -> Any:
+        """Map camelCase fields from frontend to snake_case."""
+        if isinstance(data, dict):
+            # Map camelCase to snake_case - camelCase takes priority if provided
+            if data.get("selectionMode") is not None:
+                data["selection_mode"] = data["selectionMode"]
+            if data.get("totalQuestions") is not None:
+                data["total_questions"] = data["totalQuestions"]
+            if data.get("multipleChoice") is not None:
+                data["multiple_choice"] = data["multipleChoice"]
+            if data.get("trueFalse") is not None:
+                data["true_false"] = data["trueFalse"]
+            if data.get("writtenAnswer") is not None:
+                data["written_answer"] = data["writtenAnswer"]
+            if data.get("fillInBlank") is not None:
+                data["fill_in_blank"] = data["fillInBlank"]
+        return data
 
 
 class QuizQuestionResponse(BaseSchema):
