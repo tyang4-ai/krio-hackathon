@@ -19,6 +19,7 @@ from middleware import limiter, RateLimits
 from agents import (
     analyze_samples,
     clear_analysis,
+    explain_question,
     generate_flashcards,
     generate_from_documents,
     generate_questions,
@@ -703,3 +704,84 @@ async def get_single_handwritten_answer(
         )
 
     return answer
+
+
+# ============== Explanation Endpoints ==============
+
+
+class ExplanationMessage(BaseModel):
+    """A message in the explanation conversation."""
+    role: str = Field(..., description="'user' or 'assistant'")
+    content: str
+
+
+class ExplainQuestionRequest(BaseModel):
+    """Request for AI explanation of a question."""
+    question_text: str = Field(..., description="The question text")
+    correct_answer: str = Field(..., description="The correct answer")
+    user_query: str = Field(..., description="What the student wants explained")
+    question_type: str = Field("multiple_choice", description="Type of question")
+    options: Optional[List[str]] = Field(None, description="Answer options")
+    user_answer: Optional[str] = Field(None, description="Student's answer")
+    explanation: Optional[str] = Field(None, description="Existing explanation")
+    conversation_history: Optional[List[ExplanationMessage]] = Field(
+        None, description="Previous messages in conversation"
+    )
+
+
+class ExplainQuestionResponse(BaseModel):
+    """Response with AI explanation."""
+    success: bool
+    explanation: Optional[str] = None
+    error: Optional[str] = None
+
+
+@router.post(
+    "/explain",
+    response_model=ExplainQuestionResponse,
+    summary="Get AI explanation for a question",
+)
+@limiter.limit(RateLimits.AI_GENERATE)
+async def explain_question_endpoint(
+    request: Request,
+    explain_request: ExplainQuestionRequest,
+):
+    """
+    Get an AI-powered explanation for a quiz question.
+
+    This endpoint provides detailed explanations to help students understand:
+    - Why an answer is correct or incorrect
+    - The underlying concepts
+    - Related topics and connections
+
+    Students can ask follow-up questions by including conversation_history.
+    """
+    # Convert conversation history to dict format
+    history = None
+    if explain_request.conversation_history:
+        history = [
+            {"role": msg.role, "content": msg.content}
+            for msg in explain_request.conversation_history
+        ]
+
+    result = await explain_question(
+        question_text=explain_request.question_text,
+        correct_answer=explain_request.correct_answer,
+        user_query=explain_request.user_query,
+        question_type=explain_request.question_type,
+        options=explain_request.options,
+        user_answer=explain_request.user_answer,
+        explanation=explain_request.explanation,
+        conversation_history=history,
+    )
+
+    if not result.get("success"):
+        return ExplainQuestionResponse(
+            success=False,
+            error=result.get("error", "Failed to generate explanation"),
+        )
+
+    return ExplainQuestionResponse(
+        success=True,
+        explanation=result.get("explanation"),
+    )

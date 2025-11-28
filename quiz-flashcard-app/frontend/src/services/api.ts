@@ -358,4 +358,27 @@ export const analyticsApi = {
     api.get('/analytics/learning-score', { params: { category_id: categoryId, days } })
 };
 
+// AI API for explanations
+interface ExplainQuestionRequest {
+  question_text: string;
+  correct_answer: string;
+  user_query: string;
+  question_type?: string;
+  options?: string[];
+  user_answer?: string;
+  explanation?: string;
+  conversation_history?: Array<{ role: string; content: string }>;
+}
+
+interface ExplainQuestionResponse {
+  success: boolean;
+  explanation?: string;
+  error?: string;
+}
+
+export const aiApi = {
+  explainQuestion: (request: ExplainQuestionRequest): Promise<AxiosResponse<{ data: ExplainQuestionResponse }>> =>
+    api.post('/explain', request),
+};
+
 export default api;
