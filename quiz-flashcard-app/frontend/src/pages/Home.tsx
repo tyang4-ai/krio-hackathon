@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Folder, FileText, HelpCircle, BookOpen, Trash2 } from 'lucide-react';
+import { Plus, Folder, FileText, HelpCircle, BookOpen, Trash2, BarChart3 } from 'lucide-react';
 import { categoryApi } from '../services/api';
 import type { Category } from '../types';
 
@@ -85,13 +85,22 @@ function Home(): React.ReactElement {
           <h1 className="text-3xl font-bold text-gray-900">Your Categories</h1>
           <p className="text-gray-600 mt-1">Organize your study materials by class or subject</p>
         </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="btn-primary flex items-center space-x-2"
-        >
-          <Plus className="h-5 w-5" />
-          <span>New Category</span>
-        </button>
+        <div className="flex items-center gap-3">
+          <Link
+            to="/analytics"
+            className="btn-secondary flex items-center space-x-2"
+          >
+            <BarChart3 className="h-5 w-5" />
+            <span>Analytics</span>
+          </Link>
+          <button
+            onClick={() => setShowModal(true)}
+            className="btn-primary flex items-center space-x-2"
+          >
+            <Plus className="h-5 w-5" />
+            <span>New Category</span>
+          </button>
+        </div>
       </div>
 
       {categories.length === 0 ? (

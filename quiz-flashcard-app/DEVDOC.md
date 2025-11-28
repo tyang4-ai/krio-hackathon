@@ -2468,6 +2468,60 @@ docker-compose exec backend alembic downgrade -1
 
 ## Changelog
 
+### v6.2.0 (2025-11-28)
+
+**Analytics Dashboard with AI Learning Score (Phase 3)**:
+- Built comprehensive analytics dashboard accessible from Home page and navbar
+- Interactive ECharts visualizations for learning insights
+- Clickable score explanations with science-based educational content
+
+**New Frontend Files**:
+- `pages/AnalyticsDashboard.tsx` - Full-featured analytics page with:
+  - AI Learning Score gauge chart (half-circle) with color-coded zones (red→green)
+  - Four sub-scores: Accuracy, Consistency, Improvement, Difficulty
+  - Letter grade display (A+ to F) with color styling
+  - Personalized AI recommendation text
+  - Progress Over Time (bar + line combo chart)
+  - Performance by Category (donut chart)
+  - Accuracy by Difficulty (bar chart with Easy/Medium/Hard)
+  - Accuracy by Question Type (horizontal bar chart)
+  - Questions to Review section (hardest questions list)
+  - Category and time period filters (7/30/90/365 days)
+
+**Clickable Score Explanations**:
+- Each score metric is clickable to open an explanation modal
+- Science-based explanations reference:
+  - Spacing effect (for Consistency)
+  - Testing effect (for Improvement)
+  - Desirable difficulty theory (for Difficulty)
+  - Metacognition research (for Total Score)
+- Modal displays: current score, what it measures, how it's calculated, tips to improve
+
+**New Frontend Components**:
+- Score explanation modal with color-coded themes per metric
+- Info icons indicating clickable elements
+- Hover effects on interactive score displays
+
+**Modified Files**:
+- `App.tsx` - Added `/analytics` route
+- `components/Layout.tsx` - Added Analytics nav link with BarChart3 icon
+- `pages/Home.tsx` - Added Analytics button next to New Category
+- `services/api.ts` - Added `analyticsApi` object with dashboard/overview/trends/learning-score endpoints
+- `types/index.ts` - Added comprehensive analytics TypeScript interfaces:
+  - `AnalyticsOverview`, `CategoryPerformance`, `DifficultyBreakdown`
+  - `QuestionTypeBreakdown`, `TrendDataPoint`, `HardestQuestion`
+  - `LearningScore`, `AnalyticsDashboard`
+- `pages/QuizSession.tsx` - Added time tracking per question:
+  - `questionStartTime` state tracks when each question is started
+  - `timeSpentPerQuestion` accumulates time per question ID
+  - Time data submitted with quiz answers via `time_per_question` field
+
+**Dependencies Added**:
+- `echarts-for-react` - React wrapper for ECharts
+- `echarts` - Charting library
+
+---
+
 ### v6.1.0 (2025-11-28)
 
 **Data Tracking Enhancement (Phase 2)**:

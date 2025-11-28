@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, Outlet, useNavigate } from 'react-router-dom';
-import { Hammer, Home, LogIn, LogOut, User } from 'lucide-react';
+import { Hammer, Home, LogIn, LogOut, User, BarChart3 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 function Layout(): React.ReactElement {
@@ -37,6 +37,13 @@ function Layout(): React.ReactElement {
               >
                 <Home className="h-5 w-5" />
                 <span className="hidden sm:inline">Home</span>
+              </Link>
+              <Link
+                to="/analytics"
+                className="flex items-center space-x-1 text-gray-600 hover:text-primary-500"
+              >
+                <BarChart3 className="h-5 w-5" />
+                <span className="hidden sm:inline">Analytics</span>
               </Link>
 
               {isLoading ? (

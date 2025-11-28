@@ -21,6 +21,7 @@ import type {
   FocusEventType,
   User,
   AuthResponse,
+  AnalyticsDashboard,
 } from '../types';
 
 const API_BASE = '/api';
@@ -190,8 +191,8 @@ export const quizApi = {
     api.get(`/categories/${categoryId}/questions/chapters`),
   createSession: (categoryId: number, settings: QuizSettings): Promise<AxiosResponse<{ data: CreateSessionResponse }>> =>
     api.post(`/categories/${categoryId}/quiz`, settings),
-  submitAnswers: (sessionId: number, answers: Record<number, string>): Promise<AxiosResponse<{ data: QuizSession }>> =>
-    api.post(`/quiz/${sessionId}/submit`, { answers }),
+  submitAnswers: (sessionId: number, answers: Record<number, string>, timePerQuestion?: Record<number, number>): Promise<AxiosResponse<{ data: QuizSession }>> =>
+    api.post(`/quiz/${sessionId}/submit`, { answers, time_per_question: timePerQuestion }),
   getSession: (sessionId: number): Promise<AxiosResponse<{ data: QuizSession }>> =>
     api.get(`/quiz/${sessionId}`),
   getHistory: (categoryId: number): Promise<AxiosResponse<{ data: SessionsResponse }>> =>
@@ -339,6 +340,20 @@ export const authApi = {
     api.get('/auth/me'),
   logout: (): Promise<AxiosResponse<{ data: { message: string } }>> =>
     api.post('/auth/logout')
+};
+
+// Analytics
+export const analyticsApi = {
+  getDashboard: (categoryId?: number, days: number = 30): Promise<AxiosResponse<{ data: AnalyticsDashboard }>> =>
+    api.get('/analytics/dashboard', { params: { category_id: categoryId, days } }),
+  getOverview: (categoryId?: number, days: number = 30): Promise<AxiosResponse<{ data: { total_attempts: number; correct_count: number; accuracy: number; total_time_minutes: number; avg_time_per_question: number; sessions_completed: number; streak_days: number; period_days: number } }>> =>
+    api.get('/analytics/overview', { params: { category_id: categoryId, days } }),
+  getCategoryPerformance: (days: number = 30): Promise<AxiosResponse<{ data: { categories: Array<{ category_id: number; category_name: string; color: string; total_attempts: number; correct_count: number; accuracy: number; avg_time: number; mastery_score: number }> } }>> =>
+    api.get('/analytics/categories', { params: { days } }),
+  getTrendData: (categoryId?: number, days: number = 30): Promise<AxiosResponse<{ data: { trends: Array<{ date: string; attempts: number; correct: number; accuracy: number }> } }>> =>
+    api.get('/analytics/trends', { params: { category_id: categoryId, days } }),
+  getLearningScore: (categoryId?: number, days: number = 30): Promise<AxiosResponse<{ data: { total_score: number; accuracy_score: number; consistency_score: number; improvement_score: number; difficulty_score: number; grade: string; recommendation: string } }>> =>
+    api.get('/analytics/learning-score', { params: { category_id: categoryId, days } })
 };
 
 export default api;
