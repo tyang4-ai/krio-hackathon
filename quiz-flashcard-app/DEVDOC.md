@@ -2468,6 +2468,172 @@ docker-compose exec backend alembic downgrade -1
 
 ## Changelog
 
+### v6.6.1 (2025-11-28)
+
+**PDF Export Alignment Fix**:
+- Fixed Learning Score section alignment in exported PDF
+- Improved layout with properly positioned score, grade, and component metrics
+- Reorganized component scores into a clean 2x2 grid (Accuracy/Improvement, Consistency/Difficulty)
+- Better vertical centering of main score in the score box
+- Dynamic positioning of "/100" based on score width for single/double digit scores
+
+---
+
+### v6.6.0 (2025-11-28)
+
+**PDF Export Feature (Phase 7)**:
+- Export analytics reports as professionally formatted PDF documents
+- Generates downloadable reports with all dashboard statistics
+
+**New Frontend Files**:
+- `services/pdfExport.ts` - PDF export utility service:
+  - `exportAnalyticsToPDF(dashboard, categoryName, days)` - Main export function
+  - `exportElementToPDF(element, filename)` - Export DOM element to PDF
+  - Generates multi-page reports with:
+    - Header with StudyForge branding and report metadata
+    - AI Learning Score section with grade and component breakdown
+    - Overview statistics (attempts, accuracy, streak, study time)
+    - Performance by difficulty (easy/medium/hard)
+    - Performance by question type
+    - Category performance with progress bars
+    - Questions to review section
+    - Professional footer
+
+**Dependencies Added**:
+- `jspdf` - PDF document generation
+- `html2canvas` - DOM to canvas conversion for chart export
+- `@types/html2canvas` - TypeScript definitions
+
+**UI Changes**:
+- Added "Export PDF" button to Analytics Dashboard header
+- Button shows loading state during export
+- Success/error toast notifications on export completion
+
+**Updated Files**:
+- `pages/AnalyticsDashboard.tsx`:
+  - Added export button with Download icon
+  - Added `handleExportPDF` function
+  - Integrated with ErrorContext for toast notifications
+
+---
+
+### v6.5.0 (2025-11-28)
+
+**Global Error Handling System (Phase 6)**:
+- Comprehensive error handling for both frontend and backend
+- Graceful error recovery and user-friendly error messages
+
+**Frontend Components**:
+- `components/ErrorBoundary.tsx` - React Error Boundary:
+  - Catches rendering errors preventing white screen crashes
+  - Displays user-friendly error UI with retry option
+  - Shows error details in expandable section
+  - Supports custom fallback components via `fallback` prop
+  - Optional error callback via `onError` prop
+- `components/Toast.tsx` - Toast notification system:
+  - Four toast types: success (green), error (red), warning (yellow), info (blue)
+  - Auto-dismiss with configurable duration (default 5s, errors 7s)
+  - Smooth enter/exit animations
+  - Dismissible via close button
+  - Stacked display in top-right corner
+- `contexts/ErrorContext.tsx` - Centralized error state:
+  - `showToast(type, title, message, duration)` - Generic toast
+  - `showSuccess(title, message)` - Success notifications
+  - `showError(title, message)` - Error notifications
+  - `showWarning(title, message)` - Warning notifications
+  - `showInfo(title, message)` - Info notifications
+  - `handleApiError(error, fallbackMessage)` - Smart API error handling:
+    - Parses axios error responses
+    - Maps HTTP status codes to user-friendly titles
+    - Handles network errors and timeouts
+    - Extracts FastAPI `detail` field
+
+**Backend Exception System**:
+- `exceptions/__init__.py` - Custom exception hierarchy:
+  - `ScholarlyException` - Base exception with status code, error code, detail
+  - Authentication: `AuthenticationError`, `InvalidTokenError`, `TokenExpiredError`
+  - Authorization: `AuthorizationError`, `ResourceOwnershipError`
+  - Resources: `ResourceNotFoundError`, `CategoryNotFoundError`, `QuestionNotFoundError`, `DocumentNotFoundError`, `SessionNotFoundError`
+  - Validation: `ValidationError`, `InvalidFileTypeError`, `FileTooLargeError`
+  - Business Logic: `BusinessError`, `QuizAlreadyCompletedError`, `InsufficientQuestionsError`, `AnalysisInProgressError`
+  - External Services: `ExternalServiceError`, `AIServiceError`, `AIRateLimitError`
+  - Rate Limiting: `RateLimitError`
+  - Database: `DatabaseError`, `DuplicateEntryError`
+- `middleware/exception_handler.py` - Global exception handlers:
+  - `setup_exception_handlers(app)` - Registers all handlers
+  - Custom exception handler with structured logging
+  - HTTP exception handler with error code mapping
+  - Validation error handler with field-level details
+  - Unhandled exception handler with Sentry capture
+  - Request ID correlation in all error responses
+
+**Error Response Format**:
+```json
+{
+  "error": "ERROR_CODE",
+  "detail": "Human-readable message",
+  "request_id": "correlation-id",
+  "extra": {} // optional additional context
+}
+```
+
+**Updated Files**:
+- `App.tsx` - Wrapped app with ErrorBoundary and ErrorProvider
+- `pages/Home.tsx` - Migrated from alerts to toast notifications
+- `main.py` - Registered global exception handlers
+- `middleware/__init__.py` - Exported setup_exception_handlers
+
+---
+
+### v6.4.0 (2025-11-28)
+
+**Comprehensive Logging System (Phase 5)**:
+- Enhanced structured logging with file output and performance tracking
+- Request/response logging middleware with timing metrics
+- Activity logging service for tracking user actions
+- Metrics endpoint for monitoring application performance
+
+**New Backend Files**:
+- `middleware/logging_middleware.py` - Request/response logging:
+  - `LoggingMiddleware`: Logs all HTTP requests with timing
+  - `PerformanceMiddleware`: Tracks endpoint performance metrics
+  - Request ID correlation via `X-Request-ID` header
+  - Slow request warnings (> 1 second)
+  - Excluded paths for health checks to reduce noise
+- `services/activity_logger.py` - Activity tracking service:
+  - `log_quiz_started()` / `log_quiz_completed()` - Quiz session tracking
+  - `log_question_answered()` - Individual answer tracking
+  - `log_flashcard_reviewed()` - Flashcard review tracking
+  - `log_content_generated()` - AI generation tracking
+  - `log_document_uploaded()` - Document upload tracking
+  - `log_user_login()` - Authentication tracking
+  - `log_error()` - Centralized error logging
+
+**Enhanced Logging Configuration** (`main.py`):
+- `setup_logging()` function with:
+  - Rotating file handler (10MB max, 5 backup files)
+  - Console output for development
+  - JSON format for production logs
+  - Proper log level configuration based on DEBUG setting
+- Log files written to `backend-python/logs/scholarly.log`
+
+**New API Endpoint**:
+- `GET /metrics` - Returns performance metrics:
+  - `total_requests`: Total request count
+  - `total_errors`: Total 5xx error count
+  - `error_rate`: Calculated error percentage
+  - `endpoints`: Per-endpoint statistics (count, errors, avg/max duration)
+
+**Bug Fixes**:
+- Fixed AI Analysis status returning `hasAnalysis: false` when analysis exists
+  - Root cause: `analysis.updated_at.isoformat()` failed when `updated_at` was None
+  - Fix: Falls back to `created_at` if `updated_at` is None
+- Fixed Alembic migration chain (revision ID mismatch)
+  - Changed SM-2 migration revision from `005_add_sm2_fields` to `005`
+  - Fixed `down_revision` from `004_add_question_attempts_table` to `004`
+
+---
+
 ### v6.3.0 (2025-11-28)
 
 **SM-2 Spaced Repetition Algorithm (Phase 4)**:
