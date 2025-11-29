@@ -7,22 +7,43 @@ This directory contains Kiro-specific configuration files to enhance your develo
 ### Steering Rules (`steering/`)
 Contextual guidelines that help Kiro understand the project:
 
+**Always Active:**
 - **project-overview.md**: High-level project architecture and tech stack
 - **coding-standards.md**: Python and TypeScript coding conventions
-- **database-patterns.md**: SQLAlchemy async patterns and best practices
-- **frontend-patterns.md**: React, TypeScript, and Tailwind CSS patterns
-- **ai-integration.md**: Multi-agent AI system guidelines
-- **testing-guidelines.md**: Testing patterns for backend and frontend
-- **api-documentation.md**: FastAPI endpoint documentation standards
+- **security-guidelines.md**: Security best practices and checklists
+
+**File-Matched (Auto-activate):**
+- **database-patterns.md**: SQLAlchemy async patterns (models, services)
+- **frontend-patterns.md**: React, TypeScript, Tailwind (frontend files)
+- **ai-integration.md**: Multi-agent AI system (agents folder)
+- **api-documentation.md**: FastAPI endpoints (routers)
+- **docker-development.md**: Docker workflow (docker-compose, Dockerfile)
+- **testing-guidelines.md**: Testing patterns (test files)
+
+**Manual (Use when needed):**
+- **refactoring-guide.md**: Comprehensive refactoring methodology
+- **code-review-guidelines.md**: Code review best practices
+- **troubleshooting-guide.md**: Common issues and solutions
 
 ### Hooks (`hooks/`)
-Automated actions triggered by events:
+Automated actions for common tasks:
 
+**Development:**
 - **test-backend.json**: Run pytest tests in Docker
 - **check-types.json**: TypeScript type checking
 - **format-code.json**: Format Python and TypeScript code
-- **migration-create.json**: Create Alembic database migrations
 - **logs-backend.json**: Stream backend logs
+
+**Database:**
+- **migration-create.json**: Create Alembic database migrations
+- **db-migrate.json**: Apply pending migrations
+- **db-reset.json**: Reset database (with warning)
+
+**Code Quality:**
+- **review-code.json**: Review code for best practices
+- **check-api-contracts.json**: Verify frontend-backend alignment
+- **plan-refactor.json**: Create refactoring plan
+- **update-docs.json**: Update project documentation
 
 ### Settings (`settings/`)
 - **mcp.json**: Model Context Protocol configuration (currently empty)
