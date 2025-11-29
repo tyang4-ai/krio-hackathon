@@ -1,0 +1,9 @@
+{
+  "name": "Reset Database",
+  "description": "WARNING: Deletes all data and recreates the database",
+  "trigger": "manual",
+  "action": {
+    "type": "message",
+    "message": "⚠️ WARNING: This will delete ALL database data! Are you sure? If yes, run: docker-compose down -v && docker-compose up -d postgres && sleep 5 && docker-compose exec backend alembic upgrade head"
+  }
+}

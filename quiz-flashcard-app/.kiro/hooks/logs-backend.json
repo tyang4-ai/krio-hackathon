@@ -1,0 +1,9 @@
+{
+  "name": "View Backend Logs",
+  "description": "Stream logs from the FastAPI backend container",
+  "trigger": "manual",
+  "action": {
+    "type": "command",
+    "command": "docker-compose logs -f backend"
+  }
+}
