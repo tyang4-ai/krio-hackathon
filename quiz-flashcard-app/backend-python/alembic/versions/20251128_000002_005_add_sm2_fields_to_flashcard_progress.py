@@ -1,7 +1,7 @@
 """Add SM-2 spaced repetition fields to flashcard_progress table.
 
-Revision ID: 005_add_sm2_fields
-Revises: 004_add_question_attempts_table
+Revision ID: 005
+Revises: 004
 Create Date: 2025-11-28
 
 Adds SM-2 algorithm fields:
@@ -15,8 +15,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = "005_add_sm2_fields"
-down_revision = "004_add_question_attempts_table"
+revision = "005"
+down_revision = "004"
 branch_labels = None
 depends_on = None
 
