@@ -15,6 +15,7 @@ class CategoryBase(BaseSchema):
     name: str = Field(..., min_length=1, max_length=255, description="Category name")
     description: Optional[str] = Field(None, description="Category description")
     color: Optional[str] = Field("#3B82F6", description="Category color (hex code)")
+    icon: Optional[str] = Field("Folder", description="Category icon name from lucide-react")
 
 
 class CategoryCreate(CategoryBase):
@@ -29,6 +30,7 @@ class CategoryUpdate(BaseSchema):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = None
     color: Optional[str] = None
+    icon: Optional[str] = None
 
 
 class CategoryStats(BaseSchema):

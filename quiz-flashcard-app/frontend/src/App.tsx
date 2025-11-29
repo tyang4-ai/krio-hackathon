@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ErrorProvider } from './contexts/ErrorContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import Layout from './components/Layout';
 import Home from './pages/Home';
@@ -18,9 +19,10 @@ import AnalyticsDashboard from './pages/AnalyticsDashboard';
 function App(): React.ReactElement {
   return (
     <ErrorBoundary>
-      <ErrorProvider>
-        <AuthProvider>
-          <Router>
+      <ThemeProvider>
+        <ErrorProvider>
+          <AuthProvider>
+            <Router>
             <Routes>
               <Route path="/login" element={<LoginPage />} />
               <Route element={<Layout />}>
@@ -35,9 +37,10 @@ function App(): React.ReactElement {
                 <Route path="/category/:categoryId/notebook" element={<NotebookPage />} />
               </Route>
             </Routes>
-          </Router>
-        </AuthProvider>
-      </ErrorProvider>
+            </Router>
+          </AuthProvider>
+        </ErrorProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }

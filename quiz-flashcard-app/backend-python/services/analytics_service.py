@@ -24,7 +24,7 @@ class AnalyticsService:
         self.db = db
 
     async def get_user_overview(
-        self, user_id: Optional[int] = None, days: int = 30
+        self, user_id: Optional[int] = None, days: int = 30, category_id: Optional[int] = None
     ) -> dict:
         """
         Get overall analytics for a user (or all users if user_id is None).
@@ -50,6 +50,8 @@ class AnalyticsService:
 
         if user_id:
             query = query.where(QuestionAttempt.user_id == user_id)
+        if category_id:
+            query = query.where(QuestionAttempt.category_id == category_id)
 
         result = await self.db.execute(query)
         row = result.one()
@@ -66,11 +68,13 @@ class AnalyticsService:
                 QuizSession.completed_at >= since_date,
             )
         )
+        if category_id:
+            sessions_query = sessions_query.where(QuizSession.category_id == category_id)
         sessions_result = await self.db.execute(sessions_query)
         sessions_completed = sessions_result.scalar() or 0
 
         # Calculate streak (days with at least one attempt)
-        streak = await self._calculate_streak(user_id)
+        streak = await self._calculate_streak(user_id, category_id)
 
         return {
             "total_attempts": total_attempts,
@@ -281,6 +285,7 @@ class AnalyticsService:
         query = (
             select(
                 Question.id,
+                Question.category_id,
                 Question.question_text,
                 Question.question_type,
                 Question.difficulty,
@@ -288,7 +293,7 @@ class AnalyticsService:
                 func.sum(case((QuestionAttempt.is_correct == True, 1), else_=0)).label("correct"),
             )
             .join(QuestionAttempt, QuestionAttempt.question_id == Question.id)
-            .group_by(Question.id, Question.question_text, Question.question_type, Question.difficulty)
+            .group_by(Question.id, Question.category_id, Question.question_text, Question.question_type, Question.difficulty)
             .having(func.count(QuestionAttempt.id) >= 2)  # At least 2 attempts
             .order_by(
                 (func.sum(case((QuestionAttempt.is_correct == True, 1), else_=0)) * 1.0 /
@@ -308,6 +313,7 @@ class AnalyticsService:
         return [
             {
                 "question_id": row.id,
+                "category_id": row.category_id,
                 "question_text": row.question_text[:100] + "..." if len(row.question_text) > 100 else row.question_text,
                 "question_type": row.question_type,
                 "difficulty": row.difficulty,
@@ -332,8 +338,8 @@ class AnalyticsService:
         - Improvement trend (20%)
         - Difficulty progression (20%)
         """
-        # Get recent performance
-        overview = await self.get_user_overview(user_id, days=30)
+        # Get recent performance (filtered by category if specified)
+        overview = await self.get_user_overview(user_id, days=30, category_id=category_id)
         trend = await self.get_trend_data(user_id, category_id, days=14)
         difficulty = await self.get_difficulty_breakdown(user_id, category_id)
 
@@ -379,7 +385,7 @@ class AnalyticsService:
             ),
         }
 
-    async def _calculate_streak(self, user_id: Optional[int] = None) -> int:
+    async def _calculate_streak(self, user_id: Optional[int] = None, category_id: Optional[int] = None) -> int:
         """Calculate current study streak in days."""
         query = (
             select(func.date_trunc("day", QuestionAttempt.answered_at).label("study_date"))
@@ -389,6 +395,8 @@ class AnalyticsService:
 
         if user_id:
             query = query.where(QuestionAttempt.user_id == user_id)
+        if category_id:
+            query = query.where(QuestionAttempt.category_id == category_id)
 
         result = await self.db.execute(query)
         dates = [row.study_date.date() for row in result.all() if row.study_date]

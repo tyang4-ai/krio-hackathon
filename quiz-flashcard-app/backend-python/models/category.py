@@ -26,6 +26,7 @@ class Category(BaseModel):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     color: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, default="#3B82F6")
+    icon: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, default="Folder")
 
     # Relationships (will be populated as other models are added)
     # documents = relationship("Document", back_populates="category", cascade="all, delete-orphan")

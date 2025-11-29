@@ -477,7 +477,7 @@ function AnalyticsDashboard(): React.ReactElement {
     <div>
       <button
         onClick={() => navigate('/')}
-        className="flex items-center text-gray-600 hover:text-gray-900 mb-4 transition-colors"
+        className="flex items-center text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-4 transition-colors"
       >
         <ArrowLeft className="h-5 w-5 mr-2" />
         Back to Home
@@ -485,8 +485,8 @@ function AnalyticsDashboard(): React.ReactElement {
 
       <div className="flex justify-between items-start mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Learning Analytics</h1>
-          <p className="text-gray-600 mt-1">Track your progress and identify areas for improvement</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Learning Analytics</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">Track your progress and identify areas for improvement</p>
         </div>
 
         <div className="flex gap-4">
@@ -526,7 +526,7 @@ function AnalyticsDashboard(): React.ReactElement {
 
       {/* Learning Score Card */}
       {learningScore && (
-        <div className="card mb-6 bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-200">
+        <div className="card mb-6 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-dark-tonal-10 dark:to-dark-surface-20 border-indigo-200 dark:border-dark-primary-10/30">
           <div className="flex flex-col md:flex-row items-center gap-6">
             <div
               className="w-48 h-40 flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
@@ -540,8 +540,8 @@ function AnalyticsDashboard(): React.ReactElement {
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
-                <Brain className="h-6 w-6 text-indigo-600" />
-                <h2 className="text-xl font-bold text-gray-900">AI Learning Score</h2>
+                <Brain className="h-6 w-6 text-indigo-600 dark:text-dark-primary-20" />
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">AI Learning Score</h2>
                 <button
                   onClick={() => setExplanationModal('total')}
                   className={`px-3 py-1 rounded-full text-lg font-bold cursor-pointer hover:opacity-80 transition-opacity ${getGradeBgColor(learningScore.grade)} ${getGradeColor(learningScore.grade)}`}
@@ -551,57 +551,57 @@ function AnalyticsDashboard(): React.ReactElement {
                 </button>
                 <button
                   onClick={() => setExplanationModal('total')}
-                  className="text-gray-400 hover:text-indigo-600 transition-colors"
+                  className="text-gray-400 hover:text-indigo-600 dark:hover:text-dark-primary-20 transition-colors"
                   title="What is this score?"
                 >
                   <Info className="h-5 w-5" />
                 </button>
               </div>
-              <p className="text-gray-600 mb-4">{learningScore.recommendation}</p>
+              <p className="text-gray-600 dark:text-gray-300 mb-4">{learningScore.recommendation}</p>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <button
                   onClick={() => setExplanationModal('accuracy')}
-                  className="text-center p-2 rounded-lg hover:bg-white/50 transition-colors cursor-pointer"
+                  className="text-center p-2 rounded-lg hover:bg-white/50 dark:hover:bg-dark-surface-30/50 transition-colors cursor-pointer"
                   title="Click to learn about Accuracy Score"
                 >
-                  <div className="text-sm text-gray-500 flex items-center justify-center gap-1">
+                  <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center justify-center gap-1">
                     Accuracy
                     <Info className="h-3 w-3 text-gray-400" />
                   </div>
-                  <div className="text-lg font-semibold text-green-600">{learningScore.accuracy_score.toFixed(0)}</div>
+                  <div className="text-lg font-semibold text-green-600 dark:text-green-400">{learningScore.accuracy_score.toFixed(0)}</div>
                 </button>
                 <button
                   onClick={() => setExplanationModal('consistency')}
-                  className="text-center p-2 rounded-lg hover:bg-white/50 transition-colors cursor-pointer"
+                  className="text-center p-2 rounded-lg hover:bg-white/50 dark:hover:bg-dark-surface-30/50 transition-colors cursor-pointer"
                   title="Click to learn about Consistency Score"
                 >
-                  <div className="text-sm text-gray-500 flex items-center justify-center gap-1">
+                  <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center justify-center gap-1">
                     Consistency
                     <Info className="h-3 w-3 text-gray-400" />
                   </div>
-                  <div className="text-lg font-semibold text-blue-600">{learningScore.consistency_score.toFixed(0)}</div>
+                  <div className="text-lg font-semibold text-blue-600 dark:text-blue-400">{learningScore.consistency_score.toFixed(0)}</div>
                 </button>
                 <button
                   onClick={() => setExplanationModal('improvement')}
-                  className="text-center p-2 rounded-lg hover:bg-white/50 transition-colors cursor-pointer"
+                  className="text-center p-2 rounded-lg hover:bg-white/50 dark:hover:bg-dark-surface-30/50 transition-colors cursor-pointer"
                   title="Click to learn about Improvement Score"
                 >
-                  <div className="text-sm text-gray-500 flex items-center justify-center gap-1">
+                  <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center justify-center gap-1">
                     Improvement
                     <Info className="h-3 w-3 text-gray-400" />
                   </div>
-                  <div className="text-lg font-semibold text-purple-600">{learningScore.improvement_score.toFixed(0)}</div>
+                  <div className="text-lg font-semibold text-purple-600 dark:text-purple-400">{learningScore.improvement_score.toFixed(0)}</div>
                 </button>
                 <button
                   onClick={() => setExplanationModal('difficulty')}
-                  className="text-center p-2 rounded-lg hover:bg-white/50 transition-colors cursor-pointer"
+                  className="text-center p-2 rounded-lg hover:bg-white/50 dark:hover:bg-dark-surface-30/50 transition-colors cursor-pointer"
                   title="Click to learn about Difficulty Score"
                 >
-                  <div className="text-sm text-gray-500 flex items-center justify-center gap-1">
+                  <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center justify-center gap-1">
                     Difficulty
                     <Info className="h-3 w-3 text-gray-400" />
                   </div>
-                  <div className="text-lg font-semibold text-orange-600">{learningScore.difficulty_score.toFixed(0)}</div>
+                  <div className="text-lg font-semibold text-orange-600 dark:text-orange-400">{learningScore.difficulty_score.toFixed(0)}</div>
                 </button>
               </div>
             </div>
@@ -736,29 +736,33 @@ function AnalyticsDashboard(): React.ReactElement {
       {/* Hardest Questions */}
       {dashboard?.hardest_questions && dashboard.hardest_questions.length > 0 && (
         <div className="card">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Questions to Review</h3>
-          <p className="text-sm text-gray-600 mb-4">These questions have given you the most trouble. Consider reviewing them!</p>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Questions to Review</h3>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">These questions have given you the most trouble. Click to review them in your notebook!</p>
           <div className="space-y-3">
             {dashboard.hardest_questions.map((q, index) => (
-              <div key={q.question_id} className="flex items-start gap-4 p-3 bg-gray-50 rounded-lg">
-                <span className="flex-shrink-0 w-6 h-6 bg-red-100 text-red-700 rounded-full flex items-center justify-center text-sm font-medium">
+              <button
+                key={q.question_id}
+                onClick={() => navigate(`/category/${q.category_id}/notebook?highlight=${q.question_id}`)}
+                className="w-full flex items-start gap-4 p-3 bg-gray-50 dark:bg-dark-surface-20 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-surface-30 transition-colors cursor-pointer text-left"
+              >
+                <span className="flex-shrink-0 w-6 h-6 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-full flex items-center justify-center text-sm font-medium">
                   {index + 1}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-gray-900 line-clamp-2">{q.question_text}</p>
-                  <div className="flex gap-4 mt-1 text-xs text-gray-500">
+                  <p className="text-sm text-gray-900 dark:text-white line-clamp-2">{q.question_text}</p>
+                  <div className="flex gap-4 mt-1 text-xs text-gray-500 dark:text-gray-400">
                     <span>{q.attempts} attempts</span>
                     <span>{q.accuracy.toFixed(0)}% accuracy</span>
                     <span className={`px-1.5 py-0.5 rounded ${
-                      q.difficulty === 'easy' ? 'bg-green-100 text-green-700' :
-                      q.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                      'bg-red-100 text-red-700'
+                      q.difficulty === 'easy' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' :
+                      q.difficulty === 'medium' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400' :
+                      'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
                     }`}>
                       {q.difficulty}
                     </span>
                   </div>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         </div>

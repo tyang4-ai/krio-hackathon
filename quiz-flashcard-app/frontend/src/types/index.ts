@@ -22,6 +22,8 @@ export interface Category {
   id: number;
   name: string;
   description?: string;
+  color?: string;
+  icon?: string;
   created_at: string;
   updated_at?: string;
 }
@@ -289,6 +291,7 @@ export interface TrendDataPoint {
 
 export interface HardestQuestion {
   question_id: number;
+  category_id: number;
   question_text: string;
   question_type: string;
   difficulty: string;

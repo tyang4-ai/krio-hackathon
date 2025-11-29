@@ -1,6 +1,6 @@
 # Scholarly App - Task Checklist
 
-**Last Updated**: 2025-11-28
+**Last Updated**: 2025-11-28 (Session 2)
 
 ## Completed Tasks
 
@@ -64,6 +64,40 @@
 - [x] Create test_rate_limit.py script
 - [x] Test rate limiting (PASSED)
 
+### Phase 10: Dark Mode ✅
+- [x] Create ThemeContext.tsx
+- [x] Add theme toggle button to Layout
+- [x] Create dark mode CSS variables
+- [x] Update TailwindCSS config with custom palette
+- [x] Persist preference in localStorage
+- [x] Apply dark mode to all major components
+- [x] Fix Learning Score card dark mode styling
+
+### Category Icons & Edit Feature ✅
+- [x] Add icon field to Category model
+- [x] Add icon to CategoryBase/CategoryUpdate schemas
+- [x] Create migration 006_add_icon_to_categories
+- [x] Create icon selector UI (21 icons)
+- [x] Create edit modal for categories
+- [x] Add edit/delete buttons on hover
+- [x] Live preview in modal
+
+### Clickable Questions Feature ✅
+- [x] Add category_id to HardestQuestion type
+- [x] Add category_id to get_hardest_questions backend
+- [x] Make Analytics Dashboard questions clickable
+- [x] Navigate to Notebook with ?highlight= parameter
+- [x] Add URL parameter handling in NotebookPage
+- [x] Auto-scroll to highlighted question
+- [x] Make "Most Missed Questions" in Notebook clickable
+- [x] Add highlight animation (ring + fade)
+
+### AI Learning Score Category Filtering ✅
+- [x] Update get_user_overview() to accept category_id
+- [x] Update _calculate_streak() to accept category_id
+- [x] Update calculate_learning_score() to pass category_id
+- [x] Filter sessions_query by category
+
 ### Infrastructure ✅
 - [x] Create frontend/.dockerignore
 - [x] Fix Dockerfile npm install
@@ -74,29 +108,62 @@
 
 ## Pending Tasks
 
-### Clone to Hackathon Repo 🔄
-- [ ] Clone/push to https://github.com/tyang4-ai/hackathon-krio
-- [ ] Verify all files copied correctly
-- [ ] Random-testing-repo remains main repo
-
-### Phase 9: AI Explanations 📋
+### Phase 9: AI Explanations 📋 (Deferred)
 - [ ] Create ExplanationChatbox component
 - [ ] Add "Explain This" button to quiz results
 - [ ] Create /api/ai/explain endpoint
 - [ ] Implement streaming response (optional)
 - [ ] Store explanation history (optional)
 
-### Phase 10: Dark Mode 📋
-- [ ] Create ThemeContext
-- [ ] Add theme toggle button
-- [ ] Create dark mode CSS variables
-- [ ] Update TailwindCSS config
-- [ ] Persist preference in localStorage
-- [ ] Optional: Sync with user profile
-
 ---
 
 ## Quick Reference
+
+### Dark Mode Color Tokens
+```
+dark-surface-10: #121212 (background)
+dark-surface-20: #282828 (cards)
+dark-surface-30: #3f3f3f (elevated)
+dark-tonal-10: #191c22 (primary tinted bg)
+dark-primary-10: #407dc7 (primary text)
+dark-primary-20: #5b8acd (primary lighter)
+```
+
+### Category Icons Available
+```
+Folder, GraduationCap, BookMarked, Beaker, Calculator, Globe, Music, Palette,
+Code, Heart, Brain, Atom, Languages, Scale, Landmark, Microscope, PenTool,
+Camera, Leaf, Dumbbell, DollarSign
+```
+
+### Key Files (Session 2)
+```
+backend-python/
+├── services/
+│   └── analytics_service.py  # Category filtering fix
+├── models/
+│   └── category.py           # Added icon field
+├── schemas/
+│   └── category.py           # Added icon to schemas
+└── alembic/versions/
+    └── 20251128_000003_006_add_icon_to_categories.py
+
+frontend/
+├── src/
+│   ├── contexts/
+│   │   └── ThemeContext.tsx  # NEW - dark mode state
+│   ├── pages/
+│   │   ├── Home.tsx          # Icon selector, edit modal
+│   │   ├── AnalyticsDashboard.tsx  # Clickable questions
+│   │   └── NotebookPage.tsx  # Highlight + scroll
+│   ├── components/
+│   │   └── Layout.tsx        # Theme toggle
+│   ├── styles/
+│   │   └── index.css         # Dark mode CSS
+│   └── types/
+│       └── index.ts          # HardestQuestion.category_id
+└── tailwind.config.js        # Custom dark palette
+```
 
 ### Rate Limit Tiers Applied
 | Endpoint | Limit | File |
@@ -109,28 +176,3 @@
 | POST /quiz/{id}/question/{id}/grade | 20/min | ai.py |
 | POST /quiz/{id}/question/{id}/handwritten | 20/min | ai.py |
 | POST /api/categories/{id}/documents | 20/min | documents.py |
-
-### Key New Files (Phase 5-8)
-```
-backend-python/
-├── middleware/
-│   ├── rate_limiter.py      # Rate limiting
-│   ├── logging_middleware.py # Structured logging
-│   └── exception_handler.py  # Global error handlers
-├── exceptions/
-│   └── __init__.py          # Custom exceptions
-└── services/
-    └── activity_logger.py   # User activity tracking
-
-frontend/
-├── .dockerignore            # Exclude node_modules
-├── src/
-│   ├── components/
-│   │   ├── ErrorBoundary.tsx
-│   │   └── Toast.tsx
-│   └── contexts/
-│       └── ErrorContext.tsx
-
-quiz-flashcard-app/
-└── test_rate_limit.py       # Rate limit test script
-```

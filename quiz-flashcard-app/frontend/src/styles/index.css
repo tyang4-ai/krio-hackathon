@@ -2,30 +2,418 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================
+   Custom Dark Mode Color Palette
+   Based on provided design system:
+
+   Surface (neutral dark):
+   - #121212 (a10) - Main background
+   - #282828 (a20) - Cards, elevated surfaces
+   - #3f3f3f (a30) - Hover states, borders
+   - #575757 (a40) - Disabled states
+   - #717171 (a50) - Secondary text
+   - #8b8b8b (a60) - Tertiary text
+
+   Tonal Surface (blue-tinted dark):
+   - #191c22 (a10) - Alt main background
+   - #2e3137 (a20) - Alt cards
+   - #45474c (a30) - Alt hover
+
+   Primary Tints (blue):
+   - #407dc7 (a10) - Primary buttons/links
+   - #5b8acd (a20) - Primary hover
+   - #7298d4 (a30) - Primary active
+
+   Semantic:
+   - Success: #22946e, #47d5a6, #9ae8ce
+   - Warning: #a87a2a, #d7ac61, #ecd7b2
+   - Danger: #9c2121, #d94a4a, #eb9e9e
+   - Info: #65218a, #9e40d1, #c892e5
+   ============================================ */
+
+/* Base body styles with dark mode support */
 body {
-  @apply bg-gray-50;
+  @apply bg-gray-50 text-gray-900 transition-colors duration-200;
 }
 
+.dark body,
+:root.dark body {
+  background-color: #121212; /* Surface a10 */
+  color: #e5e5e5;
+}
+
+/* Button styles with dark mode */
 .btn-primary {
   @apply bg-primary-500 text-white px-4 py-2 rounded-lg hover:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer;
+}
+
+.dark .btn-primary {
+  background-color: #407dc7; /* Primary a10 */
+  color: white;
+}
+
+.dark .btn-primary:hover {
+  background-color: #5b8acd; /* Primary a20 */
 }
 
 .btn-secondary {
   @apply bg-gold-200 text-primary-700 px-4 py-2 rounded-lg hover:bg-gold-300 transition-colors;
 }
 
+.dark .btn-secondary {
+  background-color: #2e3137; /* Tonal a20 */
+  color: #b0c3e7; /* Primary a60 */
+  border: 1px solid #45474c; /* Tonal a30 */
+}
+
+.dark .btn-secondary:hover {
+  background-color: #45474c; /* Tonal a30 */
+}
+
 .btn-danger {
   @apply bg-accent-500 text-white px-4 py-2 rounded-lg hover:bg-accent-600 transition-colors;
 }
 
+.dark .btn-danger {
+  background-color: #9c2121; /* Danger dark */
+}
+
+.dark .btn-danger:hover {
+  background-color: #d94a4a; /* Danger DEFAULT */
+}
+
+/* Card styles with dark mode */
 .card {
-  @apply bg-white rounded-xl shadow-sm border border-gray-200 p-6;
+  @apply bg-white rounded-xl shadow-sm border border-gray-200 p-6 transition-colors duration-200;
 }
 
+.dark .card {
+  background-color: #282828; /* Surface a20 */
+  border-color: #3f3f3f; /* Surface a30 */
+}
+
+/* Input styles with dark mode */
 .input {
-  @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none;
+  @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-colors duration-200 bg-white text-gray-900;
 }
 
+.dark .input {
+  background-color: #191c22; /* Tonal a10 */
+  border-color: #45474c; /* Tonal a30 */
+  color: #e5e5e5;
+}
+
+.dark .input::placeholder {
+  color: #717171; /* Surface a50 */
+}
+
+.dark .input:focus {
+  border-color: #407dc7; /* Primary a10 */
+  box-shadow: 0 0 0 2px rgba(64, 125, 199, 0.3);
+}
+
+/* Select styles with dark mode */
 .select {
-  @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white;
+  @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white text-gray-900 transition-colors duration-200;
+}
+
+.dark .select {
+  background-color: #191c22; /* Tonal a10 */
+  border-color: #45474c; /* Tonal a30 */
+  color: #e5e5e5;
+}
+
+/* Textarea dark mode */
+.dark textarea {
+  background-color: #191c22; /* Tonal a10 */
+  border-color: #45474c; /* Tonal a30 */
+  color: #e5e5e5;
+}
+
+.dark textarea::placeholder {
+  color: #717171; /* Surface a50 */
+}
+
+/* Dark mode transitions for smooth switching */
+* {
+  @apply transition-colors duration-200;
+}
+
+/* ============================================
+   Dark Mode Background Overrides
+   ============================================ */
+
+.dark .bg-white {
+  background-color: #282828; /* Surface a20 */
+}
+
+.dark .bg-gray-50 {
+  background-color: #121212; /* Surface a10 */
+}
+
+.dark .bg-gray-100 {
+  background-color: #191c22; /* Tonal a10 */
+}
+
+.dark .bg-gray-200 {
+  background-color: #282828; /* Surface a20 */
+}
+
+/* ============================================
+   Dark Mode Border Overrides
+   ============================================ */
+
+.dark .border-gray-100 {
+  border-color: #3f3f3f; /* Surface a30 */
+}
+
+.dark .border-gray-200 {
+  border-color: #3f3f3f; /* Surface a30 */
+}
+
+.dark .border-gray-300 {
+  border-color: #45474c; /* Tonal a30 */
+}
+
+/* ============================================
+   Dark Mode Text Overrides
+   ============================================ */
+
+.dark .text-gray-900 {
+  color: #f5f5f5;
+}
+
+.dark .text-gray-800 {
+  color: #e5e5e5;
+}
+
+.dark .text-gray-700 {
+  color: #d0d0d0;
+}
+
+.dark .text-gray-600 {
+  color: #8b8b8b; /* Surface a60 */
+}
+
+.dark .text-gray-500 {
+  color: #717171; /* Surface a50 */
+}
+
+.dark .text-gray-400 {
+  color: #575757; /* Surface a40 */
+}
+
+/* ============================================
+   Dark Mode Primary Color Overrides
+   ============================================ */
+
+.dark .text-primary-500 {
+  color: #407dc7; /* Primary a10 */
+}
+
+.dark .text-primary-600 {
+  color: #5b8acd; /* Primary a20 */
+}
+
+.dark .text-primary-700 {
+  color: #7298d4; /* Primary a30 */
+}
+
+.dark .bg-primary-500 {
+  background-color: #407dc7; /* Primary a10 */
+}
+
+.dark .bg-primary-100 {
+  background-color: rgba(64, 125, 199, 0.2); /* Primary a10 with opacity */
+}
+
+.dark .hover\:text-primary-500:hover {
+  color: #5b8acd; /* Primary a20 */
+}
+
+.dark .hover\:bg-primary-600:hover {
+  background-color: #5b8acd; /* Primary a20 */
+}
+
+/* ============================================
+   Dark Mode Semantic Colors
+   ============================================ */
+
+/* Success */
+.dark .text-green-500,
+.dark .text-green-600 {
+  color: #47d5a6; /* Success DEFAULT */
+}
+
+.dark .bg-green-50 {
+  background-color: rgba(34, 148, 110, 0.15); /* Success dark with opacity */
+}
+
+.dark .bg-green-100 {
+  background-color: rgba(34, 148, 110, 0.25);
+}
+
+.dark .bg-green-500 {
+  background-color: #22946e; /* Success dark */
+}
+
+.dark .border-green-200 {
+  border-color: rgba(71, 213, 166, 0.3);
+}
+
+/* Danger/Error */
+.dark .text-red-500,
+.dark .text-red-600 {
+  color: #d94a4a; /* Danger DEFAULT */
+}
+
+.dark .bg-red-50 {
+  background-color: rgba(156, 33, 33, 0.15); /* Danger dark with opacity */
+}
+
+.dark .bg-red-100 {
+  background-color: rgba(156, 33, 33, 0.25);
+}
+
+.dark .bg-red-500 {
+  background-color: #9c2121; /* Danger dark */
+}
+
+.dark .border-red-200 {
+  border-color: rgba(217, 74, 74, 0.3);
+}
+
+/* Warning */
+.dark .text-yellow-500,
+.dark .text-yellow-600,
+.dark .text-amber-600 {
+  color: #d7ac61; /* Warning DEFAULT */
+}
+
+.dark .bg-yellow-50,
+.dark .bg-amber-50 {
+  background-color: rgba(168, 122, 42, 0.15); /* Warning dark with opacity */
+}
+
+.dark .bg-yellow-100,
+.dark .bg-amber-100 {
+  background-color: rgba(168, 122, 42, 0.25);
+}
+
+.dark .border-yellow-200,
+.dark .border-amber-200 {
+  border-color: rgba(215, 172, 97, 0.3);
+}
+
+/* Info */
+.dark .text-blue-500,
+.dark .text-blue-600 {
+  color: #9e40d1; /* Info DEFAULT */
+}
+
+.dark .bg-blue-50 {
+  background-color: rgba(101, 33, 138, 0.15); /* Info dark with opacity */
+}
+
+.dark .bg-blue-100 {
+  background-color: rgba(101, 33, 138, 0.25);
+}
+
+/* Indigo (AI/Chat elements) */
+.dark .text-indigo-600,
+.dark .text-indigo-700 {
+  color: #7298d4; /* Primary a30 */
+}
+
+.dark .bg-indigo-50 {
+  background-color: rgba(64, 125, 199, 0.15);
+}
+
+.dark .bg-indigo-100 {
+  background-color: rgba(64, 125, 199, 0.25);
+}
+
+.dark .bg-indigo-600 {
+  background-color: #407dc7; /* Primary a10 */
+}
+
+.dark .hover\:bg-indigo-700:hover {
+  background-color: #5b8acd; /* Primary a20 */
+}
+
+/* ============================================
+   Scrollbar dark mode
+   ============================================ */
+
+.dark ::-webkit-scrollbar {
+  background-color: #121212; /* Surface a10 */
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background-color: #3f3f3f; /* Surface a30 */
+  border-radius: 4px;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background-color: #575757; /* Surface a40 */
+}
+
+/* ============================================
+   Shadow adjustments for dark mode
+   ============================================ */
+
+.dark .shadow-sm {
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+}
+
+.dark .shadow {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.5), 0 1px 2px -1px rgba(0, 0, 0, 0.5);
+}
+
+.dark .shadow-md {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.5);
+}
+
+.dark .shadow-lg {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.5);
+}
+
+.dark .shadow-xl {
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+}
+
+.dark .shadow-2xl {
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+}
+
+/* ============================================
+   Hover state overrides for dark mode
+   ============================================ */
+
+.dark .hover\:bg-gray-100:hover {
+  background-color: #2e3137; /* Tonal a20 */
+}
+
+.dark .hover\:bg-gray-200:hover {
+  background-color: #3f3f3f; /* Surface a30 */
+}
+
+.dark .hover\:shadow-md:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.5);
+}
+
+/* ============================================
+   Ring/Focus state overrides for dark mode
+   ============================================ */
+
+.dark .ring-primary-500 {
+  --tw-ring-color: #407dc7;
+}
+
+.dark .focus\:ring-primary-500:focus {
+  --tw-ring-color: #407dc7;
+}
+
+.dark .focus\:ring-indigo-500:focus {
+  --tw-ring-color: #407dc7;
 }
