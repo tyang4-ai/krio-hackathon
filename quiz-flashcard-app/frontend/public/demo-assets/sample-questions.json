@@ -1,0 +1,87 @@
+[
+  {
+    "question_text": "What is the primary function of mitochondria in a cell?",
+    "question_type": "multiple_choice",
+    "difficulty": "easy",
+    "options": [
+      "A) ATP production through cellular respiration",
+      "B) Protein synthesis",
+      "C) Cell division",
+      "D) Storage of genetic material"
+    ],
+    "correct_answer": "A",
+    "explanation": "Mitochondria are known as the 'powerhouse of the cell' because they produce ATP (adenosine triphosphate) through the process of cellular respiration. This is why they are essential for providing energy to power cellular activities."
+  },
+  {
+    "question_text": "The cell membrane is selectively permeable.",
+    "question_type": "true_false",
+    "difficulty": "easy",
+    "options": [
+      "A) True",
+      "B) False"
+    ],
+    "correct_answer": "A",
+    "explanation": "True. The cell membrane is selectively permeable, meaning it allows some substances to pass through while blocking others. This is crucial for maintaining homeostasis and controlling what enters and exits the cell."
+  },
+  {
+    "question_text": "Which type of cell lacks a membrane-bound nucleus?",
+    "question_type": "multiple_choice",
+    "difficulty": "medium",
+    "options": [
+      "A) Eukaryotic cells",
+      "B) Prokaryotic cells",
+      "C) Plant cells",
+      "D) Animal cells"
+    ],
+    "correct_answer": "B",
+    "explanation": "Prokaryotic cells (such as bacteria) lack a membrane-bound nucleus. Their DNA is located in a region called the nucleoid. Eukaryotic cells (plants, animals, fungi) have a true nucleus with a nuclear membrane."
+  },
+  {
+    "question_text": "The Golgi apparatus is responsible for _____ proteins and lipids before they are shipped to their final destination.",
+    "question_type": "fill_in_blank",
+    "difficulty": "medium",
+    "options": [],
+    "correct_answer": "modifying and packaging",
+    "explanation": "The Golgi apparatus modifies, packages, and ships proteins and lipids. It acts like a post office, receiving products from the ER and preparing them for transport to their final destinations inside or outside the cell."
+  },
+  {
+    "question_text": "Describe the structure of the phospholipid bilayer and explain how it contributes to the cell membrane's function.",
+    "question_type": "written",
+    "difficulty": "hard",
+    "options": [],
+    "correct_answer": "The phospholipid bilayer consists of two layers of phospholipid molecules. Each phospholipid has a hydrophilic (water-loving) head and hydrophobic (water-fearing) tail. The heads face outward toward the aqueous environment while the tails face inward, away from water. This arrangement creates a stable barrier that is selectively permeable - small nonpolar molecules can pass through easily, while ions and large molecules cannot pass without assistance from transport proteins. This structure is essential for controlling what enters and exits the cell.",
+    "explanation": "Understanding the phospholipid bilayer structure is key to understanding membrane function. The hydrophilic/hydrophobic arrangement is what makes the membrane an effective barrier while still allowing selective transport."
+  },
+  {
+    "question_text": "In a hypertonic solution, a cell will:",
+    "question_type": "multiple_choice",
+    "difficulty": "medium",
+    "options": [
+      "A) Swell and possibly burst",
+      "B) Shrink due to water loss",
+      "C) Remain the same size",
+      "D) Divide more rapidly"
+    ],
+    "correct_answer": "B",
+    "explanation": "In a hypertonic solution (higher solute concentration outside the cell), water moves out of the cell by osmosis, causing the cell to shrink. This is called crenation in animal cells and plasmolysis in plant cells."
+  },
+  {
+    "question_text": "Ribosomes are the site of _____ synthesis.",
+    "question_type": "fill_in_blank",
+    "difficulty": "easy",
+    "options": [],
+    "correct_answer": "protein",
+    "explanation": "Ribosomes are composed of ribosomal RNA (rRNA) and proteins. They read messenger RNA (mRNA) and assemble amino acids into polypeptide chains, which fold into functional proteins."
+  },
+  {
+    "question_text": "The sodium-potassium pump is an example of passive transport.",
+    "question_type": "true_false",
+    "difficulty": "medium",
+    "options": [
+      "A) True",
+      "B) False"
+    ],
+    "correct_answer": "B",
+    "explanation": "False. The sodium-potassium pump is an example of ACTIVE transport because it requires ATP (energy) to move ions against their concentration gradient. It pumps 3 sodium ions out and 2 potassium ions into the cell."
+  }
+]

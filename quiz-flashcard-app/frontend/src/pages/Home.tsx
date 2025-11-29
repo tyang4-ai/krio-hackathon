@@ -10,6 +10,9 @@ import {
   BarChart3,
   Edit2,
   X,
+  TrendingUp,
+  Clock,
+  Target,
   // Category icons
   GraduationCap,
   BookMarked,
@@ -33,9 +36,10 @@ import {
   DollarSign,
   type LucideIcon,
 } from 'lucide-react';
-import { categoryApi } from '../services/api';
+import { categoryApi, analyticsApi } from '../services/api';
 import { useError } from '../contexts/ErrorContext';
 import { useTour } from '../contexts/TourContext';
+import EmptyState from '../components/EmptyState';
 import type { Category } from '../types';
 
 // Icon mapping for category icons
@@ -83,6 +87,13 @@ interface CategoryFormData {
   icon: string;
 }
 
+interface QuickStats {
+  totalQuestions: number;
+  totalFlashcards: number;
+  quizzesTaken: number;
+  learningScore: number | null;
+}
+
 const DEFAULT_FORM_DATA: CategoryFormData = {
   name: '',
   description: '',
@@ -96,6 +107,7 @@ function Home(): React.ReactElement {
   const [showModal, setShowModal] = useState<boolean>(false);
   const [editingCategory, setEditingCategory] = useState<CategoryWithStats | null>(null);
   const [formData, setFormData] = useState<CategoryFormData>(DEFAULT_FORM_DATA);
+  const [quickStats, setQuickStats] = useState<QuickStats | null>(null);
   const { showSuccess, showWarning, handleApiError } = useError();
   const { startTour, isTourCompleted, activeTour } = useTour();
 
@@ -116,9 +128,40 @@ function Home(): React.ReactElement {
 
   const loadCategories = async (): Promise<void> => {
     try {
-      const response = await categoryApi.getAll();
-      const data = response.data.data || response.data;
-      setCategories(data.categories || data || []);
+      const [catResponse, analyticsResponse] = await Promise.all([
+        categoryApi.getAll(),
+        analyticsApi.getDashboard().catch(() => null), // Don't fail if analytics unavailable
+      ]);
+
+      const catData = catResponse.data.data || catResponse.data;
+      setCategories(catData.categories || catData || []);
+
+      // Calculate quick stats from categories and analytics
+      if (analyticsResponse) {
+        const analytics = analyticsResponse.data.data || analyticsResponse.data;
+        setQuickStats({
+          totalQuestions: analytics.total_questions || analytics.totalQuestions || 0,
+          totalFlashcards: analytics.total_flashcards || analytics.totalFlashcards || 0,
+          quizzesTaken: analytics.total_quizzes || analytics.totalQuizzes || analytics.quizzes_taken || 0,
+          learningScore: analytics.learning_score?.total_score ?? analytics.learningScore?.total_score ?? null,
+        });
+      } else {
+        // Calculate from categories if analytics fails
+        const cats = catData.categories || catData || [];
+        const totals = cats.reduce(
+          (acc: { questions: number; flashcards: number }, cat: CategoryWithStats) => ({
+            questions: acc.questions + (cat.stats?.question_count || 0),
+            flashcards: acc.flashcards + (cat.stats?.flashcard_count || 0),
+          }),
+          { questions: 0, flashcards: 0 }
+        );
+        setQuickStats({
+          totalQuestions: totals.questions,
+          totalFlashcards: totals.flashcards,
+          quizzesTaken: 0,
+          learningScore: null,
+        });
+      }
     } catch (error) {
       handleApiError(error, 'Failed to load categories');
     } finally {
@@ -203,6 +246,61 @@ function Home(): React.ReactElement {
 
   return (
     <div>
+      {/* Quick Stats Section */}
+      {quickStats && categories.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div className="bg-white dark:bg-dark-surface-20 rounded-xl p-4 border border-gray-100 dark:border-dark-surface-30 shadow-sm">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-primary-100 dark:bg-dark-tonal-20 rounded-lg flex items-center justify-center">
+                <HelpCircle className="h-5 w-5 text-primary-600 dark:text-dark-primary-20" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">{quickStats.totalQuestions}</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">Questions</div>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white dark:bg-dark-surface-20 rounded-xl p-4 border border-gray-100 dark:border-dark-surface-30 shadow-sm">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-gold-100 dark:bg-gold-900/30 rounded-lg flex items-center justify-center">
+                <BookOpen className="h-5 w-5 text-gold-600 dark:text-gold-400" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">{quickStats.totalFlashcards}</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">Flashcards</div>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white dark:bg-dark-surface-20 rounded-xl p-4 border border-gray-100 dark:border-dark-surface-30 shadow-sm">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
+                <Target className="h-5 w-5 text-green-600 dark:text-green-400" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">{quickStats.quizzesTaken}</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">Quizzes Taken</div>
+              </div>
+            </div>
+          </div>
+          <Link
+            to="/analytics"
+            className="bg-gradient-to-br from-primary-500 to-primary-600 dark:from-dark-primary-10 dark:to-dark-primary-20 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow"
+          >
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
+                <TrendingUp className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-white">
+                  {quickStats.learningScore !== null ? Math.round(quickStats.learningScore) : '--'}
+                </div>
+                <div className="text-xs text-white/80">Learning Score</div>
+              </div>
+            </div>
+          </Link>
+        </div>
+      )}
+
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Your Categories</h1>
@@ -215,7 +313,7 @@ function Home(): React.ReactElement {
             className="btn-secondary flex items-center space-x-2"
           >
             <BarChart3 className="h-5 w-5" />
-            <span>Analytics</span>
+            <span className="hidden sm:inline">Analytics</span>
           </Link>
           <button
             onClick={openCreateModal}
@@ -223,22 +321,17 @@ function Home(): React.ReactElement {
             className="btn-primary flex items-center space-x-2"
           >
             <Plus className="h-5 w-5" />
-            <span>New Category</span>
+            <span className="hidden sm:inline">New Category</span>
           </button>
         </div>
       </div>
 
       {categories.length === 0 ? (
-        <div className="text-center py-12 card">
-          <Folder className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No categories yet</h3>
-          <p className="text-gray-600 dark:text-gray-400 mb-4">Create your first category to get started</p>
-          <button
-            onClick={openCreateModal}
-            className="btn-primary"
-          >
-            Create Category
-          </button>
+        <div className="card">
+          <EmptyState
+            type="categories"
+            action={{ label: 'Create Category', onClick: openCreateModal }}
+          />
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
