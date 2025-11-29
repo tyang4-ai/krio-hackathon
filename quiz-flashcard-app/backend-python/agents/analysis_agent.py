@@ -227,13 +227,20 @@ async def analyze_samples(
     Returns:
         Analysis results
     """
-    # Check for existing analysis
+    # Check for existing analysis - use fresh query to avoid stale session data
     if not force:
+        # Expire all to ensure fresh data from database
+        db.expire_all()
         existing = await db.execute(
             select(AIAnalysisResult).where(AIAnalysisResult.category_id == category_id)
         )
         existing_result = existing.scalar_one_or_none()
         if existing_result:
+            logger.info(
+                "returning_cached_analysis",
+                category_id=category_id,
+                analyzed_count=existing_result.analyzed_count,
+            )
             return {
                 "success": True,
                 "analysis": {
@@ -310,6 +317,9 @@ async def analyze_samples(
         )
         db.add(agent_msg)
 
+        # Flush to ensure records are visible within this session and for status queries
+        await db.flush()
+
         logger.info(
             "analysis_stored",
             category_id=category_id,
@@ -326,6 +336,9 @@ async def get_analysis_status(db: AsyncSession, category_id: int) -> Dict[str, A
     Returns:
         Status including whether analysis exists and sample counts
     """
+    # Expire all to ensure fresh data from database (not stale session cache)
+    db.expire_all()
+
     # Get analysis result
     result = await db.execute(
         select(AIAnalysisResult).where(AIAnalysisResult.category_id == category_id)
@@ -343,6 +356,14 @@ async def get_analysis_status(db: AsyncSession, category_id: int) -> Dict[str, A
         q_type = s.question_type
         samples_by_type[q_type] = samples_by_type.get(q_type, 0) + 1
 
+    logger.info(
+        "get_analysis_status",
+        category_id=category_id,
+        has_analysis=analysis is not None,
+        sample_count=len(samples),
+        analysis_id=analysis.id if analysis else None,
+    )
+
     return {
         "has_analysis": analysis is not None,
         "analysis": {
@@ -350,7 +371,9 @@ async def get_analysis_status(db: AsyncSession, category_id: int) -> Dict[str, A
             "style_guide": analysis.style_guide if analysis else None,
             "recommendations": analysis.recommendations if analysis else None,
             "analyzed_count": analysis.analyzed_count if analysis else 0,
-            "updated_at": analysis.updated_at.isoformat() if analysis else None,
+            "updated_at": analysis.updated_at.isoformat() if analysis and analysis.updated_at else (
+                analysis.created_at.isoformat() if analysis and analysis.created_at else None
+            ),
         } if analysis else None,
         "sample_count": len(samples),
         "samples_by_type": samples_by_type,
