@@ -153,7 +153,7 @@ async def get_full_dashboard(
     service = AnalyticsService(db)
 
     # Fetch all data in parallel would be ideal, but for simplicity:
-    overview = await service.get_user_overview(user_id, days)
+    overview = await service.get_user_overview(user_id, days, category_id)
     category_performance = await service.get_category_performance(user_id, category_id)
     difficulty_breakdown = await service.get_difficulty_breakdown(user_id, category_id)
     question_type_breakdown = await service.get_question_type_breakdown(user_id, category_id)

@@ -39,6 +39,7 @@ class CategoryService:
             name=category_data.name,
             description=category_data.description,
             color=category_data.color or "#3B82F6",
+            icon=category_data.icon or "Folder",
         )
 
         db.add(category)
