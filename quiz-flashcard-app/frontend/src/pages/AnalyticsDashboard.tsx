@@ -476,7 +476,7 @@ function AnalyticsDashboard(): React.ReactElement {
   return (
     <div>
       <button
-        onClick={() => navigate('/')}
+        onClick={() => navigate('/dashboard')}
         className="flex items-center text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-4 transition-colors"
       >
         <ArrowLeft className="h-5 w-5 mr-2" />

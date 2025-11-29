@@ -18,7 +18,7 @@ function LoginPage(): React.ReactElement {
   const { login, isLoading } = useAuth();
   const [error, setError] = React.useState<string | null>(null);
 
-  const from = (location.state as LocationState)?.from?.pathname || '/';
+  const from = (location.state as LocationState)?.from?.pathname || '/dashboard';
 
   const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
     if (!credentialResponse.credential) {
@@ -124,7 +124,7 @@ function LoginPage(): React.ReactElement {
             <div className="text-center text-sm text-gray-500">
               <p>Continue without signing in?</p>
               <button
-                onClick={() => navigate('/')}
+                onClick={() => navigate('/dashboard')}
                 className="mt-2 text-indigo-600 hover:text-indigo-500 font-medium"
               >
                 Browse as Guest

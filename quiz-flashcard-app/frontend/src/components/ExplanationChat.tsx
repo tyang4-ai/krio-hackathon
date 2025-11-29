@@ -214,7 +214,7 @@ function ExplanationChat({ question, isCorrect, onClose }: ExplanationChatProps)
 
   // Full chat interface
   return (
-    <div className="fixed bottom-4 right-4 z-50 w-96 max-w-[calc(100vw-2rem)] bg-white rounded-xl shadow-2xl border border-gray-200 flex flex-col max-h-[600px]">
+    <div className="fixed bottom-4 right-4 z-50 w-96 max-w-[calc(100vw-2rem)] bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col max-h-[600px]">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 bg-indigo-600 text-white rounded-t-xl">
         <div className="flex items-center gap-2">
@@ -240,8 +240,8 @@ function ExplanationChat({ question, isCorrect, onClose }: ExplanationChatProps)
       </div>
 
       {/* Question Context */}
-      <div className="px-4 py-2 bg-gray-50 border-b border-gray-200 text-sm">
-        <p className="text-gray-600 truncate" title={question.questionText}>
+      <div className="px-4 py-2 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 text-sm">
+        <p className="text-gray-600 dark:text-gray-400 truncate" title={question.questionText}>
           <span className="font-medium">Q:</span> {question.questionText.substring(0, 80)}
           {question.questionText.length > 80 ? '...' : ''}
         </p>
@@ -258,7 +258,7 @@ function ExplanationChat({ question, isCorrect, onClose }: ExplanationChatProps)
               className={`max-w-[85%] px-4 py-2 rounded-2xl ${
                 message.role === 'user'
                   ? 'bg-indigo-600 text-white rounded-br-md'
-                  : 'bg-gray-100 text-gray-800 rounded-bl-md'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-bl-md'
               }`}
             >
               <div className="text-sm whitespace-pre-wrap">{renderMarkdown(message.content)}</div>
@@ -268,7 +268,7 @@ function ExplanationChat({ question, isCorrect, onClose }: ExplanationChatProps)
 
         {isLoading && (
           <div className="flex justify-start">
-            <div className="bg-gray-100 px-4 py-3 rounded-2xl rounded-bl-md">
+            <div className="bg-gray-100 dark:bg-gray-700 px-4 py-3 rounded-2xl rounded-bl-md">
               <Loader2 className="h-5 w-5 animate-spin text-indigo-600" />
             </div>
           </div>
@@ -287,13 +287,13 @@ function ExplanationChat({ question, isCorrect, onClose }: ExplanationChatProps)
       {/* Quick prompts */}
       {messages.length <= 2 && !isLoading && (
         <div className="px-4 pb-2">
-          <p className="text-xs text-gray-500 mb-2">Quick questions:</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Quick questions:</p>
           <div className="flex flex-wrap gap-2">
             {QUICK_PROMPTS.map((prompt, index) => (
               <button
                 key={index}
                 onClick={() => handleSendMessage(prompt)}
-                className="text-xs px-3 py-1.5 bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-colors"
+                className="text-xs px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
               >
                 {prompt}
               </button>
@@ -303,7 +303,7 @@ function ExplanationChat({ question, isCorrect, onClose }: ExplanationChatProps)
       )}
 
       {/* Input */}
-      <div className="p-4 border-t border-gray-200">
+      <div className="p-4 border-t border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-2">
           <input
             ref={inputRef}
@@ -312,7 +312,7 @@ function ExplanationChat({ question, isCorrect, onClose }: ExplanationChatProps)
             onChange={(e) => setInputValue(e.target.value)}
             onKeyPress={handleKeyPress}
             placeholder="Ask a question..."
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             disabled={isLoading}
           />
           <button

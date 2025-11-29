@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { categoryApi, documentApi, sampleQuestionApi, analysisApi } from '../services/api';
 import { useTour } from '../contexts/TourContext';
+import AILoadingIndicator, { type AILoadingStage } from '../components/AILoadingIndicator';
 import type { Category, Document, SampleQuestion, QuestionType, Difficulty } from '../types';
 
 interface CategoryStats {
@@ -111,6 +112,15 @@ function CategoryDashboard(): React.ReactElement {
   const [sampleUploadProgress, setSampleUploadProgress] = useState<number>(0);
   const [generationProgress, setGenerationProgress] = useState<number>(0);
   const [analysisProgress, setAnalysisProgress] = useState<number>(0);
+
+  // Helper to determine AI loading stage based on progress
+  const getAILoadingStage = (progress: number): AILoadingStage => {
+    if (progress >= 100) return 'complete';
+    if (progress >= 75) return 'validating';
+    if (progress >= 40) return 'generating';
+    if (progress >= 15) return 'analyzing';
+    return 'extracting';
+  };
 
   useEffect(() => {
     loadData();
@@ -458,14 +468,14 @@ function CategoryDashboard(): React.ReactElement {
     <div>
       <div className="mb-8">
         <button
-          onClick={() => navigate('/')}
-          className="flex items-center text-gray-600 hover:text-gray-900 mb-4 transition-colors"
+          onClick={() => navigate('/dashboard')}
+          className="flex items-center text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white mb-4 transition-colors"
         >
           <ArrowLeft className="h-5 w-5 mr-2" />
           Back to Categories
         </button>
-        <h1 className="text-3xl font-bold text-gray-900">{category.name}</h1>
-        <p className="text-gray-600 mt-1">{category.description || 'No description'}</p>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{category.name}</h1>
+        <p className="text-gray-600 dark:text-gray-400 mt-1">{category.description || 'No description'}</p>
       </div>
 
       {/* Quick Actions */}
@@ -742,20 +752,13 @@ function CategoryDashboard(): React.ReactElement {
             </span>
           </button>
 
-          {(generating.questions || generating.flashcards) && generationProgress > 0 && (
-            <div className="mt-3">
-              <div className="flex justify-between text-xs text-gray-600 mb-1">
-                <span>Generating {generateOptions.contentType === 'flashcards' ? 'flashcards' : 'questions'}...</span>
-                <span>{Math.round(generationProgress)}%</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-primary-500 h-2 rounded-full transition-all duration-200"
-                  style={{ width: `${generationProgress}%` }}
-                />
-              </div>
-            </div>
-          )}
+          <AILoadingIndicator
+            isVisible={generating.questions || generating.flashcards}
+            progress={generationProgress}
+            currentStage={getAILoadingStage(generationProgress)}
+            contentType={generateOptions.contentType === 'flashcards' ? 'flashcards' : 'questions'}
+            count={generateOptions.count}
+          />
 
           {documents.length === 0 && (
             <p className="text-sm text-gray-500 mt-3 text-center">

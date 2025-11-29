@@ -1,0 +1,111 @@
+BIOLOGY 101: Cell Structure and Function
+=========================================
+
+Chapter 1: Introduction to Cells
+
+All living organisms are composed of cells. Cells are the basic structural and functional units of life. There are two main types of cells: prokaryotic and eukaryotic.
+
+Prokaryotic Cells:
+- Lack a membrane-bound nucleus
+- Have circular DNA in a region called the nucleoid
+- Examples: bacteria and archaea
+- Generally smaller (1-10 micrometers)
+- Have ribosomes but no membrane-bound organelles
+
+Eukaryotic Cells:
+- Have a true nucleus enclosed by a nuclear membrane
+- Contain linear DNA organized into chromosomes
+- Found in plants, animals, fungi, and protists
+- Generally larger (10-100 micrometers)
+- Contain various membrane-bound organelles
+
+---
+
+Chapter 2: The Cell Membrane
+
+The cell membrane (plasma membrane) is a phospholipid bilayer that surrounds all cells. It acts as a selective barrier, controlling what enters and exits the cell.
+
+Structure:
+- Phospholipid Bilayer: Two layers of phospholipids with hydrophilic (water-loving) heads facing outward and hydrophobic (water-fearing) tails facing inward
+- Cholesterol: Provides stability and fluidity to the membrane
+- Proteins: Integral proteins span the membrane; peripheral proteins attach to the surface
+- Carbohydrates: Attached to proteins (glycoproteins) or lipids (glycolipids) for cell recognition
+
+The Fluid Mosaic Model describes the membrane as a fluid structure with proteins embedded like tiles in a mosaic pattern.
+
+Selective Permeability:
+The membrane allows some substances to pass freely while restricting others.
+- Small, nonpolar molecules (O2, CO2) pass freely
+- Water moves through aquaporins
+- Ions and large molecules require transport proteins
+
+---
+
+Chapter 3: Cell Organelles
+
+Nucleus:
+- Contains genetic material (DNA)
+- Surrounded by nuclear envelope with nuclear pores
+- Contains nucleolus (site of ribosome production)
+- Controls cell activities and gene expression
+
+Mitochondria:
+- Known as the "powerhouse of the cell"
+- Site of cellular respiration and ATP production
+- Has its own DNA (maternal inheritance)
+- Double membrane structure with inner folds (cristae)
+- ATP synthesis equation: C6H12O6 + 6O2 -> 6CO2 + 6H2O + ~38 ATP
+
+Endoplasmic Reticulum (ER):
+- Rough ER: Has ribosomes attached; synthesizes proteins for export
+- Smooth ER: No ribosomes; synthesizes lipids and detoxifies substances
+
+Golgi Apparatus:
+- Modifies, packages, and ships proteins and lipids
+- Forms vesicles for transport
+- Consists of flattened membrane sacs (cisternae)
+
+Ribosomes:
+- Site of protein synthesis
+- Made of rRNA and proteins
+- Found free in cytoplasm or attached to rough ER
+
+Lysosomes:
+- Contain digestive enzymes
+- Break down worn-out organelles and foreign materials
+- pH of about 5 (acidic)
+
+Chloroplasts (in plant cells):
+- Site of photosynthesis
+- Contains chlorophyll (green pigment)
+- Has its own DNA
+- Double membrane with internal thylakoid membranes
+
+---
+
+Chapter 4: Cell Transport
+
+Passive Transport (no energy required):
+1. Diffusion: Movement from high to low concentration
+2. Osmosis: Diffusion of water across a membrane
+3. Facilitated Diffusion: Uses transport proteins
+
+Active Transport (requires ATP):
+1. Sodium-Potassium Pump: Moves 3 Na+ out, 2 K+ in
+2. Endocytosis: Cell engulfs materials (phagocytosis, pinocytosis)
+3. Exocytosis: Cell releases materials via vesicles
+
+Osmotic Conditions:
+- Isotonic: Equal solute concentration; no net water movement
+- Hypertonic: Higher solute outside; cell shrinks (crenation)
+- Hypotonic: Lower solute outside; cell swells (lysis)
+
+---
+
+Key Terms:
+- ATP: Adenosine triphosphate, the energy currency of cells
+- DNA: Deoxyribonucleic acid, carries genetic information
+- Enzyme: Protein that speeds up chemical reactions
+- Organelle: Specialized structures within a cell
+- Cytoplasm: Gel-like substance filling the cell
+- Homeostasis: Maintaining stable internal conditions
