@@ -1,0 +1,9 @@
+{
+  "name": "Plan Refactoring",
+  "description": "Create a comprehensive refactoring plan with risk assessment",
+  "trigger": "manual",
+  "action": {
+    "type": "message",
+    "message": "I'll help you plan a refactoring:\n\n1. Analyze current code structure\n2. Identify improvement opportunities\n3. Create step-by-step refactoring plan\n4. Assess risks and dependencies\n5. Define success criteria\n\nWhat code or feature needs refactoring?"
+  }
+}

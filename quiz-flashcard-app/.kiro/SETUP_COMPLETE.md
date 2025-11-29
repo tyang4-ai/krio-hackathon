@@ -4,29 +4,46 @@ Your `.kiro` folder has been successfully configured for the StudyForge project.
 
 ## What's Included
 
-### 📚 Steering Rules (8 files)
+### 📚 Steering Rules (12 files)
 Contextual guidelines that automatically activate based on what you're working on:
 
-1. **project-overview.md** - High-level architecture and tech stack overview
+**Always Active:**
+1. **project-overview.md** - High-level architecture and tech stack
 2. **coding-standards.md** - Python and TypeScript conventions
-3. **database-patterns.md** - SQLAlchemy async patterns and best practices
-4. **frontend-patterns.md** - React, TypeScript, and Tailwind CSS patterns
-5. **ai-integration.md** - Multi-agent AI system guidelines
-6. **api-documentation.md** - FastAPI endpoint documentation standards
-7. **testing-guidelines.md** - Testing patterns for backend and frontend
-8. **docker-development.md** - Docker Compose workflow and troubleshooting
-9. **security-guidelines.md** - Security best practices and checklists
+3. **security-guidelines.md** - Security best practices and checklists
 
-### 🎣 Hooks (7 automated actions)
+**Auto-Activated:**
+4. **database-patterns.md** - SQLAlchemy async patterns
+5. **frontend-patterns.md** - React, TypeScript, Tailwind CSS
+6. **ai-integration.md** - Multi-agent AI system guidelines
+7. **api-documentation.md** - FastAPI endpoint standards
+8. **docker-development.md** - Docker workflow
+9. **testing-guidelines.md** - Testing patterns
+
+**Manual (Use when needed):**
+10. **refactoring-guide.md** - Refactoring methodology
+11. **code-review-guidelines.md** - Code review best practices
+12. **troubleshooting-guide.md** - Common issues and solutions
+
+### 🎣 Hooks (11 automated actions)
 Quick commands accessible via Explorer or Command Palette:
 
+**Development:**
 1. **test-backend** - Run pytest tests in Docker
 2. **check-types** - TypeScript type checking
 3. **format-code** - Format Python and TypeScript code
-4. **migration-create** - Create Alembic database migrations
-5. **db-migrate** - Apply pending migrations
-6. **db-reset** - Reset database (with warning)
-7. **logs-backend** - Stream backend logs
+4. **logs-backend** - Stream backend logs
+
+**Database:**
+5. **migration-create** - Create Alembic database migrations
+6. **db-migrate** - Apply pending migrations
+7. **db-reset** - Reset database (with warning)
+
+**Code Quality:**
+8. **review-code** - Review code for best practices
+9. **check-api-contracts** - Verify frontend-backend alignment
+10. **plan-refactor** - Create refactoring plan
+11. **update-docs** - Update project documentation
 
 ### ⚙️ Settings
 - **mcp.json** - Model Context Protocol configuration (ready for customization)
