@@ -20,6 +20,7 @@ import {
   Eye
 } from 'lucide-react';
 import { categoryApi, documentApi, sampleQuestionApi, analysisApi } from '../services/api';
+import { useTour } from '../contexts/TourContext';
 import type { Category, Document, SampleQuestion, QuestionType, Difficulty } from '../types';
 
 interface CategoryStats {
@@ -73,6 +74,7 @@ interface AnalysisStatus {
 function CategoryDashboard(): React.ReactElement {
   const { categoryId } = useParams<{ categoryId: string }>();
   const navigate = useNavigate();
+  const { startTour, isTourCompleted, activeTour } = useTour();
   const [category, setCategory] = useState<CategoryWithStats | null>(null);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [sampleQuestions, setSampleQuestions] = useState<SampleQuestion[]>([]);
@@ -113,6 +115,16 @@ function CategoryDashboard(): React.ReactElement {
   useEffect(() => {
     loadData();
   }, [categoryId]);
+
+  // Start category tour on first ever category visit (not per-category)
+  useEffect(() => {
+    if (!loading && categoryId && !isTourCompleted('category') && !activeTour) {
+      const timeout = setTimeout(() => {
+        startTour('category', Number(categoryId));
+      }, 500);
+      return () => clearTimeout(timeout);
+    }
+  }, [loading, categoryId, isTourCompleted, startTour, activeTour]);
 
   const loadData = async (): Promise<void> => {
     if (!categoryId) return;
@@ -457,7 +469,7 @@ function CategoryDashboard(): React.ReactElement {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div data-tour="quick-actions" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <Link
           to={`/category/${categoryId}/quiz`}
           className="card hover:shadow-md transition-shadow flex items-center space-x-4"
@@ -513,7 +525,7 @@ function CategoryDashboard(): React.ReactElement {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Documents Section */}
-        <div className="card">
+        <div data-tour="upload-section" className="card">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold">Documents</h2>
             <label htmlFor="documentUpload" className="btn-primary cursor-pointer flex items-center space-x-2">
@@ -609,7 +621,7 @@ function CategoryDashboard(): React.ReactElement {
         </div>
 
         {/* Generate Content Section */}
-        <div className="card">
+        <div data-tour="generate-content-section" className="card">
           <h2 className="text-xl font-semibold mb-4">Generate Content</h2>
 
           <div className="space-y-4 mb-6">
@@ -754,7 +766,7 @@ function CategoryDashboard(): React.ReactElement {
       </div>
 
       {/* Sample Questions Section - continuing in next part due to length */}
-      <div className="mt-8 card">
+      <div data-tour="sample-questions-section" className="mt-8 card">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
           <div>
             <h2 className="text-xl font-semibold">Sample Questions</h2>

@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import { categoryApi } from '../services/api';
 import { useError } from '../contexts/ErrorContext';
+import { useTour } from '../contexts/TourContext';
 import type { Category } from '../types';
 
 // Icon mapping for category icons
@@ -96,10 +97,22 @@ function Home(): React.ReactElement {
   const [editingCategory, setEditingCategory] = useState<CategoryWithStats | null>(null);
   const [formData, setFormData] = useState<CategoryFormData>(DEFAULT_FORM_DATA);
   const { showSuccess, showWarning, handleApiError } = useError();
+  const { startTour, isTourCompleted, activeTour } = useTour();
 
   useEffect(() => {
     loadCategories();
   }, []);
+
+  // Start home tour on first visit (after loading)
+  useEffect(() => {
+    if (!loading && !isTourCompleted('home') && !activeTour) {
+      // Small delay to ensure DOM is ready
+      const timeout = setTimeout(() => {
+        startTour('home');
+      }, 500);
+      return () => clearTimeout(timeout);
+    }
+  }, [loading, isTourCompleted, startTour, activeTour]);
 
   const loadCategories = async (): Promise<void> => {
     try {
@@ -198,6 +211,7 @@ function Home(): React.ReactElement {
         <div className="flex items-center gap-3">
           <Link
             to="/analytics"
+            data-tour="analytics-btn"
             className="btn-secondary flex items-center space-x-2"
           >
             <BarChart3 className="h-5 w-5" />
@@ -205,6 +219,7 @@ function Home(): React.ReactElement {
           </Link>
           <button
             onClick={openCreateModal}
+            data-tour="new-category-btn"
             className="btn-primary flex items-center space-x-2"
           >
             <Plus className="h-5 w-5" />
@@ -227,12 +242,13 @@ function Home(): React.ReactElement {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {categories.map((category) => {
+          {categories.map((category, index) => {
             const IconComponent = getCategoryIcon(category.icon);
             return (
               <Link
                 key={category.id}
                 to={`/category/${category.id}`}
+                data-tour={index === 0 ? 'category-card' : undefined}
                 className="card hover:shadow-md transition-shadow relative group"
               >
                 {/* Action buttons */}

@@ -4,7 +4,7 @@ Category service - business logic for category management.
 from typing import List, Optional
 
 import structlog
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.category import Category
@@ -12,6 +12,13 @@ from models.question import Question
 from models.flashcard import Flashcard
 from models.document import Document
 from models.notebook_entry import NotebookEntry
+from models.ai_analysis import AIAnalysisResult, AgentMessage
+from models.sample_question import SampleQuestion
+from models.quiz_session import QuizSession
+from models.question_attempt import QuestionAttempt
+from models.flashcard_progress import FlashcardProgress
+from models.user_preferences import UserPreference, QuestionPerformance
+from models.handwriting import HandwritingCorrection
 from schemas.category import CategoryCreate, CategoryStats, CategoryUpdate
 
 logger = structlog.get_logger()
@@ -125,7 +132,7 @@ class CategoryService:
         category_id: int,
     ) -> bool:
         """
-        Delete a category (cascades to all related content).
+        Delete a category and all related content.
 
         Args:
             db: Database session
@@ -137,6 +144,22 @@ class CategoryService:
         category = await self.get_category_by_id(db, category_id)
         if not category:
             return False
+
+        # Manually delete all related records since DB cascades may not work properly
+        # Order matters - delete child records first to avoid FK violations
+        await db.execute(delete(QuestionAttempt).where(QuestionAttempt.category_id == category_id))
+        await db.execute(delete(FlashcardProgress).where(FlashcardProgress.category_id == category_id))
+        await db.execute(delete(HandwritingCorrection).where(HandwritingCorrection.category_id == category_id))
+        await db.execute(delete(UserPreference).where(UserPreference.category_id == category_id))
+        await db.execute(delete(QuestionPerformance).where(QuestionPerformance.category_id == category_id))
+        await db.execute(delete(QuizSession).where(QuizSession.category_id == category_id))
+        await db.execute(delete(NotebookEntry).where(NotebookEntry.category_id == category_id))
+        await db.execute(delete(SampleQuestion).where(SampleQuestion.category_id == category_id))
+        await db.execute(delete(Question).where(Question.category_id == category_id))
+        await db.execute(delete(Flashcard).where(Flashcard.category_id == category_id))
+        await db.execute(delete(Document).where(Document.category_id == category_id))
+        await db.execute(delete(AIAnalysisResult).where(AIAnalysisResult.category_id == category_id))
+        await db.execute(delete(AgentMessage).where(AgentMessage.category_id == category_id))
 
         await db.delete(category)
         await db.flush()

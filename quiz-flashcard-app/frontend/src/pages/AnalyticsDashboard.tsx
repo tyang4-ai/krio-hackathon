@@ -737,12 +737,12 @@ function AnalyticsDashboard(): React.ReactElement {
       {dashboard?.hardest_questions && dashboard.hardest_questions.length > 0 && (
         <div className="card">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Questions to Review</h3>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">These questions have given you the most trouble. Click to review them in your notebook!</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">These questions have given you the most trouble. Click to review them in the question bank!</p>
           <div className="space-y-3">
             {dashboard.hardest_questions.map((q, index) => (
               <button
                 key={q.question_id}
-                onClick={() => navigate(`/category/${q.category_id}/notebook?highlight=${q.question_id}`)}
+                onClick={() => navigate(`/category/${q.category_id}/question-bank?highlight=${q.question_id}`)}
                 className="w-full flex items-start gap-4 p-3 bg-gray-50 dark:bg-dark-surface-20 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-surface-30 transition-colors cursor-pointer text-left"
               >
                 <span className="flex-shrink-0 w-6 h-6 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-full flex items-center justify-center text-sm font-medium">

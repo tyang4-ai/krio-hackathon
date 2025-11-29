@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Edit2, Trash2, Save, X, Star, CheckSquare, Square } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
+import { ArrowLeft, Edit2, Trash2, Save, X, Star, CheckSquare, Square, AlertTriangle } from 'lucide-react';
 import { quizApi, categoryApi } from '../services/api';
 import { Question, QuestionType, Difficulty, Category } from '../types';
 
@@ -21,9 +21,16 @@ interface FilterState {
 function QuestionBank(): React.ReactElement {
   const { categoryId } = useParams<{ categoryId: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
+  const highlightedQuestionId = searchParams.get('highlight');
+  const cameFromAnalytics = highlightedQuestionId !== null || location.state?.from === 'analytics';
+  const highlightRef = useRef<HTMLDivElement>(null);
+
   const [category, setCategory] = useState<Category | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<EditForm>({
     question_text: '',
@@ -40,6 +47,15 @@ function QuestionBank(): React.ReactElement {
     loadData();
   }, [categoryId]);
 
+  // Scroll to highlighted question after loading
+  useEffect(() => {
+    if (!loading && highlightedQuestionId && highlightRef.current) {
+      setTimeout(() => {
+        highlightRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
+    }
+  }, [loading, highlightedQuestionId]);
+
   const loadData = async (): Promise<void> => {
     try {
       const [catResponse, questionsResponse] = await Promise.all([
@@ -47,12 +63,22 @@ function QuestionBank(): React.ReactElement {
         quizApi.getQuestions(categoryId!)
       ]);
       // Handle both wrapped and unwrapped response formats
-      setCategory(catResponse.data.data || catResponse.data);
+      const catData = catResponse.data.data || catResponse.data;
+      if (!catData || !catData.id) {
+        setError('Category not found');
+        return;
+      }
+      setCategory(catData);
       const questionsData = questionsResponse.data.data || questionsResponse.data;
       // Handle both {questions: [...]} and direct array response
       setQuestions((questionsData as any).questions || questionsData || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading data:', error);
+      if (error.response?.status === 404) {
+        setError('Category not found');
+      } else {
+        setError('Failed to load data. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -173,6 +199,14 @@ function QuestionBank(): React.ReactElement {
     return true;
   });
 
+  const handleBack = () => {
+    if (cameFromAnalytics) {
+      navigate('/analytics');
+    } else {
+      navigate(`/category/${categoryId}`);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -181,14 +215,32 @@ function QuestionBank(): React.ReactElement {
     );
   }
 
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <AlertTriangle className="h-16 w-16 text-amber-500 mx-auto mb-4" />
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{error}</h2>
+        <p className="text-gray-600 dark:text-gray-400 mb-6">
+          The category you're looking for may have been deleted or doesn't exist.
+        </p>
+        <button
+          onClick={() => navigate('/analytics')}
+          className="btn-primary"
+        >
+          Back to Analytics
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div>
       <button
-        onClick={() => navigate(`/category/${categoryId}`)}
-        className="flex items-center text-gray-600 hover:text-gray-900 mb-4 transition-colors"
+        onClick={handleBack}
+        className="flex items-center text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-4 transition-colors"
       >
         <ArrowLeft className="h-5 w-5 mr-2" />
-        Back to Dashboard
+        {cameFromAnalytics ? 'Back to Analytics' : 'Back to Dashboard'}
       </button>
 
       <h1 className="text-3xl font-bold text-gray-900 mb-2">Question Bank - {category?.name}</h1>
@@ -279,8 +331,14 @@ function QuestionBank(): React.ReactElement {
               </span>
             </div>
 
-            {filteredQuestions.map((question) => (
-              <div key={question.id} className="card">
+            {filteredQuestions.map((question) => {
+              const isHighlighted = highlightedQuestionId === String(question.id);
+              return (
+              <div
+                key={question.id}
+                ref={isHighlighted ? highlightRef : undefined}
+                className={`card ${isHighlighted ? 'ring-2 ring-primary-500 dark:ring-dark-primary-20 bg-primary-50 dark:bg-dark-tonal-10' : ''}`}
+              >
                 <div className="flex items-start gap-4">
                   <input
                     type="checkbox"
@@ -476,7 +534,8 @@ function QuestionBank(): React.ReactElement {
                   </div>
                 </div>
               </div>
-            ))}
+            );
+            })}
           </>
         )}
       </div>

@@ -3,7 +3,9 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ErrorProvider } from './contexts/ErrorContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { TourProvider } from './contexts/TourContext';
 import ErrorBoundary from './components/ErrorBoundary';
+import TourOverlay from './components/TourOverlay';
 import Layout from './components/Layout';
 import Home from './pages/Home';
 import CategoryDashboard from './pages/CategoryDashboard';
@@ -22,8 +24,10 @@ function App(): React.ReactElement {
       <ThemeProvider>
         <ErrorProvider>
           <AuthProvider>
-            <Router>
-            <Routes>
+            <TourProvider>
+              <Router>
+              <TourOverlay />
+              <Routes>
               <Route path="/login" element={<LoginPage />} />
               <Route element={<Layout />}>
                 <Route path="/" element={<Home />} />
@@ -36,8 +40,9 @@ function App(): React.ReactElement {
                 <Route path="/category/:categoryId/flashcards" element={<FlashcardsPage />} />
                 <Route path="/category/:categoryId/notebook" element={<NotebookPage />} />
               </Route>
-            </Routes>
-            </Router>
+              </Routes>
+              </Router>
+            </TourProvider>
           </AuthProvider>
         </ErrorProvider>
       </ThemeProvider>

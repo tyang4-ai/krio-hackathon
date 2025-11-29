@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { CheckCircle, Trash2, AlertTriangle, Filter, ArrowLeft } from 'lucide-react';
 import { notebookApi, categoryApi } from '../services/api';
 import { Category, NotebookEntry } from '../types';
@@ -28,12 +28,17 @@ type FilterType = 'all' | 'reviewed' | 'unreviewed';
 function NotebookPage(): React.ReactElement {
   const { categoryId } = useParams<{ categoryId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  // Check if we came from analytics (via highlight param or referrer state)
+  const cameFromAnalytics = searchParams.get('highlight') !== null || location.state?.from === 'analytics';
   const [category, setCategory] = useState<Category | null>(null);
   const [entries, setEntries] = useState<NotebookEntryExtended[]>([]);
   const [mostMissed, setMostMissed] = useState<MostMissedItem[]>([]);
   const [stats, setStats] = useState<NotebookStats | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterType>('all');
   const [highlightedQuestionId, setHighlightedQuestionId] = useState<number | null>(null);
   const entryRefs = useRef<Map<number, HTMLDivElement>>(new Map());
@@ -100,7 +105,12 @@ function NotebookPage(): React.ReactElement {
         notebookApi.getMostMissed(categoryId!, 5)
       ]);
       // Handle both wrapped and unwrapped response formats
-      setCategory(catResponse.data.data || catResponse.data);
+      const catData = catResponse.data.data || catResponse.data;
+      if (!catData || !catData.id) {
+        setError('Category not found');
+        return;
+      }
+      setCategory(catData);
       setStats(statsResponse.data.data || statsResponse.data);
       const missedData = missedResponse.data.data || missedResponse.data;
       setMostMissed((missedData as any).questions || missedData || []);
@@ -113,8 +123,13 @@ function NotebookPage(): React.ReactElement {
       const entriesResponse = await notebookApi.getByCategory(categoryId!, options);
       const entriesData = entriesResponse.data.data || entriesResponse.data;
       setEntries((entriesData as any).entries || entriesData || []);
-    } catch (error) {
-      console.error('Error loading data:', error);
+    } catch (err: any) {
+      console.error('Error loading data:', err);
+      if (err.response?.status === 404) {
+        setError('Category not found');
+      } else {
+        setError('Failed to load data. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -159,14 +174,40 @@ function NotebookPage(): React.ReactElement {
     );
   }
 
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <AlertTriangle className="h-16 w-16 text-amber-500 mx-auto mb-4" />
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{error}</h2>
+        <p className="text-gray-600 dark:text-gray-400 mb-6">
+          The category you're looking for may have been deleted or doesn't exist.
+        </p>
+        <button
+          onClick={() => navigate('/analytics')}
+          className="btn-primary"
+        >
+          Back to Analytics
+        </button>
+      </div>
+    );
+  }
+
+  const handleBack = () => {
+    if (cameFromAnalytics) {
+      navigate('/analytics');
+    } else {
+      navigate(`/category/${categoryId}`);
+    }
+  };
+
   return (
     <div>
       <button
-        onClick={() => navigate(`/category/${categoryId}`)}
+        onClick={handleBack}
         className="flex items-center text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-4 transition-colors"
       >
         <ArrowLeft className="h-5 w-5 mr-2" />
-        Back to Dashboard
+        {cameFromAnalytics ? 'Back to Analytics' : 'Back to Dashboard'}
       </button>
       <div className="flex justify-between items-center mb-6">
         <div>

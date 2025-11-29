@@ -1,17 +1,37 @@
 import React from 'react';
-import { Link, Outlet, useNavigate } from 'react-router-dom';
-import { Hammer, Home, LogIn, LogOut, User, BarChart3, Sun, Moon } from 'lucide-react';
+import { Link, Outlet, useNavigate, useLocation, useParams } from 'react-router-dom';
+import { Hammer, Home, LogIn, LogOut, User, BarChart3, Sun, Moon, HelpCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { useTour } from '../contexts/TourContext';
 
 function Layout(): React.ReactElement {
   const { user, isAuthenticated, logout, isLoading } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { startTour, resetTours } = useTour();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogout = () => {
     logout();
     navigate('/');
+  };
+
+  const handleRestartTour = () => {
+    // Determine which tour to start based on current page
+    const path = location.pathname;
+    if (path === '/') {
+      resetTours();
+      setTimeout(() => startTour('home'), 100);
+    } else if (path.match(/^\/category\/\d+$/)) {
+      // Extract category ID from path
+      const categoryId = parseInt(path.split('/')[2]);
+      startTour('category', categoryId);
+    } else {
+      // Default to home tour
+      resetTours();
+      setTimeout(() => startTour('home'), 100);
+    }
   };
 
   return (
@@ -48,9 +68,19 @@ function Layout(): React.ReactElement {
                 <span className="hidden sm:inline">Analytics</span>
               </Link>
 
+              {/* Help Button */}
+              <button
+                onClick={handleRestartTour}
+                className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 dark:text-dark-surface-60 dark:hover:bg-dark-tonal-20 transition-colors"
+                title="Restart guided tour"
+              >
+                <HelpCircle className="h-5 w-5" />
+              </button>
+
               {/* Theme Toggle */}
               <button
                 onClick={toggleTheme}
+                data-tour="theme-toggle"
                 className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 dark:text-dark-primary-40 dark:hover:bg-dark-tonal-20 transition-colors"
                 title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
               >
