@@ -57,8 +57,21 @@ class Settings(BaseSettings):
     # Google OAuth
     google_client_id: Optional[str] = None
 
+    # CORS - for production deployment
+    cors_origins: str = "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://127.0.0.1:3000"
+
     # API Settings
     api_prefix: str = "/api"
+
+    def model_post_init(self, __context) -> None:
+        """Post-init processing to fix database URL format."""
+        # Convert Railway's postgresql:// to asyncpg format
+        if self.database_url.startswith("postgresql://") and "+asyncpg" not in self.database_url:
+            object.__setattr__(
+                self,
+                "database_url",
+                self.database_url.replace("postgresql://", "postgresql+asyncpg://")
+            )
 
     @property
     def is_development(self) -> bool:
