@@ -1,5 +1,7 @@
 # StudyForge - AI-Powered Quiz & Flashcard Generator
 
+**Built for the Krio Hackathon**
+
 An intelligent study companion that transforms your documents into interactive quizzes and flashcards using AI. Built with React, FastAPI, and PostgreSQL.
 
 ## Features
@@ -28,8 +30,9 @@ An intelligent study companion that transforms your documents into interactive q
 - **Custom Icons & Colors**: Personalize your categories for easy identification
 
 ### User Experience
+- **Google OAuth Login**: Quick and secure sign-in with your Google account
 - **Dark Mode**: Eye-friendly dark theme for late-night study sessions
-- **Guided Tour**: Interactive walkthrough for new users
+- **Guided Tours**: Interactive walkthroughs for Home, Categories, and Analytics pages
 - **PDF Export**: Export analytics and progress reports as PDFs
 - **Responsive Design**: Works seamlessly on desktop and mobile devices
 
@@ -52,9 +55,12 @@ An intelligent study companion that transforms your documents into interactive q
 - **Structlog** for structured logging
 
 ### AI Integration
-- **Moonshot AI** (Kimi) for content analysis and question generation
-- **OpenAI GPT-4o** for vision/image processing
-- Multi-agent architecture for specialized tasks
+- **OpenAI GPT** for content analysis and question generation
+- Multi-agent architecture for specialized tasks (generation, grading, analysis, explanation)
+
+### Authentication
+- **Google OAuth 2.0** for secure user authentication
+- **JWT tokens** for session management
 
 ### Infrastructure
 - **Docker & Docker Compose** for containerization
@@ -117,8 +123,10 @@ npm run dev
 | Variable | Description | Required |
 |----------|-------------|----------|
 | `DATABASE_URL` | PostgreSQL connection string | Yes |
-| `MOONSHOT_API_KEY` | Moonshot AI API key | Yes |
-| `OPENAI_API_KEY` | OpenAI API key (for vision) | Yes |
+| `OPENAI_API_KEY` | OpenAI API key | Yes |
+| `GOOGLE_CLIENT_ID` | Google OAuth client ID | Yes |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret | Yes |
+| `JWT_SECRET_KEY` | Secret key for JWT tokens | Yes |
 | `SENTRY_DSN` | Sentry DSN for error tracking | No |
 | `ENVIRONMENT` | `development` or `production` | No |
 
@@ -126,6 +134,7 @@ npm run dev
 | Variable | Description | Required |
 |----------|-------------|----------|
 | `VITE_API_BASE_URL` | Backend API URL | Yes |
+| `VITE_GOOGLE_CLIENT_ID` | Google OAuth client ID | Yes |
 
 ## Project Structure
 
@@ -193,5 +202,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Acknowledgments
 
 - [SuperMemo 2 Algorithm](https://www.supermemo.com/en/archives1990-2015/english/ol/sm2) for spaced repetition
-- [Moonshot AI](https://www.moonshot.cn/) for AI content generation
-- [OpenAI](https://openai.com/) for vision capabilities
+- [OpenAI](https://openai.com/) for AI content generation
+- Built with Claude Code assistance
