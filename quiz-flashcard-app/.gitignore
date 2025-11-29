@@ -29,6 +29,8 @@ build/
 logs/
 *.log
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # OS files
 .DS_Store
@@ -36,6 +38,7 @@ Thumbs.db
 
 # Uploads and user data
 uploads/
+backend-python/uploads/
 
 # Vite cache
 frontend/node_modules/.vite/
@@ -44,6 +47,12 @@ frontend/node_modules/.vite/
 random stuff/
 nul
 
+# Docker volumes
+postgres_data/
+
 # Database
 *.db
 *.sqlite3
+
+# Claude Code configuration
+.claude/

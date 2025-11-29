@@ -624,6 +624,430 @@ INFRASTRUCTURE:
   },
 ];
 
-export function getTourSteps(tourName: 'home' | 'category'): TourStep[] {
-  return tourName === 'home' ? HOME_TOUR_STEPS : CATEGORY_TOUR_STEPS;
+export const ANALYTICS_TOUR_STEPS: TourStep[] = [
+  {
+    target: null, // Centered welcome modal
+    title: 'Analytics Dashboard',
+    content: 'Track your learning progress with detailed insights and metrics.',
+    details: `This dashboard gives you a comprehensive view of your learning journey:
+
+- AI Learning Score: Your overall performance rating
+- Performance trends over time
+- Breakdown by category, difficulty, and question type
+- Personalized recommendations for improvement
+
+All data is calculated from your quiz attempts and study sessions.`,
+    technicalDetails: `BACKEND: Analytics Service
+
+\`\`\`python
+# routers/analytics.py
+@router.get("/dashboard")
+async def get_analytics_dashboard(
+    category_id: Optional[int] = None,
+    days: int = 30,
+    db: AsyncSession = Depends(get_db)
+) -> AnalyticsDashboard:
+    # Aggregate data from QuestionAttempt table
+    overview = await analytics_service.get_overview(
+        user_id, category_id, days
+    )
+    trend_data = await analytics_service.get_trend_data(...)
+    difficulty_breakdown = await analytics_service.get_difficulty_breakdown(...)
+    learning_score = await analytics_service.calculate_learning_score(...)
+
+    return AnalyticsDashboard(
+        overview=overview,
+        trend_data=trend_data,
+        learning_score=learning_score,
+        ...
+    )
+\`\`\`
+
+DATABASE QUERIES:
+- COUNT, AVG, GROUP BY on question_attempts
+- Window functions for trend analysis
+- Joins with questions, categories tables
+
+STACK: SQLAlchemy | PostgreSQL | Pydantic`,
+    position: 'bottom',
+  },
+  {
+    target: 'learning-score-card',
+    title: 'AI Learning Score',
+    content: 'Your comprehensive performance metric combining accuracy, consistency, improvement, and difficulty mastery.',
+    details: `The AI Learning Score (0-100) is calculated using four components:
+
+ACCURACY (40%):
+How many questions you answer correctly
+
+CONSISTENCY (20%):
+How regularly you study (streak days, session frequency)
+
+IMPROVEMENT (25%):
+Your progress trend over time
+
+DIFFICULTY (15%):
+Your success rate on harder questions
+
+Click any score component to learn more about how it's calculated!`,
+    technicalDetails: `BACKEND: Learning Score Algorithm
+
+\`\`\`python
+# services/analytics_service.py
+async def calculate_learning_score(
+    user_id: int,
+    category_id: Optional[int] = None,
+    days: int = 30
+) -> LearningScore:
+    # Get raw metrics
+    overview = await self.get_overview(user_id, category_id, days)
+
+    # Calculate component scores
+    accuracy_score = min(40, overview['accuracy'] * 0.4)
+    consistency_score = min(20, overview['streak_days'] * 2)
+
+    # Improvement: compare recent vs historical
+    recent = await self.get_recent_accuracy(user_id, days=7)
+    historical = await self.get_historical_accuracy(user_id, days=30)
+    improvement_score = min(25, max(0, (recent - historical) * 2.5 + 12.5))
+
+    # Difficulty bonus for hard questions
+    hard_accuracy = await self.get_difficulty_accuracy(user_id, 'hard')
+    difficulty_score = min(15, hard_accuracy * 0.15)
+
+    total = accuracy_score + consistency_score + improvement_score + difficulty_score
+
+    return LearningScore(
+        total_score=total,
+        grade=self._score_to_grade(total),
+        accuracy_score=accuracy_score,
+        consistency_score=consistency_score,
+        improvement_score=improvement_score,
+        difficulty_score=difficulty_score,
+        recommendation=self._get_recommendation(total, ...)
+    )
+\`\`\`
+
+GRADE SCALE:
+A+ (95+), A (90+), A- (85+), B+ (80+), B (75+)...
+
+STACK: async SQLAlchemy | PostgreSQL aggregations`,
+    position: 'bottom',
+  },
+  {
+    target: 'overview-stats',
+    title: 'Quick Stats Overview',
+    content: 'See your key metrics at a glance: questions attempted, accuracy rate, average time, and study streak.',
+    details: `QUESTIONS ATTEMPTED:
+Total number of questions you've answered in the selected time period
+
+ACCURACY RATE:
+Percentage of questions answered correctly
+
+AVG TIME/QUESTION:
+Your average response time in seconds
+
+DAY STREAK:
+Consecutive days of study activity`,
+    technicalDetails: `BACKEND: Overview Query
+
+\`\`\`python
+# services/analytics_service.py
+async def get_overview(
+    user_id: int,
+    category_id: Optional[int],
+    days: int
+) -> dict:
+    query = select(
+        func.count(QuestionAttempt.id).label('total_attempts'),
+        func.sum(case((QuestionAttempt.is_correct, 1), else_=0)).label('correct'),
+        func.avg(QuestionAttempt.time_spent_seconds).label('avg_time'),
+        func.count(distinct(func.date(QuestionAttempt.answered_at))).label('active_days')
+    ).where(
+        QuestionAttempt.user_id == user_id,
+        QuestionAttempt.answered_at >= datetime.now() - timedelta(days=days)
+    )
+
+    if category_id:
+        query = query.join(Question).where(Question.category_id == category_id)
+
+    result = await db.execute(query)
+    row = result.one()
+
+    return {
+        'total_attempts': row.total_attempts,
+        'accuracy': (row.correct / row.total_attempts * 100) if row.total_attempts else 0,
+        'avg_time_per_question': row.avg_time or 0,
+        'streak_days': await self._calculate_streak(user_id)
+    }
+\`\`\`
+
+STACK: SQLAlchemy | PostgreSQL | func aggregations`,
+    position: 'bottom',
+  },
+  {
+    target: 'filters-section',
+    title: 'Filter Your Data',
+    content: 'Filter analytics by category and time period to see specific performance insights.',
+    details: `CATEGORY FILTER:
+View performance for a specific subject or "All Categories" for overall stats
+
+TIME PERIOD:
+- Last 7 days: Recent performance
+- Last 30 days: Monthly trends (default)
+- Last 90 days: Quarterly progress
+- Last year: Long-term growth
+
+EXPORT PDF:
+Download a formatted report of your analytics to share or print!`,
+    technicalDetails: `FRONTEND: React State Management
+
+\`\`\`typescript
+// AnalyticsDashboard.tsx
+const [selectedCategory, setSelectedCategory] = useState<number | undefined>();
+const [days, setDays] = useState<number>(30);
+
+useEffect(() => {
+  loadData();
+}, [selectedCategory, days]);
+
+const loadData = async () => {
+  const response = await analyticsApi.getDashboard(selectedCategory, days);
+  setDashboard(response.data);
+};
+
+// PDF Export using jsPDF + html2canvas
+const handleExportPDF = async () => {
+  await exportAnalyticsToPDF(dashboard, categoryName, days);
+};
+\`\`\`
+
+API CALL:
+GET /api/analytics/dashboard?category_id=1&days=30
+
+STACK: React useState | Axios | jsPDF | html2canvas`,
+    position: 'bottom',
+  },
+  {
+    target: 'trend-chart',
+    title: 'Progress Over Time',
+    content: 'Visualize your study activity and accuracy trends over the selected time period.',
+    details: `This chart shows two metrics:
+
+BLUE BARS (Questions Attempted):
+How many questions you answered each day
+
+GREEN LINE (Accuracy %):
+Your accuracy rate over time
+
+Look for:
+- Upward trends in accuracy (improvement!)
+- Consistent daily activity (builds habits)
+- Dips that might indicate difficult topics`,
+    technicalDetails: `BACKEND: Trend Data Query
+
+\`\`\`python
+# services/analytics_service.py
+async def get_trend_data(
+    user_id: int,
+    category_id: Optional[int],
+    days: int
+) -> list[TrendDataPoint]:
+    query = select(
+        func.date(QuestionAttempt.answered_at).label('date'),
+        func.count(QuestionAttempt.id).label('attempts'),
+        (func.sum(case((QuestionAttempt.is_correct, 1), else_=0)) * 100.0 /
+         func.count(QuestionAttempt.id)).label('accuracy')
+    ).where(
+        QuestionAttempt.user_id == user_id,
+        QuestionAttempt.answered_at >= datetime.now() - timedelta(days=days)
+    ).group_by(
+        func.date(QuestionAttempt.answered_at)
+    ).order_by(
+        func.date(QuestionAttempt.answered_at)
+    )
+
+    results = await db.execute(query)
+    return [TrendDataPoint(date=r.date, attempts=r.attempts, accuracy=r.accuracy)
+            for r in results]
+\`\`\`
+
+FRONTEND: ECharts Configuration
+- Dual Y-axis (bar + line combo)
+- Tooltip with cross-axis pointer
+- Responsive sizing
+
+STACK: ECharts | ReactECharts | PostgreSQL GROUP BY`,
+    position: 'right',
+  },
+  {
+    target: 'difficulty-chart',
+    title: 'Difficulty Breakdown',
+    content: 'See how you perform across Easy, Medium, and Hard questions.',
+    details: `This chart shows your accuracy rate by difficulty level:
+
+EASY (Green):
+Foundation questions - aim for 90%+ accuracy
+
+MEDIUM (Yellow):
+Standard difficulty - target 70-85% accuracy
+
+HARD (Red):
+Challenging questions - 60%+ is great!
+
+Pro tip: If Easy accuracy is low, review fundamentals before moving to harder content.`,
+    technicalDetails: `BACKEND: Difficulty Analysis
+
+\`\`\`python
+# services/analytics_service.py
+async def get_difficulty_breakdown(
+    user_id: int,
+    category_id: Optional[int],
+    days: int
+) -> dict:
+    query = select(
+        Question.difficulty,
+        func.count(QuestionAttempt.id).label('total'),
+        func.sum(case((QuestionAttempt.is_correct, 1), else_=0)).label('correct')
+    ).join(Question).where(
+        QuestionAttempt.user_id == user_id,
+        QuestionAttempt.answered_at >= datetime.now() - timedelta(days=days)
+    ).group_by(Question.difficulty)
+
+    if category_id:
+        query = query.where(Question.category_id == category_id)
+
+    results = await db.execute(query)
+
+    breakdown = {}
+    for row in results:
+        breakdown[row.difficulty] = {
+            'total': row.total,
+            'correct': row.correct,
+            'accuracy': (row.correct / row.total * 100) if row.total else 0
+        }
+
+    return breakdown
+\`\`\`
+
+CHART: ECharts Bar Chart
+- Color-coded by difficulty
+- Percentage labels on bars
+- Tooltip with totals
+
+STACK: ECharts | SQLAlchemy JOIN | GROUP BY`,
+    position: 'left',
+  },
+  {
+    target: 'hardest-questions',
+    title: 'Questions to Review',
+    content: 'Your most challenging questions based on accuracy. Click any to review in the Question Bank!',
+    details: `This section shows questions you've struggled with most:
+
+RANKED BY:
+- Lowest accuracy rate
+- Multiple attempts
+- Recent activity
+
+CLICK TO REVIEW:
+Each question links directly to the Question Bank where you can:
+- See the correct answer
+- Read the explanation
+- Practice similar questions`,
+    technicalDetails: `BACKEND: Hardest Questions Query
+
+\`\`\`python
+# services/analytics_service.py
+async def get_hardest_questions(
+    user_id: int,
+    category_id: Optional[int],
+    limit: int = 5
+) -> list[HardestQuestion]:
+    # Subquery for per-question stats
+    subq = select(
+        QuestionAttempt.question_id,
+        func.count(QuestionAttempt.id).label('attempts'),
+        (func.sum(case((QuestionAttempt.is_correct, 1), else_=0)) * 100.0 /
+         func.count(QuestionAttempt.id)).label('accuracy')
+    ).where(
+        QuestionAttempt.user_id == user_id
+    ).group_by(QuestionAttempt.question_id).subquery()
+
+    query = select(
+        Question, subq.c.attempts, subq.c.accuracy
+    ).join(subq, Question.id == subq.c.question_id
+    ).where(
+        subq.c.attempts >= 2,  # At least 2 attempts
+        subq.c.accuracy < 70   # Below 70% accuracy
+    ).order_by(subq.c.accuracy.asc()
+    ).limit(limit)
+
+    return [HardestQuestion(
+        question_id=row.Question.id,
+        question_text=row.Question.text,
+        attempts=row.attempts,
+        accuracy=row.accuracy,
+        difficulty=row.Question.difficulty,
+        category_id=row.Question.category_id
+    ) for row in await db.execute(query)]
+\`\`\`
+
+FRONTEND NAVIGATION:
+\`\`\`typescript
+onClick={() => navigate(\`/category/\${q.category_id}/question-bank?highlight=\${q.question_id}\`)}
+\`\`\`
+
+STACK: SQLAlchemy subquery | React Router navigate`,
+    position: 'top',
+  },
+  {
+    target: null,
+    title: 'Keep Learning!',
+    content: 'Check back regularly to track your progress and identify areas for improvement.',
+    details: `TIPS FOR SUCCESS:
+
+1. Study consistently - even 15 minutes daily beats occasional cramming
+
+2. Target your weaknesses - focus on low-accuracy question types
+
+3. Challenge yourself - gradually increase difficulty as you improve
+
+4. Export & share - download PDF reports to track long-term progress
+
+5. Use the "?" button in the header to restart this tour anytime!`,
+    technicalDetails: `FULL ANALYTICS STACK
+
+FRONTEND:
+- React 18 + TypeScript
+- ECharts for visualization
+- jsPDF + html2canvas for PDF export
+- React Router for navigation
+
+BACKEND:
+- FastAPI async endpoints
+- SQLAlchemy ORM with async support
+- PostgreSQL database
+- Complex aggregation queries
+
+DATA FLOW:
+1. User visits /analytics
+2. Frontend calls GET /api/analytics/dashboard
+3. Backend aggregates QuestionAttempt data
+4. Calculates learning score, trends, breakdowns
+5. Returns structured AnalyticsDashboard response
+6. Frontend renders charts with ECharts
+
+ALGORITHMS:
+- Learning Score: Weighted multi-factor formula
+- Streak calculation: Consecutive day detection
+- Trend analysis: Time-series grouping
+- Difficulty weighting: Performance by question hardness`,
+    position: 'bottom',
+  },
+];
+
+export function getTourSteps(tourName: 'home' | 'category' | 'analytics'): TourStep[] {
+  if (tourName === 'home') return HOME_TOUR_STEPS;
+  if (tourName === 'category') return CATEGORY_TOUR_STEPS;
+  return ANALYTICS_TOUR_STEPS;
 }

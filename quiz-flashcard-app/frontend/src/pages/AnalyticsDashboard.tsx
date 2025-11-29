@@ -5,6 +5,7 @@ import { ArrowLeft, TrendingUp, Target, Clock, Award, Calendar, BookOpen, Brain,
 import { analyticsApi, categoryApi } from '../services/api';
 import { exportAnalyticsToPDF } from '../services/pdfExport';
 import { useError } from '../contexts/ErrorContext';
+import { useTour } from '../contexts/TourContext';
 import type { AnalyticsDashboard as AnalyticsDashboardType, Category } from '../types';
 
 // Score explanation data based on learning science research
@@ -74,6 +75,7 @@ function AnalyticsDashboard(): React.ReactElement {
   const [explanationModal, setExplanationModal] = useState<ExplanationKey | null>(null);
   const [exporting, setExporting] = useState<boolean>(false);
   const { showSuccess, showError } = useError();
+  const { startTour, isTourCompleted, activeTour } = useTour();
 
   useEffect(() => {
     loadData();
@@ -82,6 +84,16 @@ function AnalyticsDashboard(): React.ReactElement {
   useEffect(() => {
     loadCategories();
   }, []);
+
+  // Start analytics tour on first visit (after loading)
+  useEffect(() => {
+    if (!loading && !isTourCompleted('analytics') && !activeTour) {
+      const timeout = setTimeout(() => {
+        startTour('analytics');
+      }, 500);
+      return () => clearTimeout(timeout);
+    }
+  }, [loading, isTourCompleted, startTour, activeTour]);
 
   const loadCategories = async (): Promise<void> => {
     try {
@@ -489,7 +501,7 @@ function AnalyticsDashboard(): React.ReactElement {
           <p className="text-gray-600 dark:text-gray-400 mt-1">Track your progress and identify areas for improvement</p>
         </div>
 
-        <div className="flex gap-4">
+        <div data-tour="filters-section" className="flex gap-4">
           <select
             className="select min-w-[160px]"
             value={selectedCategory || ''}
@@ -526,7 +538,7 @@ function AnalyticsDashboard(): React.ReactElement {
 
       {/* Learning Score Card */}
       {learningScore && (
-        <div className="card mb-6 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-dark-tonal-10 dark:to-dark-surface-20 border-indigo-200 dark:border-dark-primary-10/30">
+        <div data-tour="learning-score-card" className="card mb-6 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-dark-tonal-10 dark:to-dark-surface-20 border-indigo-200 dark:border-dark-primary-10/30">
           <div className="flex flex-col md:flex-row items-center gap-6">
             <div
               className="w-48 h-40 flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
@@ -610,7 +622,7 @@ function AnalyticsDashboard(): React.ReactElement {
       )}
 
       {/* Overview Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div data-tour="overview-stats" className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div className="card">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-blue-100 rounded-lg">
@@ -682,7 +694,7 @@ function AnalyticsDashboard(): React.ReactElement {
       {/* Charts Row 1 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* Trend Chart */}
-        <div className="card">
+        <div data-tour="trend-chart" className="card">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Progress Over Time</h3>
           {getTrendChartOption() ? (
             <ReactECharts option={getTrendChartOption()!} style={{ height: 300 }} />
@@ -709,7 +721,7 @@ function AnalyticsDashboard(): React.ReactElement {
       {/* Charts Row 2 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* Difficulty Breakdown */}
-        <div className="card">
+        <div data-tour="difficulty-chart" className="card">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Accuracy by Difficulty</h3>
           {getDifficultyChartOption() ? (
             <ReactECharts option={getDifficultyChartOption()!} style={{ height: 300 }} />
@@ -735,7 +747,7 @@ function AnalyticsDashboard(): React.ReactElement {
 
       {/* Hardest Questions */}
       {dashboard?.hardest_questions && dashboard.hardest_questions.length > 0 && (
-        <div className="card">
+        <div data-tour="hardest-questions" className="card">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Questions to Review</h3>
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">These questions have given you the most trouble. Click to review them in the question bank!</p>
           <div className="space-y-3">

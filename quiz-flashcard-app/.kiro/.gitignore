@@ -1,0 +1,3 @@
+# Kiro-specific ignores
+*.log
+.DS_Store

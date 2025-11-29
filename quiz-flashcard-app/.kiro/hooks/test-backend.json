@@ -1,0 +1,9 @@
+{
+  "name": "Run Backend Tests",
+  "description": "Run pytest tests for the FastAPI backend",
+  "trigger": "manual",
+  "action": {
+    "type": "command",
+    "command": "docker-compose exec backend pytest -v"
+  }
+}

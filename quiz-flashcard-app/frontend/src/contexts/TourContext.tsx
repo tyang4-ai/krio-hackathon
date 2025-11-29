@@ -1,10 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 
-export type TourName = 'home' | 'category';
+export type TourName = 'home' | 'category' | 'analytics';
 
 interface ToursCompleted {
   home: boolean;
   category: boolean; // Only tracks if user has seen the category tour once (any category)
+  analytics: boolean;
 }
 
 interface TourState {
@@ -45,6 +46,7 @@ const DEFAULT_STATE: TourState = {
   toursCompleted: {
     home: false,
     category: false,
+    analytics: false,
   },
 };
 
@@ -122,6 +124,8 @@ export function TourProvider({ children }: { children: ReactNode }) {
         newCompleted.home = true;
       } else if (prev.activeTour === 'category') {
         newCompleted.category = true;
+      } else if (prev.activeTour === 'analytics') {
+        newCompleted.analytics = true;
       }
       return {
         ...prev,
@@ -159,6 +163,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
       toursCompleted: {
         home: false,
         category: false,
+        analytics: false,
       },
     });
     setCurrentCategoryId(null);
@@ -182,6 +187,9 @@ export function TourProvider({ children }: { children: ReactNode }) {
     }
     if (name === 'category') {
       return state.toursCompleted.category;
+    }
+    if (name === 'analytics') {
+      return state.toursCompleted.analytics;
     }
     return false;
   }, [state.toursCompleted]);

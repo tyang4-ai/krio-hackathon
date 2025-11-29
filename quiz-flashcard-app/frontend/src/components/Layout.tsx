@@ -24,6 +24,8 @@ function Layout(): React.ReactElement {
     if (path === '/dashboard') {
       resetTours();
       setTimeout(() => startTour('home'), 100);
+    } else if (path === '/analytics') {
+      startTour('analytics');
     } else if (path.match(/^\/category\/\d+$/)) {
       // Extract category ID from path
       const categoryId = parseInt(path.split('/')[2]);
