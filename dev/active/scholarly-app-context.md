@@ -1,6 +1,6 @@
 # Scholarly Quiz & Flashcard App - Development Context
 
-**Last Updated**: 2025-11-28 (Session 2)
+**Last Updated**: 2025-11-28 (Session 3)
 
 ## Current State Summary
 
@@ -27,6 +27,12 @@
 | Clickable Questions in Analytics Dashboard | ✅ Complete |
 | Clickable Questions in Notebook Page | ✅ Complete |
 | AI Learning Score Category Filtering | ✅ Complete |
+
+### Bugfixes (Session 3)
+| Fix | Status |
+|-----|--------|
+| Analytics overview stats category filtering | ✅ Fixed |
+| Category icon not displaying on Home page | ✅ Fixed |
 
 ## Session 2 Work (2025-11-28)
 
@@ -101,6 +107,29 @@ const CATEGORY_ICONS = {
   - Updated `calculate_learning_score()` to pass `category_id` to both methods
   - Added category filter to sessions_query
 
+## Session 3 Work (2025-11-28)
+
+### Analytics Dashboard Overview Stats Fix
+**Problem:** Overview stats (Questions Attempted, Accuracy, etc.) didn't filter by category
+
+**Root Cause:** `routers/analytics.py` `get_full_dashboard` called `get_user_overview(user_id, days)` without `category_id`
+
+**Fix Applied:**
+- Changed to `get_user_overview(user_id, days, category_id)`
+
+### Category Icon Display Fix
+**Problem:** Category icons not displaying on Home page after editing
+
+**Root Cause:** `routers/categories.py` was NOT including `icon` field in `CategoryResponse` constructors
+
+**Fix Applied:**
+- Added `icon=cat.icon` to all 4 `CategoryResponse` constructors:
+  - `get_all_categories` (line 36)
+  - `get_category` (line 69)
+  - `create_category` (line 92)
+  - `update_category` (line 123)
+- Added `icon=category_data.icon or "Folder"` to `create_category` in `category_service.py`
+
 ### Dark Mode Fixes
 **Learning Score Card** (was not styled for dark mode):
 - Added gradient: `dark:from-dark-tonal-10 dark:to-dark-surface-20`
@@ -137,8 +166,8 @@ setup_exception_handlers(app)
 
 ## Git Status
 - **Branch**: `claude/quiz-flashcard-generator-01LL7DUF3V3JQVpU4DyTRzbE`
-- **Latest Commit**: Pending (v6.7.0: Clickable questions + category filtering)
-- **Needs Push**: Yes
+- **Latest Commit**: v7.3.0: Fix analytics category filtering and category icon display
+- **Needs Push**: No
 
 ## Commands Reference
 
@@ -179,29 +208,15 @@ All requested features complete:
 3. ✅ Clickable questions (Analytics → Notebook)
 4. ✅ AI Learning Score category filtering
 5. ✅ Dark mode fix for Learning Score card
+6. ✅ Analytics overview stats category filtering (Session 3)
+7. ✅ Category icon display fix (Session 3)
 
-### Pending Actions
-1. ✅ Update dev docs (this file)
-2. ⏳ Commit and push to GitHub
-3. ⏳ Rebuild Docker containers
-
-### Files Changed This Session (uncommitted)
+### Files Changed Session 3
 ```
 Modified:
-- quiz-flashcard-app/backend-python/services/analytics_service.py
-- quiz-flashcard-app/frontend/src/pages/AnalyticsDashboard.tsx
-- quiz-flashcard-app/frontend/src/pages/NotebookPage.tsx
-- quiz-flashcard-app/frontend/src/types/index.ts
-- quiz-flashcard-app/frontend/tailwind.config.js
-- quiz-flashcard-app/frontend/src/styles/index.css
-- quiz-flashcard-app/frontend/src/components/Layout.tsx
-- quiz-flashcard-app/frontend/src/pages/Home.tsx
-- quiz-flashcard-app/backend-python/models/category.py
-- quiz-flashcard-app/backend-python/schemas/category.py
-
-New:
-- quiz-flashcard-app/frontend/src/contexts/ThemeContext.tsx
-- quiz-flashcard-app/backend-python/alembic/versions/20251128_000003_006_add_icon_to_categories.py
+- quiz-flashcard-app/backend-python/routers/analytics.py (category_id to get_user_overview)
+- quiz-flashcard-app/backend-python/routers/categories.py (icon field in all responses)
+- quiz-flashcard-app/backend-python/services/category_service.py (icon in create_category)
 ```
 
 ### Known Issues

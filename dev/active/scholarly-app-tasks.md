@@ -1,6 +1,6 @@
 # Scholarly App - Task Checklist
 
-**Last Updated**: 2025-11-28 (Session 2)
+**Last Updated**: 2025-11-28 (Session 3)
 
 ## Completed Tasks
 
@@ -97,6 +97,15 @@
 - [x] Update _calculate_streak() to accept category_id
 - [x] Update calculate_learning_score() to pass category_id
 - [x] Filter sessions_query by category
+
+### Analytics Dashboard Category Filtering ✅ (Session 3)
+- [x] Fix get_full_dashboard to pass category_id to get_user_overview
+- [x] All overview stats now filter by selected category
+
+### Category Icon API Fix ✅ (Session 3)
+- [x] Add icon field to all CategoryResponse constructors in categories.py
+- [x] Add icon field to create_category service
+- [x] Icons now display correctly on Home page after editing
 
 ### Infrastructure ✅
 - [x] Create frontend/.dockerignore
