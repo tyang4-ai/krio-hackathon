@@ -147,7 +147,15 @@ app = FastAPI(
 )
 
 # Configure CORS - use environment variable for production
-cors_origins_list = [origin.strip() for origin in settings.cors_origins.split(",")]
+cors_origins_list = [origin.strip() for origin in settings.cors_origins.split(",") if origin.strip()]
+logger.info("cors_config", origins=cors_origins_list, raw_setting=settings.cors_origins)
+
+# In production, also allow the Railway domain pattern
+if settings.is_production:
+    cors_origins_list.append("https://krio-hackathon-production.up.railway.app")
+    # Remove duplicates
+    cors_origins_list = list(set(cors_origins_list))
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins_list,
