@@ -30,5 +30,5 @@ COPY --from=builder /app/dist ./dist
 # Expose port (Railway will set PORT env var)
 EXPOSE 3000
 
-# Serve the built app
-CMD ["sh", "-c", "serve dist -s -l ${PORT:-3000}"]
+# Serve the built app on port 3000 (Railway maps PORT automatically)
+CMD ["serve", "dist", "-s", "-l", "3000"]
