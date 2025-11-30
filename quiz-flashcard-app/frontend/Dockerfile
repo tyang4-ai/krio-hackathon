@@ -1,5 +1,5 @@
-# React Frontend Dockerfile (Vite)
-FROM node:20-alpine
+# React Frontend Dockerfile (Production Build)
+FROM node:20-alpine AS builder
 
 # Set working directory
 WORKDIR /app
@@ -7,15 +7,28 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies (using npm ci for reproducible builds when lock file exists)
-# Fallback to npm install if lock file is missing or outdated
+# Install dependencies
 RUN npm install --legacy-peer-deps
 
 # Copy application code
 COPY . .
 
-# Expose Vite dev server port
+# Build for production
+RUN npm run build
+
+# Production stage
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install serve globally
+RUN npm install -g serve
+
+# Copy built files from builder
+COPY --from=builder /app/dist ./dist
+
+# Expose port (Railway will set PORT env var)
 EXPOSE 3000
 
-# Run Vite dev server with host binding for Docker
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "3000"]
+# Serve the built app
+CMD ["sh", "-c", "serve dist -s -l ${PORT:-3000}"]
