@@ -4,6 +4,10 @@ FROM node:20-alpine AS builder
 # Set working directory
 WORKDIR /app
 
+# Build argument for API URL (Railway passes env vars as build args)
+ARG VITE_API_URL
+ENV VITE_API_URL=$VITE_API_URL
+
 # Copy package files
 COPY package*.json ./
 
@@ -13,7 +17,7 @@ RUN npm install --legacy-peer-deps
 # Copy application code
 COPY . .
 
-# Build for production
+# Build for production (VITE_API_URL is baked in during build)
 RUN npm run build
 
 # Production stage
