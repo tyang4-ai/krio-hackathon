@@ -37,10 +37,6 @@ from routers import (
 
 def setup_logging():
     """Configure structured logging with file and console output."""
-    # Create logs directory if it doesn't exist
-    logs_dir = Path(__file__).parent / "logs"
-    logs_dir.mkdir(exist_ok=True)
-
     # Set up Python's standard logging
     log_level = logging.DEBUG if settings.debug else logging.INFO
 
@@ -51,19 +47,23 @@ def setup_logging():
     # Console handler (always enabled)
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(log_level)
-
-    # File handler with rotation (10MB max, keep 5 files)
-    file_handler = RotatingFileHandler(
-        logs_dir / "scholarly.log",
-        maxBytes=10 * 1024 * 1024,  # 10MB
-        backupCount=5,
-        encoding="utf-8",
-    )
-    file_handler.setLevel(log_level)
-
-    # Add handlers to root logger
     root_logger.addHandler(console_handler)
-    root_logger.addHandler(file_handler)
+
+    # File handler with rotation (only in development, skip in production containers)
+    if settings.is_development:
+        try:
+            logs_dir = Path(__file__).parent / "logs"
+            logs_dir.mkdir(exist_ok=True)
+            file_handler = RotatingFileHandler(
+                logs_dir / "scholarly.log",
+                maxBytes=10 * 1024 * 1024,  # 10MB
+                backupCount=5,
+                encoding="utf-8",
+            )
+            file_handler.setLevel(log_level)
+            root_logger.addHandler(file_handler)
+        except Exception:
+            pass  # Skip file logging if it fails
 
     # Configure structlog
     shared_processors = [
@@ -150,9 +150,12 @@ app = FastAPI(
 cors_origins_list = [origin.strip() for origin in settings.cors_origins.split(",") if origin.strip()]
 logger.info("cors_config", origins=cors_origins_list, raw_setting=settings.cors_origins)
 
-# In production, also allow the Railway domain pattern
+# In production, also allow the Railway domain patterns
 if settings.is_production:
-    cors_origins_list.append("https://krio-hackathon-production.up.railway.app")
+    cors_origins_list.extend([
+        "https://krio-hackathon-production.up.railway.app",
+        "https://frontend-production-c836.up.railway.app",
+    ])
     # Remove duplicates
     cors_origins_list = list(set(cors_origins_list))
 
