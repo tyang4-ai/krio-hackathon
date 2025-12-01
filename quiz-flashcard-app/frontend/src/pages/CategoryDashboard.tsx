@@ -19,7 +19,9 @@ import {
   RefreshCw,
   Eye,
   FolderOpen,
-  Download
+  Download,
+  Check,
+  Tag
 } from 'lucide-react';
 import { categoryApi, documentApi, sampleQuestionApi, analysisApi } from '../services/api';
 import { useTour } from '../contexts/TourContext';
@@ -112,6 +114,12 @@ function CategoryDashboard(): React.ReactElement {
   const [organizing, setOrganizing] = useState<boolean>(false);
   const [organizeProgress, setOrganizeProgress] = useState<number>(0);
 
+  // Batch selection state
+  const [selectedDocIds, setSelectedDocIds] = useState<Set<number>>(new Set());
+  const [batchChapter, setBatchChapter] = useState<string>('');
+  const [showBatchChapterModal, setShowBatchChapterModal] = useState<boolean>(false);
+  const [batchUpdating, setBatchUpdating] = useState<boolean>(false);
+
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [sampleUploadProgress, setSampleUploadProgress] = useState<number>(0);
   const [generationProgress, setGenerationProgress] = useState<number>(0);
@@ -172,6 +180,17 @@ function CategoryDashboard(): React.ReactElement {
     }
   };
 
+  const fetchDocuments = async (): Promise<void> => {
+    if (!categoryId) return;
+    try {
+      const docsResponse = await documentApi.getByCategory(Number(categoryId));
+      const docsData = docsResponse.data.data || docsResponse.data;
+      setDocuments(docsData.documents || docsData || []);
+    } catch (error) {
+      console.error('Error fetching documents:', error);
+    }
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
     const file = e.target.files?.[0];
     if (!file || !categoryId) return;
@@ -213,6 +232,67 @@ function CategoryDashboard(): React.ReactElement {
       } catch (error) {
         console.error('Error deleting document:', error);
       }
+    }
+  };
+
+  // Batch selection handlers
+  const toggleDocSelection = (id: number): void => {
+    const newSelected = new Set(selectedDocIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedDocIds(newSelected);
+  };
+
+  const toggleSelectAll = (): void => {
+    if (selectedDocIds.size === documents.length) {
+      setSelectedDocIds(new Set());
+    } else {
+      setSelectedDocIds(new Set(documents.map(d => d.id)));
+    }
+  };
+
+  const handleBatchDelete = async (): Promise<void> => {
+    if (selectedDocIds.size === 0) return;
+
+    if (window.confirm(`Are you sure you want to delete ${selectedDocIds.size} document(s)?`)) {
+      setBatchUpdating(true);
+      try {
+        await Promise.all(Array.from(selectedDocIds).map(id => documentApi.delete(id)));
+        setSelectedDocIds(new Set());
+        loadData();
+      } catch (error) {
+        console.error('Error batch deleting documents:', error);
+        alert('Error deleting some documents');
+      } finally {
+        setBatchUpdating(false);
+      }
+    }
+  };
+
+  const handleBatchAssignChapter = async (): Promise<void> => {
+    if (selectedDocIds.size === 0 || !batchChapter.trim()) return;
+
+    setBatchUpdating(true);
+    const count = selectedDocIds.size;
+    try {
+      await Promise.all(
+        Array.from(selectedDocIds).map(id =>
+          documentApi.updateChapter(id, batchChapter.trim())
+        )
+      );
+      setSelectedDocIds(new Set());
+      setBatchChapter('');
+      setShowBatchChapterModal(false);
+      loadData();
+      alert(`Updated chapter tag for ${count} document(s)`);
+    } catch (error) {
+      console.error('Error batch updating documents:', error);
+      alert('Error updating some documents');
+    } finally {
+      setBatchUpdating(false);
     }
   };
 
@@ -445,35 +525,53 @@ function CategoryDashboard(): React.ReactElement {
       const response = await documentApi.organize(Number(categoryId));
       const data = response.data.data || response.data;
 
-      if ((data as any).success && (data as any).pdf_base64) {
+      if ((data as any).success) {
         setOrganizeProgress(100);
 
-        // Download PDF
-        const pdfData = (data as any).pdf_base64;
-        const filename = (data as any).pdf_filename || 'StudyGuide.pdf';
+        // Check for new format with chapter_pdfs (multiple PDFs)
+        const chapterPdfs = (data as any).chapter_pdfs;
+        if (chapterPdfs && Array.isArray(chapterPdfs) && chapterPdfs.length > 0) {
+          // Count chapters (no auto-download - PDFs are auto-uploaded as documents)
+          const chapterCount = chapterPdfs.filter((ch: any) => ch.pdf_base64).length;
 
-        // Create blob and download
-        const byteCharacters = atob(pdfData);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i);
+          // Refresh documents to show updated chapter tags AND new organized chapter documents
+          await fetchDocuments();
+
+          // Check if new chapter documents were created
+          const createdDocs = (data as any).created_chapter_documents || [];
+          const createdCount = createdDocs.length;
+
+          setTimeout(() => {
+            const message = (data as any).message || `Organized into ${chapterCount} chapters!`;
+            let fullMessage = message;
+            if (createdCount > 0) {
+              fullMessage += `\n\n${createdCount} organized chapter document(s) have been automatically added to your notes!`;
+            }
+            alert(fullMessage);
+            setOrganizeProgress(0);
+          }, 300);
         }
-        const byteArray = new Uint8Array(byteNumbers);
-        const blob = new Blob([byteArray], { type: 'application/pdf' });
+        // Fallback for old format with single pdf_base64
+        else if ((data as any).pdf_base64) {
+          const pdfData = (data as any).pdf_base64;
+          const filename = (data as any).pdf_filename || 'StudyGuide.pdf';
 
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
+          const dataUrl = `data:application/pdf;base64,${pdfData}`;
+          const link = document.createElement('a');
+          link.href = dataUrl;
+          link.download = filename;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
 
-        setTimeout(() => {
-          alert('Study guide organized and downloaded!');
+          setTimeout(() => {
+            alert('Study guide organized and downloaded!');
+            setOrganizeProgress(0);
+          }, 300);
+        } else {
+          alert('Organization complete but no PDFs were generated.');
           setOrganizeProgress(0);
-        }, 300);
+        }
       } else {
         const errorMsg = (data as any).error || 'Organization failed';
         alert('Error: ' + errorMsg);
@@ -673,24 +771,12 @@ function CategoryDashboard(): React.ReactElement {
             </div>
           )}
 
-          {organizing && (
-            <div className="mb-4 p-4 bg-purple-50 rounded-lg border border-purple-200">
-              <div className="flex items-center gap-2 mb-2">
-                <Brain className="h-5 w-5 text-purple-600 animate-pulse" />
-                <span className="text-sm font-medium text-purple-700">AI is organizing your notes...</span>
-              </div>
-              <div className="flex justify-between text-xs text-purple-600 mb-1">
-                <span>Creating study guide structure</span>
-                <span>{Math.round(organizeProgress)}%</span>
-              </div>
-              <div className="w-full bg-purple-200 rounded-full h-2">
-                <div
-                  className="bg-purple-500 h-2 rounded-full transition-all duration-200"
-                  style={{ width: `${organizeProgress}%` }}
-                />
-              </div>
-            </div>
-          )}
+          <AILoadingIndicator
+            isVisible={organizing}
+            progress={organizeProgress}
+            currentStage={getAILoadingStage(organizeProgress)}
+            contentType="organize"
+          />
 
           {documents.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
@@ -699,36 +785,99 @@ function CategoryDashboard(): React.ReactElement {
               <p className="text-sm">Upload PDF, DOC, or TXT files</p>
             </div>
           ) : (
-            <div className="space-y-3">
-              {documents.map((doc) => (
-                <div
-                  key={doc.id}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                >
-                  <div className="flex items-center space-x-3">
-                    <FileText className="h-5 w-5 text-gray-400" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{doc.original_name}</p>
-                      <div className="flex items-center gap-2 text-xs text-gray-500">
-                        <span>{((doc as any).file_size / 1024).toFixed(1)} KB</span>
-                        {(doc as any).processed && <span>• Processed</span>}
-                        {doc.chapter && (
-                          <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
-                            {doc.chapter}
-                          </span>
-                        )}
+            <>
+              {/* Batch Actions Bar */}
+              <div className="flex items-center justify-between mb-3 pb-3 border-b border-gray-200">
+                <div className="flex items-center space-x-3">
+                  <button
+                    onClick={toggleSelectAll}
+                    className={`flex items-center justify-center w-5 h-5 rounded border-2 transition-colors ${
+                      selectedDocIds.size === documents.length
+                        ? 'bg-primary-500 border-primary-500 text-white'
+                        : selectedDocIds.size > 0
+                        ? 'bg-primary-200 border-primary-500'
+                        : 'border-gray-300 hover:border-primary-400'
+                    }`}
+                  >
+                    {selectedDocIds.size === documents.length && <Check className="h-3 w-3" />}
+                  </button>
+                  <span className="text-sm text-gray-600">
+                    {selectedDocIds.size > 0
+                      ? `${selectedDocIds.size} selected`
+                      : 'Select all'}
+                  </span>
+                </div>
+                {selectedDocIds.size > 0 && (
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => setShowBatchChapterModal(true)}
+                      disabled={batchUpdating}
+                      className="flex items-center space-x-1 px-3 py-1.5 text-sm bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors"
+                    >
+                      <Tag className="h-4 w-4" />
+                      <span>Assign Chapter</span>
+                    </button>
+                    <button
+                      onClick={handleBatchDelete}
+                      disabled={batchUpdating}
+                      className="flex items-center space-x-1 px-3 py-1.5 text-sm bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors"
+                    >
+                      {batchUpdating ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                      <span>Delete</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                {documents.map((doc) => (
+                  <div
+                    key={doc.id}
+                    className={`flex items-center justify-between p-3 rounded-lg transition-colors ${
+                      selectedDocIds.has(doc.id)
+                        ? 'bg-primary-50 border border-primary-200'
+                        : 'bg-gray-50 hover:bg-gray-100'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <button
+                        onClick={() => toggleDocSelection(doc.id)}
+                        className={`flex items-center justify-center w-5 h-5 rounded border-2 transition-colors ${
+                          selectedDocIds.has(doc.id)
+                            ? 'bg-primary-500 border-primary-500 text-white'
+                            : 'border-gray-300 hover:border-primary-400'
+                        }`}
+                      >
+                        {selectedDocIds.has(doc.id) && <Check className="h-3 w-3" />}
+                      </button>
+                      <FileText className="h-5 w-5 text-gray-400" />
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{doc.original_name}</p>
+                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                          <span>{((doc as any).file_size / 1024).toFixed(1)} KB</span>
+                          {(doc as any).processed && <span>• Processed</span>}
+                          {doc.chapter && (
+                            <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                              {doc.chapter}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
+                    <button
+                      onClick={() => handleDeleteDocument(doc.id)}
+                      className="text-gray-400 hover:text-accent-600"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
                   </div>
-                  <button
-                    onClick={() => handleDeleteDocument(doc.id)}
-                    className="text-gray-400 hover:text-accent-600"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            </>
           )}
         </div>
 
@@ -1290,6 +1439,70 @@ function CategoryDashboard(): React.ReactElement {
                   <Plus className="h-4 w-4" />
                 )}
                 <span>{savingSample ? 'Saving...' : 'Add Sample'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Batch Assign Chapter Modal */}
+      {showBatchChapterModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowBatchChapterModal(false)}>
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Assign Chapter Tag</h3>
+              <button
+                onClick={() => setShowBatchChapterModal(false)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              Assign a chapter tag to {selectedDocIds.size} selected document{selectedDocIds.size !== 1 ? 's' : ''}.
+            </p>
+
+            <div className="mb-6">
+              <label htmlFor="batchChapterInput" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Chapter/Topic
+              </label>
+              <input
+                type="text"
+                id="batchChapterInput"
+                name="batchChapterInput"
+                className="input"
+                placeholder="e.g., Chapter 1, Unit 3, Photosynthesis..."
+                value={batchChapter}
+                onChange={(e) => setBatchChapter(e.target.value)}
+                autoFocus
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                This will replace any existing chapter tags on the selected documents.
+              </p>
+            </div>
+
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowBatchChapterModal(false);
+                  setBatchChapter('');
+                }}
+                className="btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleBatchAssignChapter}
+                disabled={batchUpdating || !batchChapter.trim()}
+                className="btn-primary flex items-center space-x-2"
+              >
+                {batchUpdating ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Tag className="h-4 w-4" />
+                )}
+                <span>{batchUpdating ? 'Updating...' : 'Assign Chapter'}</span>
               </button>
             </div>
           </div>
