@@ -7,7 +7,6 @@ gunicorn==21.2.0
 sqlalchemy==2.0.25
 asyncpg==0.29.0
 alembic==1.13.1
-psycopg2-binary==2.9.9
 
 # Data Validation & Settings
 pydantic==2.5.3
@@ -21,7 +20,9 @@ openai==1.10.0
 python-multipart==0.0.6
 pypdf2==3.0.1
 python-docx==1.1.0
+python-pptx==0.6.23
 aiofiles==23.2.1
+reportlab==4.1.0
 
 # Monitoring & Logging
 sentry-sdk[fastapi]==1.40.0

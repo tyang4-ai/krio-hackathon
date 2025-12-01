@@ -241,5 +241,242 @@ async def analyze_document_chapters(content: str) -> Dict[str, Any]:
     return await agent.process({"content": content})
 
 
+async def organize_content_into_structure(
+    content: str,
+    category_name: str = "",
+) -> Dict[str, Any]:
+    """
+    Organize content into a hierarchical structure (chapters/units/topics).
+
+    Args:
+        content: Combined text content from all documents
+        category_name: Name of the category for context
+
+    Returns:
+        Organization structure with chapters, units, and topics
+    """
+    from services.ai_service import ai_service
+
+    if not content:
+        return {
+            "success": False,
+            "error": "No content provided for organization",
+        }
+
+    max_content_length = 10000
+    if len(content) > max_content_length:
+        content = content[:max_content_length] + "..."
+
+    prompt = f"""Analyze this study material{f' for "{category_name}"' if category_name else ''} and organize it into a logical structure.
+
+CONTENT TO ORGANIZE:
+{content}
+
+Create a hierarchical organization with:
+- Chapters (major sections/themes)
+- Units within each chapter (sub-sections)
+- Key topics within each unit
+
+OUTPUT FORMAT (JSON only, no markdown):
+{{
+    "title": "Organized Study Guide{f': {category_name}' if category_name else ''}",
+    "summary": "Brief overview of the material (1-2 sentences)",
+    "chapters": [
+        {{
+            "chapter_number": 1,
+            "title": "Chapter Title",
+            "description": "Brief chapter overview",
+            "units": [
+                {{
+                    "unit_number": 1,
+                    "title": "Unit Title",
+                    "topics": ["Topic 1", "Topic 2", "Topic 3"],
+                    "key_concepts": ["Concept 1", "Concept 2"],
+                    "content_summary": "Brief summary of this unit's content"
+                }}
+            ]
+        }}
+    ]
+}}
+
+Identify natural groupings in the content. Create 2-6 chapters with 1-4 units each.
+Focus on creating a clear, logical structure that would help a student study effectively."""
+
+    try:
+        response = await ai_service.generate_text(
+            prompt=prompt,
+            system_prompt="You are an expert educator who organizes study materials into clear, logical structures. Always respond with valid JSON only.",
+            max_tokens=4000,
+            temperature=0.3,
+        )
+
+        # Parse JSON response
+        cleaned = re.sub(r"```json\s*", "", response)
+        cleaned = re.sub(r"```\s*", "", cleaned)
+        start = cleaned.find("{")
+        end = cleaned.rfind("}") + 1
+        if start != -1 and end > start:
+            cleaned = cleaned[start:end]
+
+        organization = json.loads(cleaned)
+
+        logger.info(
+            "content_organized",
+            chapters_count=len(organization.get("chapters", [])),
+        )
+
+        return {
+            "success": True,
+            "organization": organization,
+        }
+
+    except json.JSONDecodeError as e:
+        logger.error("organize_parse_error", error=str(e))
+        return {
+            "success": False,
+            "error": "Failed to parse AI response as JSON",
+        }
+    except Exception as e:
+        logger.error("organize_error", error=str(e))
+        return {
+            "success": False,
+            "error": f"Organization failed: {str(e)}",
+        }
+
+
+def generate_organized_pdf(organization: Dict[str, Any]) -> bytes:
+    """
+    Generate a PDF from the organization structure.
+
+    Args:
+        organization: The organization dictionary with chapters/units
+
+    Returns:
+        PDF file as bytes
+    """
+    from io import BytesIO
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import inch
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+    from reportlab.lib.colors import HexColor
+
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=letter,
+        topMargin=1*inch,
+        bottomMargin=1*inch,
+        leftMargin=1*inch,
+        rightMargin=1*inch,
+    )
+
+    styles = getSampleStyleSheet()
+
+    # Custom styles
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Title'],
+        fontSize=24,
+        spaceAfter=30,
+        textColor=HexColor('#1a1a2e'),
+    )
+
+    chapter_style = ParagraphStyle(
+        'ChapterTitle',
+        parent=styles['Heading1'],
+        fontSize=18,
+        spaceBefore=20,
+        spaceAfter=12,
+        textColor=HexColor('#16213e'),
+    )
+
+    unit_style = ParagraphStyle(
+        'UnitTitle',
+        parent=styles['Heading2'],
+        fontSize=14,
+        spaceBefore=12,
+        spaceAfter=8,
+        leftIndent=20,
+        textColor=HexColor('#0f3460'),
+    )
+
+    topic_style = ParagraphStyle(
+        'Topic',
+        parent=styles['Normal'],
+        fontSize=11,
+        leftIndent=40,
+        spaceBefore=4,
+        textColor=HexColor('#333333'),
+    )
+
+    summary_style = ParagraphStyle(
+        'Summary',
+        parent=styles['Normal'],
+        fontSize=11,
+        leftIndent=40,
+        spaceBefore=4,
+        spaceAfter=8,
+        textColor=HexColor('#555555'),
+    )
+
+    story = []
+
+    # Title
+    title = organization.get("title", "Organized Study Guide")
+    story.append(Paragraph(title, title_style))
+
+    # Summary
+    summary = organization.get("summary", "")
+    if summary:
+        story.append(Paragraph(summary, styles['Normal']))
+        story.append(Spacer(1, 20))
+
+    # Chapters
+    for chapter in organization.get("chapters", []):
+        chapter_num = chapter.get("chapter_number", "")
+        chapter_title = chapter.get("title", "Untitled Chapter")
+        story.append(Paragraph(f"Chapter {chapter_num}: {chapter_title}", chapter_style))
+
+        chapter_desc = chapter.get("description", "")
+        if chapter_desc:
+            story.append(Paragraph(chapter_desc, summary_style))
+
+        # Units
+        for unit in chapter.get("units", []):
+            unit_num = unit.get("unit_number", "")
+            unit_title = unit.get("title", "Untitled Unit")
+            story.append(Paragraph(f"Unit {unit_num}: {unit_title}", unit_style))
+
+            # Topics
+            topics = unit.get("topics", [])
+            if topics:
+                for topic in topics:
+                    story.append(Paragraph(f"* {topic}", topic_style))
+
+            # Key Concepts
+            concepts = unit.get("key_concepts", [])
+            if concepts:
+                story.append(Spacer(1, 6))
+                story.append(Paragraph("Key Concepts:", topic_style))
+                for concept in concepts:
+                    story.append(Paragraph(f"  - {concept}", topic_style))
+
+            # Content Summary
+            content_summary = unit.get("content_summary", "")
+            if content_summary:
+                story.append(Spacer(1, 6))
+                story.append(Paragraph(f"Summary: {content_summary}", summary_style))
+
+            story.append(Spacer(1, 10))
+
+        story.append(Spacer(1, 20))
+
+    # Build PDF
+    doc.build(story)
+    buffer.seek(0)
+    return buffer.getvalue()
+
+
 # Singleton instance
 chapter_agent = ChapterAgent()

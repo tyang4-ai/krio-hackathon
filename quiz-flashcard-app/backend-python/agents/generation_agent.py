@@ -442,49 +442,47 @@ Rules: 4 options A-D, correct_answer is letter. All questions MUST be {difficult
             chapter_instruction = f'\nIMPORTANT: Tag ALL generated flashcards with the chapter/topic: "{chapter}"\n'
             tags_value = f'["{chapter}", "vocabulary"]'
 
-        # Special handling for "concepts" mode - focused on terminology and definitions
+        # Special handling for "concepts" mode - simple dictionary-style definitions
         if difficulty == "concepts":
-            return f"""Create {count} CONCEPT-FOCUSED educational flashcards from this content:
+            return f"""Create {count} SIMPLE VOCABULARY flashcards from this content:
 
 {content}
 {custom_section}{chapter_instruction}
 
-Mode: CONCEPTS ONLY - Focus exclusively on key terminology, definitions, and core concepts.
+MODE: DICTIONARY-STYLE - Like a vocabulary dictionary or glossary.
 
-IMPORTANT GUIDELINES:
-- Front should contain a KEY TERM, VOCABULARY WORD, CONCEPT NAME, or STRUCTURAL DESCRIPTION
-- Back should contain a CLEAR, CONCISE DEFINITION, name, or explanation
-- Extract the most important terminology and concepts from the content
-- Perfect for memorizing vocabulary, definitions, and foundational knowledge
-- Keep answers brief but complete (1-3 sentences max)
-- Do NOT create application questions or complex scenarios
-- Use BOTH directions: "Term → Definition" AND "Description → Term"
+RULES (MUST FOLLOW):
+1. SIMPLE questions only - no complex scenarios or applications
+2. One concept per card
+3. SHORT answers (1 sentence max, ideally just a few words)
+4. Test BASIC RECALL, not understanding
 
-EXAMPLE FORMATS (use variety):
-1. Term → Definition:
-   - Front: "Mitochondria" → Back: "The powerhouse of the cell; organelles that generate ATP through cellular respiration"
+FLASHCARD TYPES TO USE:
 
-2. Description → Term (IMPORTANT - include these!):
-   - Front: "Molecular structure with 5 bonding pairs and 1 lone pair" → Back: "Square pyramidal geometry"
-   - Front: "Process where plants convert CO2 and water into glucose using light" → Back: "Photosynthesis"
-   - Front: "The organelle that contains digestive enzymes" → Back: "Lysosome"
+Type A - "What is X?" (50% of cards)
+- Front: "What is [term]?"
+- Back: "[Simple definition]"
+- Example: Front: "What is photosynthesis?" → Back: "The process plants use to convert sunlight into food"
 
-3. Formula/Symbol → Name:
-   - Front: "H2SO4" → Back: "Sulfuric acid"
-   - Front: "Fe" → Back: "Iron (Ferrum)"
+Type B - "What describes X?" (30% of cards)
+- Front: "What is the [property/shape/type] of X?"
+- Back: "[Answer]"
+- Example: Front: "What is the electron geometry of a molecule with 4 bonding pairs and 1 lone pair?" → Back: "Trigonal bipyramidal with seesaw molecular shape"
+- Example: Front: "What is the chemical formula for water?" → Back: "H2O"
 
-4. Property → Concept:
-   - Front: "Bond angle of 109.5°" → Back: "Tetrahedral geometry"
-   - Front: "Electronegativity of 4.0" → Back: "Fluorine (most electronegative element)"
+Type C - "Definition → Term" (20% of cards)
+- Front: "[Description of concept]"
+- Back: "[Term name]"
+- Example: Front: "The organelle that produces energy in cells" → Back: "Mitochondria"
 
-Create a MIX of these formats. For chemistry/science content, prioritize structural descriptions and formulas.
+KEEP IT SIMPLE! Think flashcards for studying vocabulary before an exam.
 
-Respond with JSON in this format:
+JSON format:
 {{
     "flashcards": [
         {{
-            "front_text": "Term, description, or formula",
-            "back_text": "Definition, name, or explanation",
+            "front_text": "Simple question",
+            "back_text": "Short answer",
             "difficulty": "concepts",
             "tags": {tags_value}
         }}

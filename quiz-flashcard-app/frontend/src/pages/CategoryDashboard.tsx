@@ -17,7 +17,9 @@ import {
   Brain,
   CheckCircle,
   RefreshCw,
-  Eye
+  Eye,
+  FolderOpen,
+  Download
 } from 'lucide-react';
 import { categoryApi, documentApi, sampleQuestionApi, analysisApi } from '../services/api';
 import { useTour } from '../contexts/TourContext';
@@ -107,6 +109,8 @@ function CategoryDashboard(): React.ReactElement {
   const [analysisStatus, setAnalysisStatus] = useState<AnalysisStatus | null>(null);
   const [analyzing, setAnalyzing] = useState<boolean>(false);
   const [showAnalysisDetails, setShowAnalysisDetails] = useState<boolean>(false);
+  const [organizing, setOrganizing] = useState<boolean>(false);
+  const [organizeProgress, setOrganizeProgress] = useState<number>(0);
 
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [sampleUploadProgress, setSampleUploadProgress] = useState<number>(0);
@@ -421,6 +425,70 @@ function CategoryDashboard(): React.ReactElement {
     }
   };
 
+  const handleOrganize = async (): Promise<void> => {
+    if (!categoryId || documents.length === 0) {
+      alert('Upload some documents first to organize');
+      return;
+    }
+
+    setOrganizing(true);
+    setOrganizeProgress(0);
+
+    const progressInterval = setInterval(() => {
+      setOrganizeProgress(prev => {
+        if (prev >= 85) return prev;
+        return prev + Math.random() * 8;
+      });
+    }, 500);
+
+    try {
+      const response = await documentApi.organize(Number(categoryId));
+      const data = response.data.data || response.data;
+
+      if ((data as any).success && (data as any).pdf_base64) {
+        setOrganizeProgress(100);
+
+        // Download PDF
+        const pdfData = (data as any).pdf_base64;
+        const filename = (data as any).pdf_filename || 'StudyGuide.pdf';
+
+        // Create blob and download
+        const byteCharacters = atob(pdfData);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: 'application/pdf' });
+
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+
+        setTimeout(() => {
+          alert('Study guide organized and downloaded!');
+          setOrganizeProgress(0);
+        }, 300);
+      } else {
+        const errorMsg = (data as any).error || 'Organization failed';
+        alert('Error: ' + errorMsg);
+        setOrganizeProgress(0);
+      }
+    } catch (error: any) {
+      console.error('Error organizing:', error);
+      alert('Error organizing documents: ' + (error.response?.data?.detail || error.message));
+      setOrganizeProgress(0);
+    } finally {
+      clearInterval(progressInterval);
+      setOrganizing(false);
+    }
+  };
+
   const handleQuestionTypeChange = (type: QuestionType): void => {
     let options: string[] = [];
     let correctAnswer = '';
@@ -538,23 +606,38 @@ function CategoryDashboard(): React.ReactElement {
         <div data-tour="upload-section" className="card">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold">Documents</h2>
-            <label htmlFor="documentUpload" className="btn-primary cursor-pointer flex items-center space-x-2">
-              {uploading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Upload className="h-4 w-4" />
-              )}
-              <span>{uploading ? 'Uploading...' : 'Upload'}</span>
-              <input
-                type="file"
-                id="documentUpload"
-                name="documentUpload"
-                className="hidden"
-                accept=".pdf,.doc,.docx,.txt,.md"
-                onChange={handleFileUpload}
-                disabled={uploading}
-              />
-            </label>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={handleOrganize}
+                disabled={organizing || documents.length === 0}
+                className="btn-secondary flex items-center space-x-2"
+                title="AI organizes your notes into chapters/units and downloads a PDF study guide"
+              >
+                {organizing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <FolderOpen className="h-4 w-4" />
+                )}
+                <span>{organizing ? 'Organizing...' : 'Organize'}</span>
+              </button>
+              <label htmlFor="documentUpload" className="btn-primary cursor-pointer flex items-center space-x-2">
+                {uploading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Upload className="h-4 w-4" />
+                )}
+                <span>{uploading ? 'Uploading...' : 'Upload'}</span>
+                <input
+                  type="file"
+                  id="documentUpload"
+                  name="documentUpload"
+                  className="hidden"
+                  accept=".pdf,.doc,.docx,.txt,.md,.pptx,.ppt"
+                  onChange={handleFileUpload}
+                  disabled={uploading}
+                />
+              </label>
+            </div>
           </div>
 
           <div className="mb-4">
@@ -585,6 +668,25 @@ function CategoryDashboard(): React.ReactElement {
                 <div
                   className="bg-primary-500 h-2 rounded-full transition-all duration-200"
                   style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {organizing && (
+            <div className="mb-4 p-4 bg-purple-50 rounded-lg border border-purple-200">
+              <div className="flex items-center gap-2 mb-2">
+                <Brain className="h-5 w-5 text-purple-600 animate-pulse" />
+                <span className="text-sm font-medium text-purple-700">AI is organizing your notes...</span>
+              </div>
+              <div className="flex justify-between text-xs text-purple-600 mb-1">
+                <span>Creating study guide structure</span>
+                <span>{Math.round(organizeProgress)}%</span>
+              </div>
+              <div className="w-full bg-purple-200 rounded-full h-2">
+                <div
+                  className="bg-purple-500 h-2 rounded-full transition-all duration-200"
+                  style={{ width: `${organizeProgress}%` }}
                 />
               </div>
             </div>
@@ -867,19 +969,14 @@ function CategoryDashboard(): React.ReactElement {
           </div>
         )}
 
-        {analyzing && analysisProgress > 0 && (
-          <div className="mb-4">
-            <div className="flex justify-between text-xs text-gray-600 mb-1">
-              <span>Analyzing sample questions...</span>
-              <span>{Math.round(analysisProgress)}%</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div
-                className="bg-purple-500 h-2 rounded-full transition-all duration-200"
-                style={{ width: `${analysisProgress}%` }}
-              />
-            </div>
-          </div>
+        {analyzing && (
+          <AILoadingIndicator
+            isVisible={true}
+            progress={analysisProgress}
+            currentStage={getAILoadingStage(analysisProgress)}
+            contentType="analysis"
+            count={sampleQuestions.length}
+          />
         )}
 
         {analysisStatus?.hasAnalysis && (

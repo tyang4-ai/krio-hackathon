@@ -11,12 +11,12 @@ interface AILoadingIndicatorProps {
   count?: number;
 }
 
-const stages: Record<AILoadingStage, { label: string; icon: React.ElementType }> = {
-  extracting: { label: 'Extracting content from documents...', icon: FileText },
-  analyzing: { label: 'Analyzing key concepts...', icon: Brain },
-  generating: { label: 'Generating content...', icon: Sparkles },
-  validating: { label: 'Validating and refining...', icon: CheckCircle },
-  complete: { label: 'Complete!', icon: CheckCircle },
+const stages: Record<AILoadingStage, { label: string; shortLabel: string; icon: React.ElementType }> = {
+  extracting: { label: 'Extracting content from documents...', shortLabel: 'Extract', icon: FileText },
+  analyzing: { label: 'Analyzing key concepts...', shortLabel: 'Analyze', icon: Brain },
+  generating: { label: 'Generating content...', shortLabel: 'Generate', icon: Sparkles },
+  validating: { label: 'Validating and refining...', shortLabel: 'Validate', icon: CheckCircle },
+  complete: { label: 'Complete!', shortLabel: 'Done', icon: CheckCircle },
 };
 
 const stageOrder: AILoadingStage[] = ['extracting', 'analyzing', 'generating', 'validating', 'complete'];
@@ -105,8 +105,8 @@ function AILoadingIndicator({
                   <StageIcon className="h-4 w-4" />
                 )}
               </div>
-              <span className="text-xs hidden sm:block capitalize">
-                {stage.replace('ing', '')}
+              <span className="text-xs hidden sm:block">
+                {stages[stage].shortLabel}
               </span>
             </div>
           );

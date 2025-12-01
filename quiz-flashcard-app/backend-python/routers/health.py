@@ -93,3 +93,39 @@ async def trigger_error():
     """
     division_by_zero = 1 / 0
     return {"this": "will never return"}
+
+
+@router.get("/init-db")
+async def init_database():
+    """
+    Initialize database tables by running Alembic migrations.
+
+    This is a one-time setup endpoint for production deployment.
+    Call this once after deploying to create all database tables.
+    """
+    import subprocess
+    import os
+
+    try:
+        # Get the app directory
+        app_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+        # Run alembic upgrade
+        result = subprocess.run(
+            ["alembic", "upgrade", "head"],
+            cwd=app_dir,
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+
+        return {
+            "success": result.returncode == 0,
+            "stdout": result.stdout,
+            "stderr": result.stderr,
+            "returncode": result.returncode
+        }
+    except subprocess.TimeoutExpired:
+        return {"success": False, "error": "Migration timed out after 60 seconds"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}

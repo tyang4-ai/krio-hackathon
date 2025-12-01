@@ -331,6 +331,121 @@ async def update_document_chapter(
     }
 
 
+@router.post("/api/categories/{category_id}/organize")
+@limiter.limit(RateLimits.AI)
+async def organize_documents(
+    request: Request,
+    category_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Use AI to organize all documents in a category into chapters, units, and topics.
+
+    Returns both the organization structure and a downloadable PDF.
+    """
+    from agents.chapter_agent import organize_content_into_structure, generate_organized_pdf
+    from fastapi.responses import Response
+    import base64
+
+    # Verify category exists
+    category = await category_service.get_category_by_id(db, category_id)
+    if not category:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Category with ID {category_id} not found",
+        )
+
+    # Get combined content from all documents
+    content = await document_service.get_combined_content_for_category(db, category_id)
+
+    if not content:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No processed documents found. Please upload and process documents first.",
+        )
+
+    # Organize content with AI
+    result = await organize_content_into_structure(content, category.name)
+
+    if not result.get("success"):
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=result.get("error", "Organization failed"),
+        )
+
+    organization = result["organization"]
+
+    # Generate PDF
+    try:
+        pdf_bytes = generate_organized_pdf(organization)
+        pdf_base64 = base64.b64encode(pdf_bytes).decode("utf-8")
+    except Exception as e:
+        pdf_base64 = None
+
+    # Extract chapter names for easy assignment
+    chapter_names = []
+    for chapter in organization.get("chapters", []):
+        chapter_names.append(chapter.get("title", ""))
+        for unit in chapter.get("units", []):
+            chapter_names.append(f"{chapter.get('title', '')} - {unit.get('title', '')}")
+
+    return {
+        "success": True,
+        "organization": organization,
+        "chapter_names": chapter_names,
+        "pdf_base64": pdf_base64,
+        "pdf_filename": f"StudyGuide_{category.name.replace(' ', '_')}.pdf",
+    }
+
+
+@router.get("/api/categories/{category_id}/organize/pdf")
+async def download_organized_pdf(
+    category_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Generate and download the organized study guide as PDF.
+    """
+    from agents.chapter_agent import organize_content_into_structure, generate_organized_pdf
+    from fastapi.responses import Response
+
+    # Verify category exists
+    category = await category_service.get_category_by_id(db, category_id)
+    if not category:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Category with ID {category_id} not found",
+        )
+
+    # Get combined content from all documents
+    content = await document_service.get_combined_content_for_category(db, category_id)
+
+    if not content:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No processed documents found.",
+        )
+
+    # Organize content with AI
+    result = await organize_content_into_structure(content, category.name)
+
+    if not result.get("success"):
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=result.get("error", "Organization failed"),
+        )
+
+    # Generate PDF
+    pdf_bytes = generate_organized_pdf(result["organization"])
+
+    filename = f"StudyGuide_{category.name.replace(' ', '_')}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
 @router.post(
     "/api/documents/{document_id}/analyze-chapters",
     response_model=ChapterBreakdownResponse,

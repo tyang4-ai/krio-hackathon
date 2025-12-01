@@ -16,15 +16,29 @@ from models.document import Document
 logger = structlog.get_logger()
 
 # Supported file types
-SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".doc", ".txt", ".md"}
+SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".doc", ".txt", ".md", ".pptx", ".ppt"}
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
 
 
 class DocumentService:
     """Service for managing documents and file processing."""
 
-    def __init__(self, upload_dir: str = "/app/uploads"):
+    def __init__(self, upload_dir: str = None):
         """Initialize document service."""
+        if upload_dir is None:
+            # Detect AWS Elastic Beanstalk environment
+            # Check for /var/app (staging or current) OR EB-specific env vars
+            is_eb = (
+                os.path.exists("/var/app") or
+                os.environ.get("AWS_EXECUTION_ENV") or
+                os.environ.get("ELASTIC_BEANSTALK_ENVIRONMENT_NAME")
+            )
+            if is_eb:
+                # Running on AWS Elastic Beanstalk - use /tmp which is always writable
+                upload_dir = "/tmp/uploads"
+            else:
+                # Local development or Docker
+                upload_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
         self.upload_dir = Path(upload_dir)
         self.upload_dir.mkdir(parents=True, exist_ok=True)
 
@@ -139,6 +153,8 @@ class DocumentService:
             return await self._extract_pdf_text(file_path)
         elif file_type in {".docx", ".doc"}:
             return await self._extract_word_text(file_path)
+        elif file_type in {".pptx", ".ppt"}:
+            return await self._extract_pptx_text(file_path)
         elif file_type in {".txt", ".md"}:
             return await self._extract_plain_text(file_path)
         else:
@@ -180,6 +196,29 @@ class DocumentService:
 
         except Exception as e:
             logger.error("word_extraction_error", file_path=file_path, error=str(e))
+            raise
+
+    async def _extract_pptx_text(self, file_path: str) -> str:
+        """Extract text from PowerPoint presentation."""
+        try:
+            from pptx import Presentation
+
+            prs = Presentation(file_path)
+            text_parts = []
+
+            for slide_num, slide in enumerate(prs.slides, 1):
+                slide_text = []
+                for shape in slide.shapes:
+                    if hasattr(shape, "text") and shape.text.strip():
+                        slide_text.append(shape.text.strip())
+
+                if slide_text:
+                    text_parts.append(f"--- Slide {slide_num} ---\n" + "\n".join(slide_text))
+
+            return "\n\n".join(text_parts)
+
+        except Exception as e:
+            logger.error("pptx_extraction_error", file_path=file_path, error=str(e))
             raise
 
     async def _extract_plain_text(self, file_path: str) -> str:
