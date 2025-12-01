@@ -332,7 +332,7 @@ async def update_document_chapter(
 
 
 @router.post("/api/categories/{category_id}/organize")
-@limiter.limit(RateLimits.AI)
+@limiter.limit(RateLimits.AI_GENERATE)
 async def organize_documents(
     request: Request,
     category_id: int,
