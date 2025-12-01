@@ -78,12 +78,14 @@ class AgentActivityResponse(BaseModel):
 class GenerateQuestionsRequest(BaseModel):
     """Request to generate questions."""
     content: Optional[str] = Field(None, description="Text content to generate from")
-    document_ids: Optional[List[int]] = Field(None, description="Document IDs to use")
+    document_ids: Optional[List[int]] = Field(None, alias="documentIds", description="Document IDs to use")
     count: int = Field(5, ge=1, le=50, description="Number of questions")
     difficulty: str = Field("medium", description="easy, medium, or hard")
-    question_type: str = Field("multiple_choice", description="Question type")
-    custom_directions: str = Field("", description="Additional instructions")
+    question_type: str = Field("multiple_choice", alias="contentType", description="Question type")
+    custom_directions: str = Field("", alias="customDirections", description="Additional instructions")
     chapter: str = Field("", description="Chapter/topic to tag questions with")
+
+    model_config = {"populate_by_name": True}
 
 
 class GeneratedQuestion(BaseModel):
@@ -108,11 +110,13 @@ class GenerateQuestionsResponse(BaseModel):
 class GenerateFlashcardsRequest(BaseModel):
     """Request to generate flashcards."""
     content: Optional[str] = Field(None, description="Text content to generate from")
-    document_ids: Optional[List[int]] = Field(None, description="Document IDs to use")
+    document_ids: Optional[List[int]] = Field(None, alias="documentIds", description="Document IDs to use")
     count: int = Field(10, ge=1, le=50, description="Number of flashcards")
     difficulty: str = Field("medium", description="Difficulty level: easy, medium, hard")
-    custom_directions: str = Field("", description="Additional instructions")
+    custom_directions: str = Field("", alias="customDirections", description="Additional instructions")
     chapter: str = Field("", description="Chapter/topic to tag flashcards with")
+
+    model_config = {"populate_by_name": True}
 
 
 class GeneratedFlashcard(BaseModel):
@@ -330,87 +334,109 @@ async def generate_category_questions(
     - Existing documents (by ID)
     - All documents in category (if neither specified)
     """
-    # Determine content source
-    if gen_request.content:
-        # Use provided content
-        result = await generate_questions(
-            db=db,
+    import traceback
+
+    try:
+        logger.info(
+            "generate_questions_request",
             category_id=category_id,
-            content=gen_request.content,
-            count=gen_request.count,
-            difficulty=gen_request.difficulty,
-            question_type=gen_request.question_type,
-            custom_directions=gen_request.custom_directions,
-            chapter=gen_request.chapter,
-        )
-    elif gen_request.document_ids:
-        # Use specific documents
-        result = await generate_from_documents(
-            db=db,
-            category_id=category_id,
+            has_content=bool(gen_request.content),
             document_ids=gen_request.document_ids,
             count=gen_request.count,
             difficulty=gen_request.difficulty,
             question_type=gen_request.question_type,
-            custom_directions=gen_request.custom_directions,
-            chapter=gen_request.chapter,
-        )
-    else:
-        # Use all documents in category
-        result = await generate_from_documents(
-            db=db,
-            category_id=category_id,
-            document_ids=None,
-            count=gen_request.count,
-            difficulty=gen_request.difficulty,
-            question_type=gen_request.question_type,
-            custom_directions=gen_request.custom_directions,
-            chapter=gen_request.chapter,
         )
 
-    await db.commit()
+        # Determine content source
+        if gen_request.content:
+            # Use provided content
+            result = await generate_questions(
+                db=db,
+                category_id=category_id,
+                content=gen_request.content,
+                count=gen_request.count,
+                difficulty=gen_request.difficulty,
+                question_type=gen_request.question_type,
+                custom_directions=gen_request.custom_directions,
+                chapter=gen_request.chapter,
+            )
+        elif gen_request.document_ids:
+            # Use specific documents
+            result = await generate_from_documents(
+                db=db,
+                category_id=category_id,
+                document_ids=gen_request.document_ids,
+                count=gen_request.count,
+                difficulty=gen_request.difficulty,
+                question_type=gen_request.question_type,
+                custom_directions=gen_request.custom_directions,
+                chapter=gen_request.chapter,
+            )
+        else:
+            # Use all documents in category
+            result = await generate_from_documents(
+                db=db,
+                category_id=category_id,
+                document_ids=None,
+                count=gen_request.count,
+                difficulty=gen_request.difficulty,
+                question_type=gen_request.question_type,
+                custom_directions=gen_request.custom_directions,
+                chapter=gen_request.chapter,
+            )
 
-    if not result.get("success"):
-        return GenerateQuestionsResponse(
-            success=False,
-            error=result.get("error", "Generation failed"),
-        )
+        await db.commit()
 
-    # Convert stored questions to response
-    questions = []
-    stored = result.get("stored_questions", [])
-    for q in stored:
-        questions.append(GeneratedQuestion(
-            id=q.id,
-            question_text=q.question_text,
-            question_type=q.question_type,
-            difficulty=q.difficulty,
-            options=q.options,
-            correct_answer=q.correct_answer,
-            explanation=q.explanation or "",
-            tags=q.tags or [],
-        ))
+        if not result.get("success"):
+            return GenerateQuestionsResponse(
+                success=False,
+                error=result.get("error", "Generation failed"),
+            )
 
-    # If no stored questions, use raw questions
-    if not questions:
-        for q in result.get("questions", []):
+        # Convert stored questions to response
+        questions = []
+        stored = result.get("stored_questions", [])
+        for q in stored:
             questions.append(GeneratedQuestion(
-                question_text=q["question_text"],
-                question_type=q["question_type"],
-                difficulty=q["difficulty"],
-                options=q.get("options"),
-                correct_answer=q["correct_answer"],
-                explanation=q.get("explanation", ""),
-                tags=q.get("tags", []),
+                id=q.id,
+                question_text=q.question_text,
+                question_type=q.question_type,
+                difficulty=q.difficulty,
+                options=q.options,
+                correct_answer=q.correct_answer,
+                explanation=q.explanation or "",
+                tags=q.tags or [],
             ))
 
-    logger.info(
-        "questions_generated",
-        category_id=category_id,
-        count=len(questions),
-    )
+        # If no stored questions, use raw questions
+        if not questions:
+            for q in result.get("questions", []):
+                questions.append(GeneratedQuestion(
+                    question_text=q["question_text"],
+                    question_type=q["question_type"],
+                    difficulty=q["difficulty"],
+                    options=q.get("options"),
+                    correct_answer=q["correct_answer"],
+                    explanation=q.get("explanation", ""),
+                    tags=q.get("tags", []),
+                ))
 
-    return GenerateQuestionsResponse(success=True, questions=questions)
+        logger.info(
+            "questions_generated",
+            category_id=category_id,
+            count=len(questions),
+        )
+
+        return GenerateQuestionsResponse(success=True, questions=questions)
+
+    except Exception as e:
+        logger.error(
+            "generate_questions_error",
+            category_id=category_id,
+            error=str(e),
+            traceback=traceback.format_exc(),
+        )
+        raise
 
 
 @router.post(

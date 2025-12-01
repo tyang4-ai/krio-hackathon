@@ -16,7 +16,6 @@ from schemas.document import (
     DocumentResponse,
     DocumentUploadResponse,
     GenerateFlashcardsRequest,
-    GenerateQuestionsRequest,
 )
 from services.category_service import category_service
 from services.document_service import document_service
@@ -164,65 +163,6 @@ async def delete_document(
         )
 
 
-@router.post("/api/categories/{category_id}/generate-questions")
-async def generate_questions_endpoint(
-    category_id: int,
-    request: GenerateQuestionsRequest,
-    db: AsyncSession = Depends(get_db),
-) -> dict:
-    """
-    Generate questions from documents in a category using AI.
-    """
-    from agents import generate_from_documents
-
-    # Verify category exists
-    category = await category_service.get_category_by_id(db, category_id)
-    if not category:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Category with ID {category_id} not found",
-        )
-
-    # Generate questions using AI agent
-    result = await generate_from_documents(
-        db=db,
-        category_id=category_id,
-        document_ids=request.document_ids,
-        count=request.question_count,
-        difficulty=request.difficulty or "medium",
-        question_type=request.question_type or "multiple_choice",
-        custom_directions=request.custom_directions or "",
-        chapter=request.chapter,
-    )
-
-    await db.commit()
-
-    if not result.get("success"):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=result.get("error", "Question generation failed"),
-        )
-
-    # Return response in format frontend expects
-    questions = result.get("stored_questions", []) or result.get("questions", [])
-    return {
-        "success": True,
-        "questions": [
-            {
-                "id": getattr(q, "id", None) if hasattr(q, "id") else q.get("id"),
-                "question_text": getattr(q, "question_text", None) if hasattr(q, "question_text") else q.get("question_text"),
-                "question_type": getattr(q, "question_type", None) if hasattr(q, "question_type") else q.get("question_type"),
-                "difficulty": getattr(q, "difficulty", None) if hasattr(q, "difficulty") else q.get("difficulty"),
-                "options": getattr(q, "options", None) if hasattr(q, "options") else q.get("options"),
-                "correct_answer": getattr(q, "correct_answer", None) if hasattr(q, "correct_answer") else q.get("correct_answer"),
-                "explanation": getattr(q, "explanation", "") if hasattr(q, "explanation") else q.get("explanation", ""),
-            }
-            for q in questions
-        ],
-        "generated": len(questions),
-    }
-
-
 @router.post("/api/categories/{category_id}/generate-flashcards")
 async def generate_flashcards_endpoint(
     category_id: int,
@@ -339,13 +279,20 @@ async def organize_documents(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Use AI to organize all documents in a category into chapters, units, and topics.
+    Use AI to organize all documents in a category into chapters.
 
-    Returns both the organization structure and a downloadable PDF.
+    This ENHANCED version:
+    - Preserves FULL document content (no summarization)
+    - Groups documents into logical chapters
+    - Generates separate PDF for each chapter with complete content
+    - Optionally auto-updates document chapter tags
     """
-    from agents.chapter_agent import organize_content_into_structure, generate_organized_pdf
-    from fastapi.responses import Response
-    import base64
+    from agents.chapter_agent import (
+        organize_documents_with_full_content,
+        generate_all_chapter_pdfs,
+    )
+    from sqlalchemy import select
+    from models.document import Document
 
     # Verify category exists
     category = await category_service.get_category_by_id(db, category_id)
@@ -355,47 +302,181 @@ async def organize_documents(
             detail=f"Category with ID {category_id} not found",
         )
 
-    # Get combined content from all documents
-    content = await document_service.get_combined_content_for_category(db, category_id)
+    # Get all documents with their full content
+    result = await db.execute(
+        select(Document).where(
+            Document.category_id == category_id,
+            Document.processed == True,
+        )
+    )
+    documents = result.scalars().all()
 
-    if not content:
+    if not documents:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No processed documents found. Please upload and process documents first.",
         )
 
-    # Organize content with AI
-    result = await organize_content_into_structure(content, category.name)
+    # Convert to dict format for the organize function
+    # Include storage_path and file_type so we can send actual PDFs to AI
+    doc_list = [
+        {
+            "id": doc.id,
+            "original_name": doc.original_name,
+            "content_text": doc.content_text,
+            "storage_path": doc.storage_path,
+            "file_type": doc.file_type,
+        }
+        for doc in documents
+    ]
 
-    if not result.get("success"):
+    # Organize documents with AI (preserves full content)
+    # Will use PDF vision if documents are PDFs
+    organize_result = await organize_documents_with_full_content(doc_list, category.name)
+
+    if not organize_result.get("success"):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=result.get("error", "Organization failed"),
+            detail=organize_result.get("error", "Organization failed"),
         )
 
-    organization = result["organization"]
+    organization = organize_result["organization"]
 
-    # Generate PDF
-    try:
-        pdf_bytes = generate_organized_pdf(organization)
-        pdf_base64 = base64.b64encode(pdf_bytes).decode("utf-8")
-    except Exception as e:
-        pdf_base64 = None
+    # Generate separate PDFs for each chapter
+    chapter_pdfs = generate_all_chapter_pdfs(organization, category.name)
 
-    # Extract chapter names for easy assignment
-    chapter_names = []
+    # Auto-update document chapter tags based on organization
+    updated_docs = []
     for chapter in organization.get("chapters", []):
-        chapter_names.append(chapter.get("title", ""))
-        for unit in chapter.get("units", []):
-            chapter_names.append(f"{chapter.get('title', '')} - {unit.get('title', '')}")
+        chapter_title = chapter.get("title", "")
+        for doc_info in chapter.get("documents", []):
+            doc_id = doc_info.get("id")
+            # Find and update the document
+            for doc in documents:
+                if doc.id == doc_id:
+                    doc.chapter = chapter_title
+                    updated_docs.append({
+                        "id": doc.id,
+                        "name": doc.original_name,
+                        "chapter": chapter_title,
+                    })
+                    break
+
+    # Create new documents for each organized chapter (auto-upload to notes section)
+    import uuid
+    from pathlib import Path
+    created_chapter_docs = []
+
+    for chapter in organization.get("chapters", []):
+        chapter_num = chapter.get("chapter_number", 0)
+        chapter_title = chapter.get("title", f"Chapter {chapter_num}")
+        full_content = chapter.get("full_content", "")
+
+        # Skip if no content
+        if not full_content or not full_content.strip():
+            continue
+
+        # Generate filename for the organized chapter
+        safe_title = "".join(c if c.isalnum() or c in " -_" else "" for c in chapter_title)
+        safe_title = safe_title.replace(" ", "_")[:50]
+        unique_id = str(uuid.uuid4())[:8]
+        filename = f"Organized_Chapter_{chapter_num}_{safe_title}_{unique_id}.txt"
+        original_name = f"Chapter {chapter_num}: {chapter_title}"
+
+        # Create storage path (virtual - content is stored in DB)
+        storage_path = f"organized/{category_id}/{filename}"
+
+        # Create new document in database
+        new_doc = Document(
+            category_id=category_id,
+            filename=filename,
+            original_name=original_name,
+            file_type=".txt",
+            file_size=len(full_content.encode("utf-8")),
+            storage_path=storage_path,
+            content_text=full_content,
+            processed=True,
+            chapter=chapter_title,
+        )
+        db.add(new_doc)
+        await db.flush()  # Get the ID
+
+        created_chapter_docs.append({
+            "id": new_doc.id,
+            "filename": filename,
+            "original_name": original_name,
+            "chapter": chapter_title,
+            "content_length": len(full_content),
+        })
+
+    await db.commit()
+
+    # Extract chapter names for UI
+    chapter_names = [ch.get("title", "") for ch in organization.get("chapters", [])]
 
     return {
         "success": True,
-        "organization": organization,
+        "organization": {
+            "title": organization.get("title"),
+            "chapters": [
+                {
+                    "chapter_number": ch.get("chapter_number"),
+                    "title": ch.get("title"),
+                    "description": ch.get("description"),
+                    "documents": ch.get("documents", []),
+                    # Don't include full_content in response to reduce size
+                }
+                for ch in organization.get("chapters", [])
+            ],
+        },
         "chapter_names": chapter_names,
-        "pdf_base64": pdf_base64,
-        "pdf_filename": f"StudyGuide_{category.name.replace(' ', '_')}.pdf",
+        "chapter_pdfs": chapter_pdfs,  # List of PDFs, one per chapter
+        "updated_documents": updated_docs,  # Documents that were auto-tagged
+        "created_chapter_documents": created_chapter_docs,  # NEW: Auto-created organized chapter docs
+        "message": f"Organized {len(documents)} documents into {len(chapter_names)} chapters. {len(created_chapter_docs)} organized chapter documents created.",
     }
+
+
+@router.get("/api/organize/debug")
+async def get_organize_debug():
+    """
+    Debug endpoint to see the raw AI input/output from the last organize operation.
+
+    Returns:
+        - prompt: The exact prompt sent to the AI
+        - raw_response: The raw text response from the AI
+        - parsed_response: The parsed JSON structure
+        - error: Any error that occurred
+    """
+    from agents.chapter_agent import get_organize_debug_info
+
+    debug_info = get_organize_debug_info()
+
+    # Truncate very long fields for readability
+    result = {
+        "mode": debug_info.get("mode", "unknown"),  # pdf_vision or text
+        "prompt_length": len(debug_info.get("prompt") or ""),
+        "prompt_preview": (debug_info.get("prompt") or "")[:3000] + "..." if len(debug_info.get("prompt") or "") > 3000 else debug_info.get("prompt"),
+        "raw_response_length": len(debug_info.get("raw_response") or ""),
+        "raw_response": debug_info.get("raw_response"),  # Full response for debugging
+        "parsed_response": debug_info.get("parsed_response"),
+        "error": debug_info.get("error"),
+    }
+
+    # Also show chapter content lengths if parsed
+    if debug_info.get("parsed_response"):
+        chapters = debug_info["parsed_response"].get("chapters", [])
+        result["chapter_summary"] = [
+            {
+                "title": ch.get("title"),
+                "full_content_length": len(ch.get("full_content", "")),
+                "has_content": bool(ch.get("full_content")),
+                "num_units": len(ch.get("units", [])),
+            }
+            for ch in chapters
+        ]
+
+    return result
 
 
 @router.get("/api/categories/{category_id}/organize/pdf")

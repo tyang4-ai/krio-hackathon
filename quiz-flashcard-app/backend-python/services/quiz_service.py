@@ -150,7 +150,12 @@ class QuizService:
         if not question:
             return False
 
-        # Delete related notebook entries first (foreign key constraint)
+        # Delete related question attempts first (foreign key constraint)
+        await db.execute(
+            delete(QuestionAttempt).where(QuestionAttempt.question_id == question_id)
+        )
+
+        # Delete related notebook entries (foreign key constraint)
         await db.execute(
             delete(NotebookEntry).where(NotebookEntry.question_id == question_id)
         )

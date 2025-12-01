@@ -1,12 +1,14 @@
 """
 Category API routes.
 """
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import get_db
+from middleware.auth_middleware import get_current_user, get_optional_user
+from models.user import User
 from schemas.category import (
     CategoryCreate,
     CategoryListResponse,
@@ -21,11 +23,12 @@ router = APIRouter(prefix="/api/categories", tags=["Categories"])
 @router.get("", response_model=CategoryListResponse)
 async def get_all_categories(
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> CategoryListResponse:
     """
-    Get all categories with their statistics.
+    Get all categories with their statistics for the current user.
     """
-    categories_with_stats = await category_service.get_all_categories_with_stats(db)
+    categories_with_stats = await category_service.get_all_categories_with_stats(db, user_id=current_user.id)
 
     categories = [
         CategoryResponse(
@@ -48,11 +51,12 @@ async def get_all_categories(
 async def get_category(
     category_id: int,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> CategoryResponse:
     """
     Get a single category by ID with statistics.
     """
-    result = await category_service.get_category_with_stats(db, category_id)
+    result = await category_service.get_category_with_stats(db, category_id, user_id=current_user.id)
 
     if not result:
         raise HTTPException(
@@ -77,11 +81,12 @@ async def get_category(
 async def create_category(
     category_data: CategoryCreate,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> CategoryResponse:
     """
-    Create a new category.
+    Create a new category for the current user.
     """
-    category = await category_service.create_category(db, category_data)
+    category = await category_service.create_category(db, category_data, user_id=current_user.id)
     stats = await category_service.get_category_stats(db, category.id)
 
     return CategoryResponse(
@@ -101,11 +106,12 @@ async def update_category(
     category_id: int,
     category_data: CategoryUpdate,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> CategoryResponse:
     """
     Update a category.
     """
-    category = await category_service.update_category(db, category_id, category_data)
+    category = await category_service.update_category(db, category_id, category_data, user_id=current_user.id)
 
     if not category:
         raise HTTPException(
@@ -131,11 +137,12 @@ async def update_category(
 async def delete_category(
     category_id: int,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> None:
     """
     Delete a category and all its related content.
     """
-    deleted = await category_service.delete_category(db, category_id)
+    deleted = await category_service.delete_category(db, category_id, user_id=current_user.id)
 
     if not deleted:
         raise HTTPException(

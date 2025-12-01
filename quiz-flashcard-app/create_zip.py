@@ -2,9 +2,9 @@ import zipfile
 import os
 
 source_dir = 'backend-python'
-output_file = 'backend-deploy-v19.zip'
+output_file = 'backend-deploy-v52.zip'
 
-exclude_dirs = ['__pycache__', '.pytest_cache', 'uploads']
+exclude_dirs = ['__pycache__', '.pytest_cache', 'uploads', 'logs']
 exclude_files = ['.pyc', '.env']
 
 with zipfile.ZipFile(output_file, 'w', zipfile.ZIP_DEFLATED) as zipf:

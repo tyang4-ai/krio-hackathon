@@ -27,10 +27,21 @@ class Settings(BaseSettings):
     sentry_dsn: Optional[str] = None
 
     # Primary AI Provider (for reasoning agents)
-    ai_provider: str = "moonshot"
-    ai_model: str = "kimi-k2-0711-preview"
+    # Options: "anthropic" (Claude direct API), "bedrock", "moonshot", "nvidia", "openai"
+    ai_provider: str = "anthropic"
+    ai_model: str = "kimi-k2-0711-preview"  # Used for moonshot/nvidia
     moonshot_api_key: Optional[str] = None
     moonshot_base_url: str = "https://api.moonshot.ai/v1"
+
+    # Anthropic API (Direct Claude access - recommended)
+    # Set ai_provider="anthropic" to use this
+    anthropic_api_key: Optional[str] = None
+    anthropic_model: str = "claude-3-5-haiku-20241022"  # Claude 3.5 Haiku (fast)
+
+    # AWS Bedrock (alternative - requires AWS account verification)
+    # Set ai_provider="bedrock" to use this
+    bedrock_model: str = "anthropic.claude-3-haiku-20240307-v1:0"  # Claude 3 Haiku
+    aws_bedrock_region: Optional[str] = None  # Falls back to aws_region if not set
 
     # Legacy NVIDIA (kept for backwards compatibility)
     nvidia_api_key: Optional[str] = None
@@ -46,7 +57,7 @@ class Settings(BaseSettings):
     together_api_key: Optional[str] = None
     huggingface_api_key: Optional[str] = None
 
-    # AWS (optional)
+    # AWS (required for Bedrock)
     aws_access_key_id: Optional[str] = None
     aws_secret_access_key: Optional[str] = None
     aws_region: str = "us-east-1"

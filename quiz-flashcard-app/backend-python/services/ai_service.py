@@ -2,11 +2,14 @@
 Multi-provider AI service for Scholarly.
 
 Supports:
-- Moonshot/Kimi K2 (primary for reasoning agents)
+- Anthropic API (Direct Claude access - recommended)
+- AWS Bedrock with Claude (alternative)
+- Moonshot/Kimi K2 (alternative)
 - OpenAI (vision for handwriting recognition)
 - NVIDIA (legacy support)
 """
 import base64
+import json
 from typing import Any, Dict, List, Optional
 
 import structlog
@@ -21,7 +24,8 @@ class AIService:
     """
     Multi-provider AI service.
 
-    Handles text generation (Moonshot/Kimi K2) and vision (OpenAI) tasks.
+    Handles text generation and vision tasks across multiple providers.
+    Direct Anthropic API is the recommended primary provider.
     """
 
     def __init__(self):
@@ -29,6 +33,62 @@ class AIService:
         self._moonshot_client: Optional[AsyncOpenAI] = None
         self._nvidia_client: Optional[AsyncOpenAI] = None
         self._openai_client: Optional[AsyncOpenAI] = None
+        self._anthropic_client = None
+        self._bedrock_client = None
+        self._bedrock_runtime = None
+
+        # Initialize Anthropic client (primary - direct Claude API)
+        if settings.anthropic_api_key:
+            try:
+                import anthropic
+                self._anthropic_client = anthropic.AsyncAnthropic(
+                    api_key=settings.anthropic_api_key,
+                )
+                logger.info(
+                    "anthropic_client_initialized",
+                    model=settings.anthropic_model,
+                )
+            except ImportError:
+                logger.warning("anthropic_not_installed", message="Install anthropic for direct Claude API support")
+            except Exception as e:
+                logger.error("anthropic_client_init_error", error=str(e))
+
+        # Initialize AWS Bedrock client (alternative - Claude models)
+        # Try with explicit credentials first, then fall back to default credential chain
+        try:
+            import boto3
+            region = settings.aws_bedrock_region or settings.aws_region
+
+            if settings.aws_access_key_id and settings.aws_secret_access_key:
+                # Use explicit credentials from environment
+                self._bedrock_runtime = boto3.client(
+                    service_name="bedrock-runtime",
+                    region_name=region,
+                    aws_access_key_id=settings.aws_access_key_id,
+                    aws_secret_access_key=settings.aws_secret_access_key,
+                )
+                logger.info(
+                    "bedrock_client_initialized",
+                    model=settings.bedrock_model,
+                    region=region,
+                    auth="explicit_credentials",
+                )
+            else:
+                # Fall back to default credential chain (instance role, env vars, etc.)
+                self._bedrock_runtime = boto3.client(
+                    service_name="bedrock-runtime",
+                    region_name=region,
+                )
+                logger.info(
+                    "bedrock_client_initialized",
+                    model=settings.bedrock_model,
+                    region=region,
+                    auth="default_credential_chain",
+                )
+        except ImportError:
+            logger.warning("boto3_not_installed", message="Install boto3 for AWS Bedrock support")
+        except Exception as e:
+            logger.error("bedrock_client_init_error", error=str(e))
 
         # Initialize Moonshot/Kimi K2 client (OpenAI-compatible API)
         if settings.moonshot_api_key:
@@ -62,7 +122,7 @@ class AIService:
         provider: Optional[str] = None,
     ) -> str:
         """
-        Generate text using the primary AI provider (NVIDIA).
+        Generate text using the configured AI provider.
 
         Args:
             prompt: User prompt
@@ -75,9 +135,47 @@ class AIService:
             Generated text response
         """
         provider = provider or settings.ai_provider
+
+        # Use Anthropic direct API if configured
+        if provider == "anthropic" and self._anthropic_client:
+            return await self._generate_with_anthropic(
+                prompt=prompt,
+                system_prompt=system_prompt,
+                max_tokens=max_tokens,
+                temperature=temperature,
+            )
+
+        # Use Bedrock if configured and provider is bedrock
+        if provider == "bedrock" and self._bedrock_runtime:
+            return await self._generate_with_bedrock(
+                prompt=prompt,
+                system_prompt=system_prompt,
+                max_tokens=max_tokens,
+                temperature=temperature,
+            )
+
+        # Fall back to OpenAI-compatible clients
         client = self._get_client(provider)
 
         if not client:
+            # Try Anthropic as first fallback
+            if self._anthropic_client:
+                logger.info("falling_back_to_anthropic", original_provider=provider)
+                return await self._generate_with_anthropic(
+                    prompt=prompt,
+                    system_prompt=system_prompt,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                )
+            # Try Bedrock as second fallback
+            if self._bedrock_runtime:
+                logger.info("falling_back_to_bedrock", original_provider=provider)
+                return await self._generate_with_bedrock(
+                    prompt=prompt,
+                    system_prompt=system_prompt,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                )
             raise ValueError(f"No client available for provider: {provider}")
 
         messages: List[Dict[str, Any]] = []
@@ -118,6 +216,214 @@ class AIService:
             logger.error(
                 "ai_generate_text_error",
                 provider=provider,
+                error=str(e),
+            )
+            raise
+
+    async def _generate_with_anthropic(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None,
+        max_tokens: int = 2048,
+        temperature: float = 0.7,
+    ) -> str:
+        """
+        Generate text using the direct Anthropic API (Claude models).
+
+        Args:
+            prompt: User prompt
+            system_prompt: Optional system prompt
+            max_tokens: Maximum tokens to generate
+            temperature: Sampling temperature (0-1)
+
+        Returns:
+            Generated text response
+        """
+        if not self._anthropic_client:
+            raise ValueError("Anthropic client not initialized")
+
+        model = settings.anthropic_model
+
+        logger.info(
+            "anthropic_generate_text",
+            model=model,
+            prompt_length=len(prompt),
+            max_tokens=max_tokens,
+        )
+
+        try:
+            # Build the request
+            kwargs = {
+                "model": model,
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+                "messages": [{"role": "user", "content": prompt}],
+            }
+
+            if system_prompt:
+                kwargs["system"] = system_prompt
+
+            response = await self._anthropic_client.messages.create(**kwargs)
+
+            # Extract text from response
+            result = ""
+            for block in response.content:
+                if block.type == "text":
+                    result += block.text
+
+            logger.info(
+                "anthropic_generate_text_success",
+                model=model,
+                response_length=len(result),
+                usage={
+                    "input_tokens": response.usage.input_tokens,
+                    "output_tokens": response.usage.output_tokens,
+                },
+            )
+
+            return result
+
+        except Exception as e:
+            logger.error(
+                "anthropic_generate_text_error",
+                model=model,
+                error=str(e),
+            )
+            raise
+
+    async def _generate_with_bedrock(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None,
+        max_tokens: int = 2048,
+        temperature: float = 0.7,
+    ) -> str:
+        """
+        Generate text using AWS Bedrock (supports Claude and Amazon Nova models).
+
+        Args:
+            prompt: User prompt
+            system_prompt: Optional system prompt
+            max_tokens: Maximum tokens to generate
+            temperature: Sampling temperature (0-1)
+
+        Returns:
+            Generated text response
+        """
+        import asyncio
+
+        if not self._bedrock_runtime:
+            raise ValueError("Bedrock client not initialized")
+
+        model_id = settings.bedrock_model
+
+        # Determine model type and build appropriate request
+        is_nova = model_id.startswith("amazon.nova")
+        is_claude = model_id.startswith("anthropic.")
+
+        if is_nova:
+            # Amazon Nova format
+            messages = [{"role": "user", "content": [{"text": prompt}]}]
+            request_body = {
+                "messages": messages,
+                "inferenceConfig": {
+                    "maxTokens": max_tokens,
+                    "temperature": temperature,
+                },
+            }
+            if system_prompt:
+                request_body["system"] = [{"text": system_prompt}]
+        elif is_claude:
+            # Claude/Anthropic format
+            messages = [{"role": "user", "content": prompt}]
+            request_body = {
+                "anthropic_version": "bedrock-2023-05-31",
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+                "messages": messages,
+            }
+            if system_prompt:
+                request_body["system"] = system_prompt
+        else:
+            # Default to Nova format for unknown models
+            messages = [{"role": "user", "content": [{"text": prompt}]}]
+            request_body = {
+                "messages": messages,
+                "inferenceConfig": {
+                    "maxTokens": max_tokens,
+                    "temperature": temperature,
+                },
+            }
+            if system_prompt:
+                request_body["system"] = [{"text": system_prompt}]
+
+        logger.info(
+            "bedrock_generate_text",
+            model=model_id,
+            model_type="nova" if is_nova else "claude" if is_claude else "unknown",
+            prompt_length=len(prompt),
+            max_tokens=max_tokens,
+        )
+
+        try:
+            # Run synchronous boto3 call in thread pool
+            loop = asyncio.get_event_loop()
+            response = await loop.run_in_executor(
+                None,
+                lambda: self._bedrock_runtime.invoke_model(
+                    modelId=model_id,
+                    body=json.dumps(request_body),
+                    contentType="application/json",
+                    accept="application/json",
+                )
+            )
+
+            # Parse response
+            response_body = json.loads(response["body"].read())
+
+            # Extract text based on model type
+            result = ""
+            if is_nova:
+                # Nova response format
+                output = response_body.get("output", {})
+                message = output.get("message", {})
+                content = message.get("content", [])
+                for block in content:
+                    if "text" in block:
+                        result += block["text"]
+            elif is_claude:
+                # Claude response format
+                if "content" in response_body:
+                    for block in response_body["content"]:
+                        if block.get("type") == "text":
+                            result += block.get("text", "")
+            else:
+                # Try Nova format first, then Claude
+                output = response_body.get("output", {})
+                if output:
+                    message = output.get("message", {})
+                    content = message.get("content", [])
+                    for block in content:
+                        if "text" in block:
+                            result += block["text"]
+                elif "content" in response_body:
+                    for block in response_body["content"]:
+                        if block.get("type") == "text":
+                            result += block.get("text", "")
+
+            logger.info(
+                "bedrock_generate_text_success",
+                model=model_id,
+                response_length=len(result),
+                usage=response_body.get("usage"),
+            )
+
+            return result
+
+        except Exception as e:
+            logger.error(
+                "bedrock_generate_text_error",
+                model=model_id,
                 error=str(e),
             )
             raise
@@ -230,10 +536,26 @@ class AIService:
             return self._nvidia_client
         elif provider == "openai":
             return self._openai_client
+        elif provider == "anthropic":
+            # Anthropic uses its own client, not OpenAI-compatible
+            return None
+        elif provider == "bedrock":
+            # Bedrock uses its own client, not OpenAI-compatible
+            return None
         else:
             logger.warning("unknown_provider", provider=provider)
             # Fallback to moonshot (primary), then nvidia
             return self._moonshot_client or self._nvidia_client
+
+    @property
+    def has_anthropic(self) -> bool:
+        """Check if direct Anthropic API is available."""
+        return self._anthropic_client is not None
+
+    @property
+    def has_bedrock(self) -> bool:
+        """Check if AWS Bedrock is available."""
+        return self._bedrock_runtime is not None
 
     @property
     def has_moonshot(self) -> bool:

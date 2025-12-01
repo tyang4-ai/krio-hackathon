@@ -137,7 +137,7 @@ async def get_learning_score(
     return await service.calculate_learning_score(user_id, category_id)
 
 
-@router.get("/dashboard", response_model=AnalyticsDashboardResponse)
+@router.get("/dashboard")
 async def get_full_dashboard(
     days: int = Query(30, ge=1, le=365, description="Analysis period"),
     category_id: Optional[int] = Query(None, description="Filter by category"),
@@ -160,16 +160,21 @@ async def get_full_dashboard(
     trend_data = await service.get_trend_data(user_id, category_id, days, "day")
     hardest_questions = await service.get_hardest_questions(user_id, category_id, 10)
     learning_score = await service.calculate_learning_score(user_id, category_id)
+    content_totals = await service.get_content_totals(category_id)
 
-    return AnalyticsDashboardResponse(
-        overview=overview,
-        category_performance=category_performance,
-        difficulty_breakdown=difficulty_breakdown,
-        question_type_breakdown=question_type_breakdown,
-        trend_data=trend_data,
-        hardest_questions=hardest_questions,
-        learning_score=learning_score,
-    )
+    return {
+        "overview": overview,
+        "category_performance": category_performance,
+        "difficulty_breakdown": difficulty_breakdown,
+        "question_type_breakdown": question_type_breakdown,
+        "trend_data": trend_data,
+        "hardest_questions": hardest_questions,
+        "learning_score": learning_score,
+        # Add total counts for home page stats
+        "total_questions": content_totals["total_questions"],
+        "total_flashcards": content_totals["total_flashcards"],
+        "total_quizzes": content_totals["total_quizzes"],
+    }
 
 
 @router.get("/category/{category_id}")

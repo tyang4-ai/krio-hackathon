@@ -15,6 +15,8 @@ email-validator==2.1.0
 
 # AI Providers
 openai==1.10.0
+boto3==1.34.0  # AWS Bedrock for Claude
+anthropic==0.39.0  # Direct Anthropic API for Claude
 
 # File Handling
 python-multipart==0.0.6

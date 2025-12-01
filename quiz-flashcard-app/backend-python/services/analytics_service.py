@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from models import QuestionAttempt, Question, Category, QuizSession, User
+from models.flashcard import Flashcard
 
 
 class AnalyticsService:
@@ -475,3 +476,39 @@ class AnalyticsService:
             if streak >= 7:
                 return "Outstanding performance and consistency! You're ready for any exam."
             return "Exceptional accuracy! Maintain your streak to solidify long-term retention."
+
+    async def get_content_totals(self, category_id: Optional[int] = None) -> dict:
+        """
+        Get total counts of questions, flashcards, and quizzes.
+
+        Returns:
+            - total_questions: Total questions in database
+            - total_flashcards: Total flashcards in database
+            - total_quizzes: Total completed quiz sessions
+        """
+        # Count questions
+        questions_query = select(func.count(Question.id))
+        if category_id:
+            questions_query = questions_query.where(Question.category_id == category_id)
+        questions_result = await self.db.execute(questions_query)
+        total_questions = questions_result.scalar() or 0
+
+        # Count flashcards
+        flashcards_query = select(func.count(Flashcard.id))
+        if category_id:
+            flashcards_query = flashcards_query.where(Flashcard.category_id == category_id)
+        flashcards_result = await self.db.execute(flashcards_query)
+        total_flashcards = flashcards_result.scalar() or 0
+
+        # Count completed quizzes
+        quizzes_query = select(func.count(QuizSession.id)).where(QuizSession.completed == True)
+        if category_id:
+            quizzes_query = quizzes_query.where(QuizSession.category_id == category_id)
+        quizzes_result = await self.db.execute(quizzes_query)
+        total_quizzes = quizzes_result.scalar() or 0
+
+        return {
+            "total_questions": total_questions,
+            "total_flashcards": total_flashcards,
+            "total_quizzes": total_quizzes,
+        }
