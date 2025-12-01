@@ -391,12 +391,16 @@ class FlashcardService:
         )
         total = total_result.scalar() or 0
 
-        # Count by difficulty
+        # Count by difficulty (including concepts)
         flashcards = await self.get_flashcards_by_category(db, category_id)
-        by_difficulty = {"easy": 0, "medium": 0, "hard": 0}
+        by_difficulty = {"easy": 0, "medium": 0, "hard": 0, "concepts": 0}
         for f in flashcards:
-            if f.difficulty in by_difficulty:
-                by_difficulty[f.difficulty] += 1
+            diff = f.difficulty or "medium"
+            if diff in by_difficulty:
+                by_difficulty[diff] += 1
+            else:
+                # Handle any unexpected difficulty value
+                by_difficulty["medium"] += 1
 
         # Progress stats with SM-2 metrics
         progress_result = await db.execute(
@@ -412,10 +416,11 @@ class FlashcardService:
         mastered_count = 0  # Cards with interval >= 21 days (3 weeks)
 
         if progress_records:
-            avg_confidence = sum(p.confidence_level for p in progress_records) / len(progress_records)
-            avg_easiness = sum(p.easiness_factor for p in progress_records) / len(progress_records)
-            avg_interval = sum(p.interval_days for p in progress_records) / len(progress_records)
-            mastered_count = sum(1 for p in progress_records if p.interval_days >= 21)
+            # Use defensive handling for None values
+            avg_confidence = sum((p.confidence_level or 0.0) for p in progress_records) / len(progress_records)
+            avg_easiness = sum((p.easiness_factor or 2.5) for p in progress_records) / len(progress_records)
+            avg_interval = sum((p.interval_days or 0) for p in progress_records) / len(progress_records)
+            mastered_count = sum(1 for p in progress_records if (p.interval_days or 0) >= 21)
 
         # Count cards due for review
         now = datetime.utcnow()

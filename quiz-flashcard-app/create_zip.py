@@ -2,7 +2,7 @@ import zipfile
 import os
 
 source_dir = 'backend-python'
-output_file = 'backend-deploy-v18.zip'
+output_file = 'backend-deploy-v19.zip'
 
 exclude_dirs = ['__pycache__', '.pytest_cache', 'uploads']
 exclude_files = ['.pyc', '.env']
