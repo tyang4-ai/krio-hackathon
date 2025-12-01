@@ -1,5 +1,5 @@
 import React from 'react';
-import { Brain, FileText, Sparkles, CheckCircle, Loader2 } from 'lucide-react';
+import { Brain, FileText, Sparkles, CheckCircle, Loader2, FolderOpen, BookOpen } from 'lucide-react';
 
 export type AILoadingStage = 'extracting' | 'analyzing' | 'generating' | 'validating' | 'complete';
 
@@ -7,16 +7,26 @@ interface AILoadingIndicatorProps {
   isVisible: boolean;
   progress: number;
   currentStage?: AILoadingStage;
-  contentType?: 'questions' | 'flashcards' | 'analysis';
+  contentType?: 'questions' | 'flashcards' | 'analysis' | 'organize';
   count?: number;
 }
 
-const stages: Record<AILoadingStage, { label: string; shortLabel: string; icon: React.ElementType }> = {
-  extracting: { label: 'Extracting content from documents...', shortLabel: 'Extract', icon: FileText },
-  analyzing: { label: 'Analyzing key concepts...', shortLabel: 'Analyze', icon: Brain },
-  generating: { label: 'Generating content...', shortLabel: 'Generate', icon: Sparkles },
-  validating: { label: 'Validating and refining...', shortLabel: 'Validate', icon: CheckCircle },
-  complete: { label: 'Complete!', shortLabel: 'Done', icon: CheckCircle },
+// Stage configurations for different content types
+const stageConfigs: Record<string, Record<AILoadingStage, { label: string; shortLabel: string; icon: React.ElementType }>> = {
+  default: {
+    extracting: { label: 'Extracting content from documents...', shortLabel: 'Extract', icon: FileText },
+    analyzing: { label: 'Analyzing key concepts...', shortLabel: 'Analyze', icon: Brain },
+    generating: { label: 'Generating content...', shortLabel: 'Generate', icon: Sparkles },
+    validating: { label: 'Validating and refining...', shortLabel: 'Validate', icon: CheckCircle },
+    complete: { label: 'Complete!', shortLabel: 'Done', icon: CheckCircle },
+  },
+  organize: {
+    extracting: { label: 'Reading your documents...', shortLabel: 'Read', icon: FileText },
+    analyzing: { label: 'Identifying chapters & topics...', shortLabel: 'Identify', icon: Brain },
+    generating: { label: 'Creating chapter PDFs...', shortLabel: 'Create', icon: BookOpen },
+    validating: { label: 'Uploading organized notes...', shortLabel: 'Upload', icon: FolderOpen },
+    complete: { label: 'Organization complete!', shortLabel: 'Done', icon: CheckCircle },
+  },
 };
 
 const stageOrder: AILoadingStage[] = ['extracting', 'analyzing', 'generating', 'validating', 'complete'];
@@ -31,7 +41,8 @@ function AILoadingIndicator({
   if (!isVisible) return null;
 
   const currentStageIndex = stageOrder.indexOf(currentStage);
-  const contentLabel = contentType === 'flashcards' ? 'flashcards' : contentType === 'analysis' ? 'patterns' : 'questions';
+  const stages = contentType === 'organize' ? stageConfigs.organize : stageConfigs.default;
+  const contentLabel = contentType === 'flashcards' ? 'flashcards' : contentType === 'analysis' ? 'patterns' : contentType === 'organize' ? 'notes' : 'questions';
 
   return (
     <div className="bg-gradient-to-r from-primary-50 to-purple-50 dark:from-dark-tonal-10 dark:to-purple-900/20 border border-primary-200 dark:border-dark-surface-30 rounded-xl p-6 mb-6">
@@ -46,10 +57,14 @@ function AILoadingIndicator({
         </div>
         <div>
           <h3 className="font-semibold text-gray-900 dark:text-white">
-            AI is working on your {contentLabel}
+            {contentType === 'organize' ? 'AI is organizing your notes' : `AI is working on your ${contentLabel}`}
           </h3>
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            {count ? `Generating ${count} ${contentLabel}...` : 'Please wait while we process your content...'}
+            {contentType === 'organize'
+              ? 'Creating structured chapter PDFs from your documents...'
+              : count
+              ? `Generating ${count} ${contentLabel}...`
+              : 'Please wait while we process your content...'}
           </p>
         </div>
       </div>
@@ -120,6 +135,8 @@ function AILoadingIndicator({
             ? '💡 Tip: Spaced repetition helps you retain information 50% better than cramming!'
             : contentType === 'analysis'
             ? '🧠 The AI is learning your question style for better generation!'
+            : contentType === 'organize'
+            ? '📚 Your notes will be organized into chapters and saved as documents automatically!'
             : '✨ AI-generated questions are tailored to your study material.'}
         </p>
       </div>
