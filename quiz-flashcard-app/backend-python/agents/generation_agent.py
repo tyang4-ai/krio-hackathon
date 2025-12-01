@@ -242,6 +242,26 @@ Output ONLY valid JSON:
 Rules: options always ["A) True","B) False"], correct_answer is "A" or "B". All questions MUST be {difficulty} difficulty. Generate exactly {count}."""
 
         else:  # multiple_choice
+            # Check if custom instructions specify number of options
+            num_options = 4  # default
+            option_letters = "A-D"
+            options_example = '["A) opt1","B) opt2","C) opt3","D) opt4"]'
+
+            if custom_directions:
+                # Look for patterns like "6 choices", "6 options", "six options"
+                num_match = re.search(r'(\d+)\s*(?:choices|options|answers)', custom_directions.lower())
+                if num_match:
+                    num_options = int(num_match.group(1))
+                    if num_options == 5:
+                        option_letters = "A-E"
+                        options_example = '["A) opt1","B) opt2","C) opt3","D) opt4","E) opt5"]'
+                    elif num_options == 6:
+                        option_letters = "A-F"
+                        options_example = '["A) opt1","B) opt2","C) opt3","D) opt4","E) opt5","F) opt6"]'
+                    elif num_options >= 7:
+                        option_letters = "A-G"
+                        options_example = '["A) opt1","B) opt2","C) opt3","D) opt4","E) opt5","F) opt6","G) opt7"]'
+
             # Special handling for concepts mode in MCQ
             if difficulty == "concepts":
                 return f"""Generate {count} CONCEPT-FOCUSED multiple choice questions from this content:
@@ -264,9 +284,9 @@ Example question formats:
 - "What does the term 'photosynthesis' refer to?"
 
 Output ONLY valid JSON:
-{{"questions":[{{"question_text":"What is/Which term...?","question_type":"multiple_choice","difficulty":"concepts","options":["A) term1","B) term2","C) term3","D) term4"],"correct_answer":"A","explanation":"brief definition","tags":{tags_output}}}]}}
+{{"questions":[{{"question_text":"What is/Which term...?","question_type":"multiple_choice","difficulty":"concepts","options":{options_example},"correct_answer":"A","explanation":"brief definition","tags":{tags_output}}}]}}
 
-Rules: 4 options A-D, correct_answer is letter. Focus on testing terminology and definitions. Generate exactly {count}."""
+Rules: {num_options} options {option_letters}, correct_answer is letter. Focus on testing terminology and definitions. Generate exactly {count}."""
 
             return f"""Generate {count} {difficulty.upper()} multiple choice questions from this content:
 
@@ -275,9 +295,9 @@ Rules: 4 options A-D, correct_answer is letter. Focus on testing terminology and
 Difficulty: {difficulty_guidance}
 
 Output ONLY valid JSON:
-{{"questions":[{{"question_text":"Question?","question_type":"multiple_choice","difficulty":"{difficulty}","options":["A) opt1","B) opt2","C) opt3","D) opt4"],"correct_answer":"A","explanation":"why","tags":{tags_output}}}]}}
+{{"questions":[{{"question_text":"Question?","question_type":"multiple_choice","difficulty":"{difficulty}","options":{options_example},"correct_answer":"A","explanation":"why","tags":{tags_output}}}]}}
 
-Rules: 4 options A-D, correct_answer is letter. All questions MUST be {difficulty} difficulty. Generate exactly {count}."""
+Rules: {num_options} options {option_letters}, correct_answer is letter. All questions MUST be {difficulty} difficulty. Generate exactly {count}."""
 
     def _parse_questions_response(self, response: str) -> List[Dict[str, Any]]:
         """Parse the AI response into questions."""

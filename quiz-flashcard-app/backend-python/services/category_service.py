@@ -31,6 +31,7 @@ class CategoryService:
         self,
         db: AsyncSession,
         category_data: CategoryCreate,
+        user_id: Optional[int] = None,
     ) -> Category:
         """
         Create a new category.
@@ -38,6 +39,7 @@ class CategoryService:
         Args:
             db: Database session
             category_data: Category creation data
+            user_id: Owner user ID (optional for backward compatibility)
 
         Returns:
             Created category
@@ -47,19 +49,21 @@ class CategoryService:
             description=category_data.description,
             color=category_data.color or "#3B82F6",
             icon=category_data.icon or "Folder",
+            user_id=user_id,
         )
 
         db.add(category)
         await db.flush()
         await db.refresh(category)
 
-        logger.info("category_created", category_id=category.id, name=category.name)
+        logger.info("category_created", category_id=category.id, name=category.name, user_id=user_id)
         return category
 
     async def get_category_by_id(
         self,
         db: AsyncSession,
         category_id: int,
+        user_id: Optional[int] = None,
     ) -> Optional[Category]:
         """
         Get a category by ID.
@@ -67,31 +71,36 @@ class CategoryService:
         Args:
             db: Database session
             category_id: Category ID
+            user_id: Filter by user ID (if provided, ensures user owns the category)
 
         Returns:
             Category if found, None otherwise
         """
-        result = await db.execute(
-            select(Category).where(Category.id == category_id)
-        )
+        query = select(Category).where(Category.id == category_id)
+        if user_id is not None:
+            query = query.where(Category.user_id == user_id)
+        result = await db.execute(query)
         return result.scalar_one_or_none()
 
     async def get_all_categories(
         self,
         db: AsyncSession,
+        user_id: Optional[int] = None,
     ) -> List[Category]:
         """
-        Get all categories.
+        Get all categories for a user.
 
         Args:
             db: Database session
+            user_id: Filter by user ID (if provided)
 
         Returns:
-            List of all categories
+            List of categories
         """
-        result = await db.execute(
-            select(Category).order_by(Category.created_at.desc())
-        )
+        query = select(Category).order_by(Category.created_at.desc())
+        if user_id is not None:
+            query = query.where(Category.user_id == user_id)
+        result = await db.execute(query)
         return list(result.scalars().all())
 
     async def update_category(
@@ -99,6 +108,7 @@ class CategoryService:
         db: AsyncSession,
         category_id: int,
         category_data: CategoryUpdate,
+        user_id: Optional[int] = None,
     ) -> Optional[Category]:
         """
         Update a category.
@@ -107,11 +117,12 @@ class CategoryService:
             db: Database session
             category_id: Category ID
             category_data: Update data
+            user_id: Filter by user ID (if provided, ensures user owns the category)
 
         Returns:
             Updated category if found, None otherwise
         """
-        category = await self.get_category_by_id(db, category_id)
+        category = await self.get_category_by_id(db, category_id, user_id)
         if not category:
             return None
 
@@ -123,13 +134,14 @@ class CategoryService:
         await db.flush()
         await db.refresh(category)
 
-        logger.info("category_updated", category_id=category_id)
+        logger.info("category_updated", category_id=category_id, user_id=user_id)
         return category
 
     async def delete_category(
         self,
         db: AsyncSession,
         category_id: int,
+        user_id: Optional[int] = None,
     ) -> bool:
         """
         Delete a category and all related content.
@@ -137,11 +149,12 @@ class CategoryService:
         Args:
             db: Database session
             category_id: Category ID
+            user_id: Filter by user ID (if provided, ensures user owns the category)
 
         Returns:
             True if deleted, False if not found
         """
-        category = await self.get_category_by_id(db, category_id)
+        category = await self.get_category_by_id(db, category_id, user_id)
         if not category:
             return False
 
@@ -217,6 +230,7 @@ class CategoryService:
         self,
         db: AsyncSession,
         category_id: int,
+        user_id: Optional[int] = None,
     ) -> Optional[tuple[Category, CategoryStats]]:
         """
         Get a category with its statistics.
@@ -224,11 +238,12 @@ class CategoryService:
         Args:
             db: Database session
             category_id: Category ID
+            user_id: Filter by user ID (if provided, ensures user owns the category)
 
         Returns:
             Tuple of (category, stats) if found, None otherwise
         """
-        category = await self.get_category_by_id(db, category_id)
+        category = await self.get_category_by_id(db, category_id, user_id)
         if not category:
             return None
 
@@ -238,17 +253,19 @@ class CategoryService:
     async def get_all_categories_with_stats(
         self,
         db: AsyncSession,
+        user_id: Optional[int] = None,
     ) -> List[tuple[Category, CategoryStats]]:
         """
         Get all categories with their statistics.
 
         Args:
             db: Database session
+            user_id: Filter by user ID (if provided)
 
         Returns:
             List of (category, stats) tuples
         """
-        categories = await self.get_all_categories(db)
+        categories = await self.get_all_categories(db, user_id)
         result = []
 
         for category in categories:

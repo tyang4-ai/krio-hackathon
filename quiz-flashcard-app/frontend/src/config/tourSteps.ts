@@ -304,7 +304,9 @@ STACK: React Router | Axios | async/await`,
 
 FEATURES:
 - Assign chapters/topics to organize content
-- AI "Organize" button creates a study guide PDF
+- AI "Organize Notes" reorganizes into Chapter → Unit structure
+- Auto-creates organized chapter documents in your notes
+- Downloads PDF study guides for each chapter
 - Filter by chapter when generating questions
 
 PIPELINE:
@@ -334,10 +336,19 @@ async def upload_document(
     db.add(doc)
 \`\`\`
 
-ORGANIZE FEATURE:
+ORGANIZE NOTES FEATURE:
 - POST /api/categories/{id}/organize
-- AI analyzes all docs and creates chapter structure
-- Generates downloadable PDF study guide
+- AI analyzes all docs and reorganizes into Chapter → Unit → Content structure
+- Preserves ALL original content exactly (no summarization or rewriting)
+- Auto-creates organized chapter documents in your notes section
+- Generates separate PDF study guide for each chapter
+- Updates document chapter tags automatically
+
+ORGANIZATION RULES:
+- Do NOT delete, rewrite, summarize, or alter wording
+- Preserve all original text exactly
+- Infer chapters/units from headings, topic shifts, or patterns
+- Use placeholders if unclear (e.g., 'Chapter 1 – Untitled')
 
 STACK: FastAPI | PyPDF2 | python-docx | python-pptx | reportlab`,
     position: 'bottom',

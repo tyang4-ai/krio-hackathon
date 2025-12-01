@@ -3,7 +3,7 @@ Category model for organizing study content.
 """
 from typing import Optional
 
-from sqlalchemy import String, Text
+from sqlalchemy import String, Text, Integer, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import BaseModel
@@ -28,11 +28,16 @@ class Category(BaseModel):
     color: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, default="#3B82F6")
     icon: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, default="Folder")
 
-    # Relationships (will be populated as other models are added)
-    # documents = relationship("Document", back_populates="category", cascade="all, delete-orphan")
-    # questions = relationship("Question", back_populates="category", cascade="all, delete-orphan")
-    # flashcards = relationship("Flashcard", back_populates="category", cascade="all, delete-orphan")
-    # notebook_entries = relationship("NotebookEntry", back_populates="category", cascade="all, delete-orphan")
+    # User ownership - nullable for backward compatibility with existing data
+    user_id: Mapped[Optional[int]] = mapped_column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True
+    )
+
+    # Relationships
+    # user = relationship("User", back_populates="categories")
 
     def __repr__(self) -> str:
         return f"Category(id={self.id}, name='{self.name}')"

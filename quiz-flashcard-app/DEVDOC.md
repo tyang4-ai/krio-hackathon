@@ -1376,6 +1376,67 @@ POST   /api/categories/:categoryId/documents              # Upload document (mul
 DELETE /api/documents/:id                                 # Delete document
 POST   /api/categories/:categoryId/generate-questions     # Generate questions from docs
 POST   /api/categories/:categoryId/generate-flashcards    # Generate flashcards from docs
+POST   /api/categories/:categoryId/organize               # AI organize notes into chapters (NEW)
+GET    /api/categories/:categoryId/documents/chapters     # Get unique chapters
+PATCH  /api/documents/:id/chapter                         # Update document chapter tag
+```
+
+### Organize Notes Feature (NEW)
+
+The "Organize Notes" feature uses AI to reorganize uploaded documents into a structured Chapter → Unit → Content format.
+
+**Key Features**:
+- Preserves ALL original content exactly (no summarization or rewriting)
+- Auto-creates organized chapter documents in the notes section
+- Generates separate PDF study guide for each chapter
+- Updates document chapter tags automatically
+- Provides a table of contents listing detected chapters and units
+
+**Organization Rules** (AI System Prompt):
+- Do NOT delete, rewrite, summarize, or alter wording
+- Preserve all original text exactly
+- Infer chapters and units based on headings, topic shifts, or patterns
+- Use placeholders if unclear (e.g., 'Chapter 1 – Untitled')
+- No merging unless clearly necessary
+- Maintain original order within units
+
+**Organize Response**:
+```json
+{
+  "success": true,
+  "organization": {
+    "title": "Organized Study Guide: Category Name",
+    "chapters": [
+      {
+        "chapter_number": 1,
+        "title": "Chapter Title",
+        "description": "Chapter description",
+        "documents": [{"id": 1, "name": "doc.pdf"}]
+      }
+    ]
+  },
+  "chapter_names": ["Chapter 1 Title", "Chapter 2 Title"],
+  "chapter_pdfs": [
+    {
+      "chapter_number": 1,
+      "title": "Chapter Title",
+      "filename": "Chapter_1_Title.pdf",
+      "pdf_base64": "...",
+      "document_count": 2
+    }
+  ],
+  "updated_documents": [{"id": 1, "name": "doc.pdf", "chapter": "Chapter 1"}],
+  "created_chapter_documents": [
+    {
+      "id": 10,
+      "filename": "Organized_Chapter_1_Title_abc123.txt",
+      "original_name": "Chapter 1: Title",
+      "chapter": "Chapter 1",
+      "content_length": 5000
+    }
+  ],
+  "message": "Organized 5 documents into 3 chapters. 3 organized chapter documents created."
+}
 ```
 
 **Generate Questions Body**:

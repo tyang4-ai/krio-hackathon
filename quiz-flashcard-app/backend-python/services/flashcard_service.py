@@ -422,8 +422,9 @@ class FlashcardService:
             avg_interval = sum((p.interval_days or 0) for p in progress_records) / len(progress_records)
             mastered_count = sum(1 for p in progress_records if (p.interval_days or 0) >= 21)
 
-        # Count cards due for review
-        now = datetime.utcnow()
+        # Count cards due for review (use timezone-aware datetime for comparison)
+        from datetime import timezone
+        now = datetime.now(timezone.utc)
         due_count = sum(
             1 for p in progress_records
             if p.next_review and p.next_review <= now
