@@ -133,6 +133,29 @@ interface CreateSessionResponse {
   questions: Question[];
 }
 
+interface OrganizeResponse {
+  success: boolean;
+  organization: {
+    title: string;
+    summary: string;
+    chapters: Array<{
+      chapter_number: number;
+      title: string;
+      description: string;
+      units: Array<{
+        unit_number: number;
+        title: string;
+        topics: string[];
+        key_concepts: string[];
+        content_summary: string;
+      }>;
+    }>;
+  };
+  chapter_names: string[];
+  pdf_base64: string | null;
+  pdf_filename: string;
+}
+
 // Categories
 export const categoryApi = {
   getAll: (): Promise<AxiosResponse<{ data: CategoriesResponse }>> =>
@@ -172,7 +195,9 @@ export const documentApi = {
   generateQuestions: (categoryId: number, options: GenerateOptions): Promise<AxiosResponse<{ data: QuestionsResponse }>> =>
     api.post(`/categories/${categoryId}/generate-questions`, options),
   generateFlashcards: (categoryId: number, options: GenerateOptions): Promise<AxiosResponse<{ data: FlashcardsResponse }>> =>
-    api.post(`/categories/${categoryId}/generate-flashcards`, options)
+    api.post(`/categories/${categoryId}/generate-flashcards`, options),
+  organize: (categoryId: number): Promise<AxiosResponse<{ data: OrganizeResponse }>> =>
+    api.post(`/categories/${categoryId}/organize`),
 };
 
 // Quiz

@@ -150,11 +150,13 @@ app = FastAPI(
 cors_origins_list = [origin.strip() for origin in settings.cors_origins.split(",") if origin.strip()]
 logger.info("cors_config", origins=cors_origins_list, raw_setting=settings.cors_origins)
 
-# In production, also allow the Railway domain patterns
+# In production, also allow the deployment domain patterns
 if settings.is_production:
     cors_origins_list.extend([
         "https://krio-hackathon-production.up.railway.app",
         "https://frontend-production-c836.up.railway.app",
+        # AWS S3 frontend
+        "http://studyforge-frontend.s3-website-us-west-1.amazonaws.com",
     ])
     # Remove duplicates
     cors_origins_list = list(set(cors_origins_list))
@@ -179,7 +181,7 @@ setup_rate_limiting(app)
 # Register exception handlers
 setup_exception_handlers(app)
 
-# Include routers
+# Include routers (they already have /api prefix defined)
 app.include_router(health_router)
 app.include_router(auth_router)
 app.include_router(categories_router)

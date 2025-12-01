@@ -295,19 +295,23 @@ STACK: React Router | Axios | async/await`,
   {
     target: 'upload-section',
     title: 'Upload Documents',
-    content: 'Upload PDFs, notes, or textbook pages to generate content.',
+    content: 'Upload PDFs, presentations, notes, or textbook pages to generate content.',
     details: `SUPPORTED FORMATS:
 - PDF (.pdf) - Text extraction with PyPDF2
-- Word (.docx) - Parsed with python-docx
+- Word (.docx, .doc) - Parsed with python-docx
+- PowerPoint (.pptx, .ppt) - Slide text extraction
 - Text (.txt, .md) - Direct text reading
+
+FEATURES:
+- Assign chapters/topics to organize content
+- AI "Organize" button creates a study guide PDF
+- Filter by chapter when generating questions
 
 PIPELINE:
 1. File uploaded to backend
 2. Text extracted based on file type
 3. Content stored in database
-4. Ready for AI analysis and generation
-
-Organize by chapter/topic for filtered generation!`,
+4. Ready for AI analysis and generation`,
     technicalDetails: `BACKEND: FastAPI File Upload
 
 \`\`\`python
@@ -319,19 +323,8 @@ async def upload_document(
     chapter: Optional[str] = Form(None),
     db: AsyncSession = Depends(get_db)
 ):
-    # Validate file type
-    if not file.filename.endswith(('.pdf', '.docx', '.txt', '.md')):
-        raise HTTPException(400, "Unsupported file type")
-
-    # Extract text based on type
-    if file.filename.endswith('.pdf'):
-        text = extract_pdf_text(file)  # PyPDF2
-    elif file.filename.endswith('.docx'):
-        text = extract_docx_text(file)  # python-docx
-    else:
-        text = await file.read()
-
-    # Store in database
+    # Supported: .pdf, .docx, .doc, .pptx, .ppt, .txt, .md
+    text = await extract_text(file)
     doc = Document(
         category_id=category_id,
         original_name=file.filename,
@@ -341,7 +334,12 @@ async def upload_document(
     db.add(doc)
 \`\`\`
 
-STACK: FastAPI | PyPDF2 | python-docx | PostgreSQL`,
+ORGANIZE FEATURE:
+- POST /api/categories/{id}/organize
+- AI analyzes all docs and creates chapter structure
+- Generates downloadable PDF study guide
+
+STACK: FastAPI | PyPDF2 | python-docx | python-pptx | reportlab`,
     position: 'bottom',
     demoAssets: [
       { label: 'Download Sample Notes', filename: 'sample-biology-notes.txt' },
@@ -411,7 +409,9 @@ STACK: OpenAI API | Anthropic API | Pydantic | async`,
     details: `FLASHCARD GENERATION:
 - AI extracts key concepts from your documents
 - Creates front (question) / back (answer) pairs
-- Supports "Concepts" mode for definitions
+- Difficulty modes: Easy, Medium, Hard
+- "Concepts" mode: Dictionary-style definitions
+  (e.g., "What is the electron geometry of 4 bonds + 1 lone pair?")
 
 SPACED REPETITION (SM-2 Algorithm):
 - Cards scheduled based on your performance
