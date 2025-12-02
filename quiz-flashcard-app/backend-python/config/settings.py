@@ -52,6 +52,14 @@ class Settings(BaseSettings):
     vision_model: str = "gpt-4o"
     openai_api_key: Optional[str] = None
 
+    # Embedding Provider (for vector embeddings)
+    # Options: "openai", "moonshot", "voyage"
+    embedding_provider: str = "openai"
+    embedding_model: str = "text-embedding-ada-002"  # OpenAI default
+    moonshot_embedding_model: str = "moonshot-v1-embedding"  # Kimi embedding model
+    voyage_api_key: Optional[str] = None
+    voyage_embedding_model: str = "voyage-3"  # Voyage AI embedding model (1024 dims)
+
     # Optional AI Providers
     groq_api_key: Optional[str] = None
     together_api_key: Optional[str] = None

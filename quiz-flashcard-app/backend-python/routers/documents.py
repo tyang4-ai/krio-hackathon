@@ -19,6 +19,8 @@ from schemas.document import (
 )
 from services.category_service import category_service
 from services.document_service import document_service
+from services.chunking_service import chunking_service
+from services.embedding_service import embedding_service
 
 router = APIRouter(tags=["Documents"])
 
@@ -525,6 +527,455 @@ async def download_organized_pdf(
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
+
+
+@router.post("/api/documents/{document_id}/chunk")
+@limiter.limit(RateLimits.AI_GENERATE)
+async def chunk_document(
+    request: Request,
+    document_id: int,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """
+    Trigger semantic chunking for a document.
+
+    This uses AI-powered topic detection to split the document into
+    semantically coherent chunks optimized for RAG retrieval.
+
+    The chunking process:
+    1. Page-level topic detection
+    2. Boundary refinement between topics
+    3. Chunk formation with 100-token overlap
+    4. Multi-topic tagging per chunk
+    5. Concept map generation
+    """
+    import structlog
+    logger = structlog.get_logger()
+
+    document = await document_service.get_document_by_id(db, document_id)
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Document with ID {document_id} not found",
+        )
+
+    if not document.content_text:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Document has not been processed yet. Text content is required.",
+        )
+
+    # Check if already chunked
+    if document.chunking_status == "complete":
+        return {
+            "success": True,
+            "message": "Document already chunked",
+            "document_id": document_id,
+            "total_chunks": document.total_chunks,
+            "total_tokens": document.total_tokens,
+            "status": "complete",
+        }
+
+    try:
+        # Run chunking
+        logger.info("chunking_started", document_id=document_id)
+        result = await chunking_service.chunk_document(db, document_id)
+
+        await db.commit()
+
+        return {
+            "success": True,
+            "message": "Document chunked successfully",
+            "document_id": document_id,
+            "total_chunks": len(result.chunks),
+            "total_tokens": result.total_tokens,
+            "topics": [t.get("topic_name", t.get("name", "Unknown")) if isinstance(t, dict) else t.topic_name for t in result.topics],
+            "status": "complete",
+        }
+
+    except Exception as e:
+        logger.error("chunking_failed", document_id=document_id, error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Chunking failed: {str(e)}",
+        )
+
+
+@router.post("/api/documents/{document_id}/embed")
+@limiter.limit(RateLimits.AI_GENERATE)
+async def embed_document(
+    request: Request,
+    document_id: int,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """
+    Generate embeddings for a document's chunks.
+
+    This must be called after chunking. It generates OpenAI ada-002
+    embeddings (1536 dimensions) for each chunk and stores them in
+    pgvector for similarity search.
+    """
+    import structlog
+    logger = structlog.get_logger()
+
+    document = await document_service.get_document_by_id(db, document_id)
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Document with ID {document_id} not found",
+        )
+
+    if document.chunking_status != "complete":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Document must be chunked before embedding. Call /chunk first.",
+        )
+
+    try:
+        logger.info("embedding_started", document_id=document_id)
+        count = await embedding_service.embed_document_chunks(db, document_id)
+
+        await db.commit()
+
+        return {
+            "success": True,
+            "message": f"Generated embeddings for {count} chunks",
+            "document_id": document_id,
+            "chunks_embedded": count,
+        }
+
+    except Exception as e:
+        logger.error("embedding_failed", document_id=document_id, error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Embedding failed: {str(e)}",
+        )
+
+
+@router.get("/api/documents/{document_id}/chunks")
+async def get_document_chunks(
+    document_id: int,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """
+    Get all chunks for a document with their metadata.
+
+    Returns chunk content, topics, key concepts, and embedding status.
+    Does NOT return the actual embedding vectors (too large).
+    """
+    from sqlalchemy import select
+    from models.document_chunk import DocumentChunk
+
+    document = await document_service.get_document_by_id(db, document_id)
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Document with ID {document_id} not found",
+        )
+
+    result = await db.execute(
+        select(DocumentChunk)
+        .where(DocumentChunk.document_id == document_id)
+        .order_by(DocumentChunk.chunk_index)
+    )
+    chunks = result.scalars().all()
+
+    return {
+        "document_id": document_id,
+        "chunking_status": document.chunking_status,
+        "total_chunks": len(chunks),
+        "total_tokens": document.total_tokens,
+        "chunks": [
+            {
+                "id": chunk.id,
+                "chunk_index": chunk.chunk_index,
+                "content": chunk.content,
+                "token_count": chunk.token_count,
+                "section_title": chunk.section_title,
+                "primary_topic": chunk.primary_topic,
+                "topics": chunk.topics,
+                "key_concepts": chunk.key_concepts,
+                "page_numbers": chunk.page_numbers,
+                "embedding_status": chunk.embedding_status,
+            }
+            for chunk in chunks
+        ],
+    }
+
+
+@router.get("/api/documents/{document_id}/concept-map")
+async def get_document_concept_map(
+    document_id: int,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """
+    Get the concept map for a document.
+
+    The concept map shows relationships between key concepts
+    extracted during chunking, useful for understanding document structure.
+    """
+    from sqlalchemy import select
+    from models.document_concept_map import DocumentConceptMap
+
+    document = await document_service.get_document_by_id(db, document_id)
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Document with ID {document_id} not found",
+        )
+
+    result = await db.execute(
+        select(DocumentConceptMap)
+        .where(DocumentConceptMap.document_id == document_id)
+    )
+    concept_map = result.scalar_one_or_none()
+
+    if not concept_map:
+        return {
+            "document_id": document_id,
+            "concept_map": None,
+            "message": "No concept map found. Run /chunk first.",
+        }
+
+    return {
+        "document_id": document_id,
+        "concept_map": concept_map.concept_map,
+        "total_concepts": concept_map.total_concepts,
+        "total_relationships": concept_map.total_relationships,
+    }
+
+
+@router.post("/api/documents/{document_id}/index")
+@limiter.limit(RateLimits.AI_GENERATE)
+async def index_document(
+    request: Request,
+    document_id: int,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """
+    Full document indexing: chunk + embed in one call.
+
+    This is a convenience endpoint that runs both chunking and embedding
+    in sequence. Useful for preparing a document for RAG retrieval.
+
+    Process:
+    1. Semantic chunking (if not already done)
+    2. Embedding generation for all chunks
+    """
+    import structlog
+    logger = structlog.get_logger()
+
+    document = await document_service.get_document_by_id(db, document_id)
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Document with ID {document_id} not found",
+        )
+
+    if not document.content_text:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Document has not been processed yet. Text content is required.",
+        )
+
+    results = {
+        "document_id": document_id,
+        "chunking": None,
+        "embedding": None,
+    }
+
+    try:
+        # Step 1: Chunking (if needed)
+        if document.chunking_status != "complete":
+            logger.info("indexing_chunk_started", document_id=document_id)
+            chunk_result = await chunking_service.chunk_document(db, document_id)
+            results["chunking"] = {
+                "status": "complete",
+                "total_chunks": chunk_result.total_chunks,
+                "total_tokens": chunk_result.total_tokens,
+                "topics": [t.topic_name for t in chunk_result.topics],
+            }
+            await db.flush()
+        else:
+            results["chunking"] = {
+                "status": "already_complete",
+                "total_chunks": document.total_chunks,
+                "total_tokens": document.total_tokens,
+            }
+
+        # Step 2: Embedding
+        logger.info("indexing_embed_started", document_id=document_id)
+        embed_count = await embedding_service.embed_document_chunks(db, document_id)
+        results["embedding"] = {
+            "status": "complete",
+            "chunks_embedded": embed_count,
+        }
+
+        await db.commit()
+
+        return {
+            "success": True,
+            "message": "Document indexed successfully",
+            **results,
+        }
+
+    except Exception as e:
+        logger.error("indexing_failed", document_id=document_id, error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Indexing failed: {str(e)}",
+        )
+
+
+@router.post("/api/categories/{category_id}/search-chunks")
+async def search_chunks(
+    category_id: int,
+    query: str,
+    top_k: int = 20,
+    document_ids: Optional[List[int]] = None,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """
+    Search for chunks similar to a query using vector similarity.
+
+    This is the core RAG retrieval endpoint. It finds chunks that are
+    semantically similar to the query, filtered by category and optionally
+    by specific documents.
+
+    Args:
+        query: The search query (will be embedded and compared)
+        top_k: Number of results to return (default 20)
+        document_ids: Optional list of document IDs to filter to
+    """
+    # Verify category exists
+    category = await category_service.get_category_by_id(db, category_id)
+    if not category:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Category with ID {category_id} not found",
+        )
+
+    try:
+        chunks = await embedding_service.search_similar_chunks(
+            db=db,
+            query=query,
+            category_id=category_id,
+            top_k=top_k,
+            document_ids=document_ids,
+        )
+
+        return {
+            "query": query,
+            "category_id": category_id,
+            "total_results": len(chunks),
+            "chunks": chunks,
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Search failed: {str(e)}",
+        )
+
+
+@router.get("/api/documents/{document_id}/embedding-debug")
+async def debug_embeddings(
+    document_id: int,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """
+    Debug endpoint to check embedding status and vector dimensions.
+    """
+    from sqlalchemy import text
+
+    # Get chunk embedding info
+    result = await db.execute(
+        text("""
+            SELECT
+                id,
+                chunk_index,
+                embedding_status,
+                embedding IS NOT NULL as has_embedding,
+                CASE WHEN embedding IS NOT NULL THEN array_length(embedding::real[], 1) ELSE NULL END as embedding_dim
+            FROM document_chunks
+            WHERE document_id = :doc_id
+            ORDER BY chunk_index
+            LIMIT 5
+        """),
+        {"doc_id": document_id},
+    )
+    chunks = result.fetchall()
+
+    return {
+        "document_id": document_id,
+        "chunks": [
+            {
+                "id": row.id,
+                "chunk_index": row.chunk_index,
+                "embedding_status": row.embedding_status,
+                "has_embedding": row.has_embedding,
+                "embedding_dim": row.embedding_dim,
+            }
+            for row in chunks
+        ],
+    }
+
+
+@router.get("/api/categories/{category_id}/search-debug")
+async def debug_search(
+    category_id: int,
+    query: str,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """
+    Debug endpoint to test vector similarity search without threshold.
+    """
+    from sqlalchemy import text
+
+    # Generate query embedding
+    query_embedding = await embedding_service.generate_embedding(query)
+    embedding_str = "[" + ",".join(str(x) for x in query_embedding) + "]"
+
+    # Simple search without threshold - just get top 5 by distance
+    result = await db.execute(
+        text(f"""
+            SELECT
+                dc.id,
+                dc.chunk_index,
+                dc.content,
+                dc.embedding_status,
+                dc.embedding IS NOT NULL as has_embedding,
+                d.category_id,
+                (dc.embedding <=> '{embedding_str}'::vector) as distance,
+                1 - (dc.embedding <=> '{embedding_str}'::vector) as similarity
+            FROM document_chunks dc
+            JOIN documents d ON dc.document_id = d.id
+            WHERE d.category_id = :category_id
+                AND dc.embedding IS NOT NULL
+            ORDER BY dc.embedding <=> '{embedding_str}'::vector
+            LIMIT 5
+        """),
+        {"category_id": category_id},
+    )
+    chunks = result.fetchall()
+
+    return {
+        "query": query,
+        "category_id": category_id,
+        "query_embedding_dim": len(query_embedding),
+        "chunks": [
+            {
+                "id": row.id,
+                "chunk_index": row.chunk_index,
+                "content_preview": row.content[:200] if row.content else None,
+                "embedding_status": row.embedding_status,
+                "has_embedding": row.has_embedding,
+                "distance": float(row.distance) if row.distance else None,
+                "similarity": float(row.similarity) if row.similarity else None,
+            }
+            for row in chunks
+        ],
+    }
 
 
 @router.post(

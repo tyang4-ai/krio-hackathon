@@ -1,5 +1,7 @@
 """
 Authentication middleware for JWT token validation.
+
+Supports both authenticated users and guest mode for testing.
 """
 from typing import Optional
 
@@ -17,6 +19,30 @@ logger = structlog.get_logger()
 # HTTP Bearer token security scheme
 security = HTTPBearer(auto_error=False)
 
+# Guest user ID - a special constant for guest mode
+GUEST_USER_ID = -1
+
+
+def create_guest_user() -> User:
+    """
+    Create a virtual guest user object (not persisted to database).
+
+    Guest users have limited functionality but can test the app.
+    """
+    from datetime import datetime
+    now = datetime.utcnow()
+    guest = User(
+        id=GUEST_USER_ID,
+        google_id="guest",
+        email="guest@studyforge.app",
+        name="Guest User",
+        avatar_url=None,
+        is_active=True,
+        created_at=now,
+        last_login=now,
+    )
+    return guest
+
 
 async def get_current_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
@@ -26,6 +52,7 @@ async def get_current_user(
     Dependency to get the currently authenticated user.
 
     Validates the JWT token and returns the user.
+    Supports guest mode with "guest" token.
     Raises HTTPException if not authenticated.
 
     Usage:
@@ -39,6 +66,11 @@ async def get_current_user(
             detail="Not authenticated",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    # Check for guest mode
+    if credentials.credentials == "guest":
+        logger.info("guest_mode_access")
+        return create_guest_user()
 
     # Verify the token
     payload = auth_service.verify_access_token(credentials.credentials)
@@ -75,6 +107,7 @@ async def get_optional_user(
     Dependency to optionally get the current user.
 
     Returns the user if authenticated, None otherwise.
+    Supports guest mode with "guest" token.
     Does not raise exceptions for missing/invalid tokens.
 
     Usage:
@@ -86,6 +119,10 @@ async def get_optional_user(
     """
     if not credentials:
         return None
+
+    # Check for guest mode
+    if credentials.credentials == "guest":
+        return create_guest_user()
 
     # Verify the token
     payload = auth_service.verify_access_token(credentials.credentials)
@@ -119,6 +156,7 @@ async def get_current_user_id(
     """
     Dependency to get just the user ID without database lookup.
 
+    Supports guest mode with "guest" token.
     Useful for operations that only need the user ID.
     """
     if not credentials:
@@ -127,6 +165,10 @@ async def get_current_user_id(
             detail="Not authenticated",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    # Check for guest mode
+    if credentials.credentials == "guest":
+        return GUEST_USER_ID
 
     payload = auth_service.verify_access_token(credentials.credentials)
     if not payload:

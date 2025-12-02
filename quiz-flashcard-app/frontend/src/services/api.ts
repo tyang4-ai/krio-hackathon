@@ -363,6 +363,8 @@ export const quizEnhancedApi = {
 export const authApi = {
   googleLogin: (credential: string): Promise<AxiosResponse<{ data: AuthResponse }>> =>
     api.post('/auth/google', { credential }),
+  guestLogin: (): Promise<AxiosResponse<{ data: AuthResponse }>> =>
+    api.post('/auth/guest'),
   verifyToken: (token: string): Promise<AxiosResponse<{ data: User }>> =>
     api.get('/auth/verify', { params: { token } }),
   getCurrentUser: (): Promise<AxiosResponse<{ data: User }>> =>

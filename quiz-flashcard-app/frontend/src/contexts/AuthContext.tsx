@@ -5,8 +5,10 @@ import { authApi } from '../services/api';
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
+  isGuest: boolean;
   isLoading: boolean;
   login: (credential: string) => Promise<void>;
+  loginAsGuest: () => Promise<void>;
   logout: () => void;
   getAccessToken: () => string | null;
 }
@@ -64,6 +66,21 @@ export function AuthProvider({ children }: AuthProviderProps): React.ReactElemen
     }
   }, []);
 
+  const loginAsGuest = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const response = await authApi.guestLogin();
+      const authData = (response.data.data || response.data) as AuthResponse;
+
+      // Store token and user
+      localStorage.setItem(TOKEN_KEY, authData.access_token);
+      localStorage.setItem(USER_KEY, JSON.stringify(authData.user));
+      setUser(authData.user);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   const logout = useCallback(() => {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
@@ -76,11 +93,16 @@ export function AuthProvider({ children }: AuthProviderProps): React.ReactElemen
     return localStorage.getItem(TOKEN_KEY);
   }, []);
 
+  // Check if current user is a guest
+  const isGuest = user?.id === -1 || user?.email === 'guest@studyforge.app';
+
   const value: AuthContextType = {
     user,
     isAuthenticated: !!user,
+    isGuest,
     isLoading,
     login,
+    loginAsGuest,
     logout,
     getAccessToken,
   };
