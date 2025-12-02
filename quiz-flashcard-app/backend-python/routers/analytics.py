@@ -160,7 +160,7 @@ async def get_full_dashboard(
     trend_data = await service.get_trend_data(user_id, category_id, days, "day")
     hardest_questions = await service.get_hardest_questions(user_id, category_id, 10)
     learning_score = await service.calculate_learning_score(user_id, category_id)
-    content_totals = await service.get_content_totals(category_id)
+    content_totals = await service.get_content_totals(user_id, category_id)
 
     return {
         "overview": overview,

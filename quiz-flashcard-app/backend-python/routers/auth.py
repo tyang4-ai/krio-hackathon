@@ -112,6 +112,23 @@ async def verify_token_get(
     Args:
         token: JWT access token as query parameter
     """
+    from middleware.auth_middleware import GUEST_USER_ID
+
+    # Handle guest token
+    if token == "guest":
+        from datetime import datetime
+        now = datetime.utcnow()
+        return UserResponse(
+            id=GUEST_USER_ID,
+            google_id="guest",
+            email="guest@studyforge.app",
+            name="Guest User",
+            avatar_url=None,
+            is_active=True,
+            created_at=now,
+            last_login=now,
+        )
+
     payload = auth_service.verify_access_token(token)
     if not payload:
         raise HTTPException(
@@ -147,3 +164,38 @@ async def logout():
     # In a stateful session system, we would invalidate the session here
     # With JWTs, the client simply discards the token
     return {"message": "Logged out successfully"}
+
+
+@router.post("/guest", response_model=AuthResponse)
+async def guest_login():
+    """
+    Login as a guest user for testing.
+
+    Returns a special "guest" token that allows limited access to the app.
+    Guest data is isolated and may be cleared periodically.
+    """
+    from datetime import datetime
+    from middleware.auth_middleware import GUEST_USER_ID
+
+    logger.info("guest_login")
+
+    now = datetime.utcnow()
+
+    # Return guest user info with special "guest" token
+    guest_user = UserResponse(
+        id=GUEST_USER_ID,
+        google_id="guest",
+        email="guest@studyforge.app",  # Use a real-looking domain
+        name="Guest User",
+        avatar_url=None,
+        is_active=True,
+        created_at=now,
+        last_login=now,
+    )
+
+    return AuthResponse(
+        access_token="guest",
+        token_type="bearer",
+        expires_in=86400 * 365,  # 1 year (never expires for guest)
+        user=guest_user,
+    )

@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import get_db
-from middleware.auth_middleware import get_current_user, get_optional_user
+from middleware.auth_middleware import get_current_user, get_optional_user, GUEST_USER_ID
 from models.user import User
 from schemas.category import (
     CategoryCreate,
@@ -20,6 +20,13 @@ from services.category_service import category_service
 router = APIRouter(prefix="/api/categories", tags=["Categories"])
 
 
+def get_db_user_id(user: User) -> Optional[int]:
+    """Convert user ID to database-compatible value. Guest users get NULL."""
+    if user.id == GUEST_USER_ID:
+        return None
+    return user.id
+
+
 @router.get("", response_model=CategoryListResponse)
 async def get_all_categories(
     db: AsyncSession = Depends(get_db),
@@ -28,7 +35,8 @@ async def get_all_categories(
     """
     Get all categories with their statistics for the current user.
     """
-    categories_with_stats = await category_service.get_all_categories_with_stats(db, user_id=current_user.id)
+    user_id = get_db_user_id(current_user)
+    categories_with_stats = await category_service.get_all_categories_with_stats(db, user_id=user_id)
 
     categories = [
         CategoryResponse(
@@ -56,7 +64,8 @@ async def get_category(
     """
     Get a single category by ID with statistics.
     """
-    result = await category_service.get_category_with_stats(db, category_id, user_id=current_user.id)
+    user_id = get_db_user_id(current_user)
+    result = await category_service.get_category_with_stats(db, category_id, user_id=user_id)
 
     if not result:
         raise HTTPException(
@@ -86,7 +95,8 @@ async def create_category(
     """
     Create a new category for the current user.
     """
-    category = await category_service.create_category(db, category_data, user_id=current_user.id)
+    user_id = get_db_user_id(current_user)
+    category = await category_service.create_category(db, category_data, user_id=user_id)
     stats = await category_service.get_category_stats(db, category.id)
 
     return CategoryResponse(
@@ -111,7 +121,8 @@ async def update_category(
     """
     Update a category.
     """
-    category = await category_service.update_category(db, category_id, category_data, user_id=current_user.id)
+    user_id = get_db_user_id(current_user)
+    category = await category_service.update_category(db, category_id, category_data, user_id=user_id)
 
     if not category:
         raise HTTPException(
@@ -142,7 +153,8 @@ async def delete_category(
     """
     Delete a category and all its related content.
     """
-    deleted = await category_service.delete_category(db, category_id, user_id=current_user.id)
+    user_id = get_db_user_id(current_user)
+    deleted = await category_service.delete_category(db, category_id, user_id=user_id)
 
     if not deleted:
         raise HTTPException(

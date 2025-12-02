@@ -37,6 +37,11 @@ class Document(BaseModel):
     # Chapter/section metadata
     chapter: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
+    # Chunking status (for RAG pipeline)
+    chunking_status: Mapped[Optional[str]] = mapped_column(String(20), default="pending", nullable=True)
+    total_chunks: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    total_tokens: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+
     # Relationship
     category = relationship("Category", backref="documents")
 

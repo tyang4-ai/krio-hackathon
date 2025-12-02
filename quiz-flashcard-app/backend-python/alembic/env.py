@@ -34,6 +34,10 @@ from models import (
     HandwritingCorrection,
     PartialCreditGrade,
     ExamFocusEvent,
+    # RAG Pipeline / Chunking
+    DocumentChunk,
+    DocumentTopic,
+    DocumentConceptMap,
 )
 
 # Alembic Config object
