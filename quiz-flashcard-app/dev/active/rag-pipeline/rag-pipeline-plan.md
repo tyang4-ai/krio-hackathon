@@ -126,13 +126,13 @@ This implementation is based on findings from 12 academic papers.
 | Add bloom_taxonomy_targets to ai_analysis | ✅ |
 | Create migration (011) | ✅ |
 | Update AIAnalysisResult model | ✅ |
-| Enhance AnalysisAgent - explicit quality scoring | 🔲 |
-| Enhance AnalysisAgent - extract best samples as few-shot | 🔲 |
-| Enhance AnalysisAgent - Bloom's taxonomy detection | 🔲 |
-| Add input validation for samples | 🔲 |
-| Add retry logic with exponential backoff | 🔲 |
-| Add checkpointing (commit after success) | 🔲 |
-| Update get_analysis_status response | 🔲 |
+| Enhance AnalysisAgent - explicit quality scoring | ✅ |
+| Enhance AnalysisAgent - extract best samples as few-shot | ✅ |
+| Enhance AnalysisAgent - Bloom's taxonomy detection | ✅ |
+| Add input validation for samples | ✅ |
+| Add retry logic with exponential backoff | ✅ |
+| Add checkpointing (commit after success) | ✅ |
+| Update get_analysis_status response | ✅ |
 
 ### Phase 3: RAG Generation 🔲 TODO
 
