@@ -21,6 +21,7 @@ function QuizSession(): React.ReactElement {
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [questionTimeRemaining, setQuestionTimeRemaining] = useState<number | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const warningTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [focusViolations, setFocusViolations] = useState<number>(0);
   const [showFocusWarning, setShowFocusWarning] = useState<boolean>(false);
@@ -39,6 +40,9 @@ function QuizSession(): React.ReactElement {
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
+      if (warningTimeoutRef.current) {
+        clearTimeout(warningTimeoutRef.current);
+      }
     };
   }, [sessionId]);
 
@@ -53,7 +57,8 @@ function QuizSession(): React.ReactElement {
       const handleWindowBlur = (): void => {
         recordFocusEvent('window_blur');
         setShowFocusWarning(true);
-        setTimeout(() => setShowFocusWarning(false), 3000);
+        if (warningTimeoutRef.current) clearTimeout(warningTimeoutRef.current);
+        warningTimeoutRef.current = setTimeout(() => setShowFocusWarning(false), 3000);
       };
 
       const handleMouseLeave = (e: MouseEvent): void => {
@@ -61,7 +66,8 @@ function QuizSession(): React.ReactElement {
             e.clientX >= window.innerWidth || e.clientY >= window.innerHeight) {
           recordFocusEvent('focus_lost', { x: e.clientX, y: e.clientY });
           setShowFocusWarning(true);
-          setTimeout(() => setShowFocusWarning(false), 3000);
+          if (warningTimeoutRef.current) clearTimeout(warningTimeoutRef.current);
+          warningTimeoutRef.current = setTimeout(() => setShowFocusWarning(false), 3000);
         }
       };
 

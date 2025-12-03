@@ -152,19 +152,40 @@ function CategoryDashboard(): React.ReactElement {
     if (!categoryId) return;
 
     try {
-      const [catResponse, docsResponse, samplesResponse] = await Promise.all([
+      const results = await Promise.allSettled([
         categoryApi.getById(Number(categoryId)),
         documentApi.getByCategory(Number(categoryId)),
         sampleQuestionApi.getByCategory(Number(categoryId)),
       ]);
 
-      const catData = catResponse.data.data || catResponse.data;
-      const docsData = docsResponse.data.data || docsResponse.data;
-      const samplesData = samplesResponse.data.data || samplesResponse.data;
+      // Extract results - category is required, others are optional
+      const catResult = results[0];
+      const docsResult = results[1];
+      const samplesResult = results[2];
 
+      if (catResult.status === 'rejected') {
+        console.error('Failed to load category:', catResult.reason);
+        throw catResult.reason; // Category is required
+      }
+
+      const catData = catResult.value.data.data || catResult.value.data;
       setCategory(catData);
-      setDocuments(docsData.documents || docsData || []);
-      setSampleQuestions(samplesData.samples || samplesData || []);
+
+      if (docsResult.status === 'fulfilled') {
+        const docsData = docsResult.value.data.data || docsResult.value.data;
+        setDocuments(docsData.documents || docsData || []);
+      } else {
+        console.error('Failed to load documents:', docsResult.reason);
+        setDocuments([]);
+      }
+
+      if (samplesResult.status === 'fulfilled') {
+        const samplesData = samplesResult.value.data.data || samplesResult.value.data;
+        setSampleQuestions(samplesData.samples || samplesData || []);
+      } else {
+        console.error('Failed to load samples:', samplesResult.reason);
+        setSampleQuestions([]);
+      }
 
       try {
         const analysisResponse = await analysisApi.getAnalysisStatus(Number(categoryId));
@@ -270,6 +291,21 @@ function CategoryDashboard(): React.ReactElement {
         setBatchUpdating(false);
       }
     }
+  };
+
+  const handleBatchDownload = (): void => {
+    if (selectedDocIds.size === 0) return;
+
+    // Download each selected document
+    Array.from(selectedDocIds).forEach((docId) => {
+      const downloadUrl = documentApi.getDownloadUrl(docId);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = '';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    });
   };
 
   const handleBatchAssignChapter = async (): Promise<void> => {
@@ -809,6 +845,14 @@ function CategoryDashboard(): React.ReactElement {
                 </div>
                 {selectedDocIds.size > 0 && (
                   <div className="flex items-center space-x-2">
+                    <button
+                      onClick={handleBatchDownload}
+                      disabled={batchUpdating}
+                      className="flex items-center space-x-1 px-3 py-1.5 text-sm bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors"
+                    >
+                      <Download className="h-4 w-4" />
+                      <span>Download</span>
+                    </button>
                     <button
                       onClick={() => setShowBatchChapterModal(true)}
                       disabled={batchUpdating}

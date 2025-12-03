@@ -4,6 +4,7 @@ Uses Pydantic Settings for validation and type coercion.
 """
 from typing import Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import model_validator
 
 
 class Settings(BaseSettings):
@@ -16,8 +17,8 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # Database
-    database_url: str = "postgresql+asyncpg://scholarly:localdev123@postgres:5432/scholarly"
+    # Database - REQUIRED: Set via DATABASE_URL environment variable
+    database_url: str = ""
 
     # Environment
     environment: str = "development"
@@ -70,8 +71,8 @@ class Settings(BaseSettings):
     aws_secret_access_key: Optional[str] = None
     aws_region: str = "us-east-1"
 
-    # Security
-    secret_key: str = "dev-secret-key-change-in-production"
+    # Security - REQUIRED: Set via SECRET_KEY environment variable
+    secret_key: str = ""
 
     # Google OAuth
     google_client_id: Optional[str] = None
@@ -85,12 +86,22 @@ class Settings(BaseSettings):
     def model_post_init(self, __context) -> None:
         """Post-init processing to fix database URL format."""
         # Convert Railway's postgresql:// to asyncpg format
-        if self.database_url.startswith("postgresql://") and "+asyncpg" not in self.database_url:
+        if self.database_url and self.database_url.startswith("postgresql://") and "+asyncpg" not in self.database_url:
             object.__setattr__(
                 self,
                 "database_url",
                 self.database_url.replace("postgresql://", "postgresql+asyncpg://")
             )
+
+    @model_validator(mode="after")
+    def validate_production_settings(self) -> "Settings":
+        """Validate that required settings are provided in production."""
+        if self.environment == "production":
+            if not self.database_url:
+                raise ValueError("DATABASE_URL is required in production")
+            if not self.secret_key:
+                raise ValueError("SECRET_KEY is required in production")
+        return self
 
     @property
     def is_development(self) -> bool:

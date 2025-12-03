@@ -17,8 +17,9 @@ engine = create_async_engine(
     echo=settings.debug,  # Log SQL queries in debug mode
     future=True,
     pool_pre_ping=True,  # Verify connections before use
-    pool_size=5,
-    max_overflow=10,
+    pool_size=20,  # Increased from 5 for better concurrency
+    max_overflow=20,  # Increased from 10 for peak load handling
+    pool_recycle=3600,  # Recycle connections after 1 hour for health
 )
 
 # Session factory
