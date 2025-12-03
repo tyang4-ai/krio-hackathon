@@ -125,6 +125,7 @@ This implementation is based on findings from 12 academic papers.
 | Add quality_criteria JSONB to ai_analysis | ✅ |
 | Add bloom_taxonomy_targets to ai_analysis | ✅ |
 | Create migration (011) | ✅ |
+| Update AIAnalysisResult model | ✅ |
 | Enhance AnalysisAgent - explicit quality scoring | 🔲 |
 | Enhance AnalysisAgent - extract best samples as few-shot | 🔲 |
 | Enhance AnalysisAgent - Bloom's taxonomy detection | 🔲 |
