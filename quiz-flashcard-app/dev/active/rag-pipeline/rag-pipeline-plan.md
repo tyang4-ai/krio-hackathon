@@ -95,15 +95,43 @@ This implementation is based on findings from 12 academic papers.
 | EmbeddingService - OpenAI ada-002 | ✅ | `services/embedding_service.py` |
 | Concept map generator | ✅ | `services/chunking_service.py` |
 
-### Phase 2: Enhanced Style Guide 🔲 TODO
+### Phase 2: Enhanced Style Guide 🔄 IN PROGRESS
+
+**Research Foundation:** Based on 6 academic papers on question quality evaluation:
+- Ahmed et al. (BMC Medical Education 2025) - Facility/Discrimination metrics
+- Sultan (PDQI-9 Framework) - 9-item quality rubric
+- Abouzeid et al. (JMIR Medical Education 2025) - Technical item flaws + Bloom's
+- Zelikman et al. (Stanford 2023) - Item calibration with LLMs
+- Nielsen et al. (Diagnostics 2025) - 6-criteria MCQ assessment
+- Cherrez-Ojeda et al. (World Allergy 2025) - DISCERN/JAMA benchmarks
+
+**Quality Scoring Schema (Weighted Dimensions):**
+| Dimension | Weight | Description |
+|-----------|--------|-------------|
+| Clarity | 15% | Clear, unambiguous, grammatically correct |
+| Content Accuracy | 20% | Factually correct and up-to-date |
+| Answer Accuracy | 15% | Correct answer definitively right |
+| Distractor Quality | 15% | Plausible, homogeneous distractors |
+| Cognitive Level | 10% | Bloom's taxonomy targeting |
+| Rationale Quality | 10% | Educational explanation |
+| Single Concept | 10% | Tests one concept only |
+| Cover Test | 5% | Can answer without seeing options |
+
+**Quality Thresholds:** ≥4.0 high (few-shot), 3.0-3.9 medium, <3.0 low
 
 | Task | Status |
 |------|--------|
-| Add few_shot_examples JSONB to ai_analysis | 🔲 |
-| Add validation_rules JSONB to ai_analysis | 🔲 |
-| Add bloom_taxonomy_targets to ai_analysis | 🔲 |
-| Enhance AnalysisAgent - extract best samples | 🔲 |
-| Enhance AnalysisAgent - identify validation rules | 🔲 |
+| Add few_shot_examples JSONB to ai_analysis | ✅ |
+| Add quality_criteria JSONB to ai_analysis | ✅ |
+| Add bloom_taxonomy_targets to ai_analysis | ✅ |
+| Create migration (011) | ✅ |
+| Enhance AnalysisAgent - explicit quality scoring | 🔲 |
+| Enhance AnalysisAgent - extract best samples as few-shot | 🔲 |
+| Enhance AnalysisAgent - Bloom's taxonomy detection | 🔲 |
+| Add input validation for samples | 🔲 |
+| Add retry logic with exponential backoff | 🔲 |
+| Add checkpointing (commit after success) | 🔲 |
+| Update get_analysis_status response | 🔲 |
 
 ### Phase 3: RAG Generation 🔲 TODO
 
