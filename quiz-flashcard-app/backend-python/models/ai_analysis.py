@@ -32,6 +32,20 @@ class AIAnalysisResult(BaseModel):
     style_guide: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     recommendations: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
 
+    # Enhanced style guide fields (Phase 2 - research-backed quality scoring)
+    # few_shot_examples: Best 3-5 questions with quality scores for few-shot learning
+    few_shot_examples: Mapped[Optional[dict]] = mapped_column(
+        JSON, nullable=True, default=dict
+    )
+    # quality_criteria: Weighted scoring schema and analysis summary
+    quality_criteria: Mapped[Optional[dict]] = mapped_column(
+        JSON, nullable=True, default=dict
+    )
+    # bloom_taxonomy_targets: Detected Bloom's taxonomy levels ["remember", "apply", ...]
+    bloom_taxonomy_targets: Mapped[Optional[list]] = mapped_column(
+        JSON, nullable=True, default=list
+    )
+
     # Metadata
     analyzed_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
