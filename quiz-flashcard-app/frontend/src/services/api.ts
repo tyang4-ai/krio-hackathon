@@ -192,6 +192,8 @@ export const documentApi = {
     api.post(`/documents/${documentId}/analyze-chapters`),
   delete: (id: number): Promise<AxiosResponse<{ data: MessageResponse }>> =>
     api.delete(`/documents/${id}`),
+  getDownloadUrl: (documentId: number): string =>
+    `${api.defaults.baseURL}/documents/${documentId}/download`,
   generateQuestions: (categoryId: number, options: GenerateOptions): Promise<AxiosResponse<{ data: QuestionsResponse }>> =>
     api.post(`/categories/${categoryId}/generate-questions`, options),
   generateFlashcards: (categoryId: number, options: GenerateOptions): Promise<AxiosResponse<{ data: FlashcardsResponse }>> =>

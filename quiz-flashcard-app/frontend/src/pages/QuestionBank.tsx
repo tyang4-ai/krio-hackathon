@@ -58,27 +58,41 @@ function QuestionBank(): React.ReactElement {
 
   const loadData = async (): Promise<void> => {
     try {
-      const [catResponse, questionsResponse] = await Promise.all([
+      const results = await Promise.allSettled([
         categoryApi.getById(categoryId!),
         quizApi.getQuestions(categoryId!)
       ]);
-      // Handle both wrapped and unwrapped response formats
-      const catData = catResponse.data.data || catResponse.data;
+
+      // Category is required
+      if (results[0].status === 'rejected') {
+        console.error('Failed to load category:', results[0].reason);
+        const err = results[0].reason as any;
+        if (err?.response?.status === 404) {
+          setError('Category not found');
+        } else {
+          setError('Failed to load data. Please try again.');
+        }
+        return;
+      }
+
+      const catData = results[0].value.data.data || results[0].value.data;
       if (!catData || !catData.id) {
         setError('Category not found');
         return;
       }
       setCategory(catData);
-      const questionsData = questionsResponse.data.data || questionsResponse.data;
-      // Handle both {questions: [...]} and direct array response
-      setQuestions((questionsData as any).questions || questionsData || []);
+
+      // Questions - also required for this page but handle gracefully
+      if (results[1].status === 'fulfilled') {
+        const questionsData = results[1].value.data.data || results[1].value.data;
+        setQuestions((questionsData as any).questions || questionsData || []);
+      } else {
+        console.error('Failed to load questions:', results[1].reason);
+        setQuestions([]);
+      }
     } catch (error: any) {
       console.error('Error loading data:', error);
-      if (error.response?.status === 404) {
-        setError('Category not found');
-      } else {
-        setError('Failed to load data. Please try again.');
-      }
+      setError('Failed to load data. Please try again.');
     } finally {
       setLoading(false);
     }

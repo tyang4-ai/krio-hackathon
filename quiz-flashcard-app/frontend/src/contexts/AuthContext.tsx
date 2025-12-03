@@ -85,8 +85,10 @@ export function AuthProvider({ children }: AuthProviderProps): React.ReactElemen
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
     setUser(null);
-    // Call logout endpoint (fire and forget)
-    authApi.logout().catch(() => {});
+    // Call logout endpoint (fire and forget, but log errors for debugging)
+    authApi.logout().catch((err) => {
+      console.error('Logout API error (non-critical):', err);
+    });
   }, []);
 
   const getAccessToken = useCallback((): string | null => {

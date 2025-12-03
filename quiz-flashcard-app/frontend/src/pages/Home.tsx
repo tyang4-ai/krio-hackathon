@@ -130,7 +130,10 @@ function Home(): React.ReactElement {
     try {
       const [catResponse, analyticsResponse] = await Promise.all([
         categoryApi.getAll(),
-        analyticsApi.getDashboard().catch(() => null), // Don't fail if analytics unavailable
+        analyticsApi.getDashboard().catch((err) => {
+          console.error('Analytics unavailable:', err);
+          return null;
+        }),
       ]);
 
       const catData = catResponse.data.data || catResponse.data;

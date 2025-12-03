@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import get_db
@@ -14,6 +15,7 @@ from schemas.document import (
     ChapterInfo,
     DocumentListResponse,
     DocumentResponse,
+    DocumentStatusResponse,
     DocumentUploadResponse,
     GenerateFlashcardsRequest,
 )
@@ -79,19 +81,27 @@ async def upload_document(
     category_id: int,
     file: UploadFile = File(...),
     chapter: Optional[str] = Form(None),
+    auto_index: Optional[bool] = Form(True),
     db: AsyncSession = Depends(get_db),
 ) -> DocumentUploadResponse:
     """
     Upload a document to a category.
 
-    Supported formats: PDF, DOCX, DOC, TXT, MD
+    Supported formats: PDF, DOCX, DOC, TXT, MD, PPTX
     Max size: 50MB
 
     Args:
         chapter: Optional chapter/topic name to associate with this document.
                  When generating content, you can filter by chapter to only
                  use documents from that specific chapter.
+        auto_index: If True (default), automatically run the RAG indexing pipeline:
+                    text extraction → semantic chunking → embedding generation.
+                    This prepares the document for high-quality RAG-based generation.
+                    Set to False to skip indexing and only save the file.
     """
+    import structlog
+    logger = structlog.get_logger()
+
     # Verify category exists
     category = await category_service.get_category_by_id(db, category_id)
     if not category:
@@ -128,12 +138,56 @@ async def upload_document(
         chapter=chapter,
     )
 
-    # Process document to extract text
-    try:
-        await document_service.process_document(db, document.id)
-    except Exception as e:
-        # Document saved but text extraction failed - log but don't fail
-        pass
+    # Auto-index: Run full RAG pipeline (extract → chunk → embed)
+    indexing_result = None
+    if auto_index:
+        try:
+            logger.info(
+                "auto_indexing_started",
+                document_id=document.id,
+                original_name=original_name,
+            )
+            indexing_result = await document_service.process_and_index_document(
+                db, document.id
+            )
+            await db.commit()
+
+            if indexing_result["success"]:
+                logger.info(
+                    "auto_indexing_complete",
+                    document_id=document.id,
+                    chunks=indexing_result.get("chunking", {}).get("total_chunks"),
+                    embedded=indexing_result.get("embedding", {}).get("chunks_embedded"),
+                )
+            else:
+                logger.warning(
+                    "auto_indexing_partial",
+                    document_id=document.id,
+                    error=indexing_result.get("error"),
+                )
+        except Exception as e:
+            # Document saved but indexing failed - log but don't fail the upload
+            logger.error(
+                "auto_indexing_failed",
+                document_id=document.id,
+                error=str(e),
+            )
+            indexing_result = {"success": False, "error": str(e)}
+    else:
+        # Just extract text (legacy behavior)
+        try:
+            await document_service.process_document(db, document.id)
+            await db.commit()
+        except Exception as e:
+            # Document saved but text extraction failed - log but don't fail
+            logger.warning(
+                "text_extraction_failed",
+                document_id=document.id,
+                error=str(e),
+            )
+
+    # Refresh document to get updated status
+    await db.refresh(document)
 
     return DocumentUploadResponse(
         id=document.id,
@@ -163,6 +217,109 @@ async def delete_document(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Document with ID {document_id} not found",
         )
+
+
+@router.get("/api/documents/{document_id}/download")
+async def download_document(
+    document_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Download a document file.
+    """
+    document = await document_service.get_document_by_id(db, document_id)
+
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Document with ID {document_id} not found",
+        )
+
+    # Check if file exists on disk
+    file_path = Path(document.storage_path)
+    if file_path.exists():
+        # Serve the original file
+        media_type_map = {
+            ".pdf": "application/pdf",
+            ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            ".doc": "application/msword",
+            ".txt": "text/plain",
+            ".md": "text/markdown",
+            ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            ".ppt": "application/vnd.ms-powerpoint",
+        }
+        media_type = media_type_map.get(document.file_type, "application/octet-stream")
+        return FileResponse(
+            path=file_path,
+            filename=document.original_name,
+            media_type=media_type,
+        )
+
+    # File not on disk - fall back to extracted text content
+    if document.content_text:
+        from fastapi.responses import Response
+        # Generate filename with .txt extension since we're serving text content
+        base_name = Path(document.original_name).stem
+        text_filename = f"{base_name}_extracted.txt"
+        return Response(
+            content=document.content_text,
+            media_type="text/plain; charset=utf-8",
+            headers={
+                "Content-Disposition": f'attachment; filename="{text_filename}"'
+            },
+        )
+
+    # No file and no extracted content
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Document file not available. The original file was not preserved and no text content was extracted.",
+    )
+
+
+@router.get(
+    "/api/documents/{document_id}/status",
+    response_model=DocumentStatusResponse,
+)
+async def get_document_status(
+    document_id: int,
+    db: AsyncSession = Depends(get_db),
+) -> DocumentStatusResponse:
+    """
+    Get document status including RAG indexing progress.
+
+    Returns document metadata plus:
+    - chunking_status: pending | processing | complete | failed
+    - total_chunks: Number of semantic chunks created
+    - total_tokens: Total tokens across all chunks
+    - embedding_provider: Which embedding service was used
+    - embedding_dimension: Dimension of embeddings (e.g., 1024)
+
+    Use this endpoint to poll for indexing completion after upload.
+    """
+    document = await document_service.get_document_by_id(db, document_id)
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Document with ID {document_id} not found",
+        )
+
+    return DocumentStatusResponse(
+        id=document.id,
+        category_id=document.category_id,
+        filename=document.filename,
+        original_name=document.original_name,
+        file_type=document.file_type,
+        file_size=document.file_size,
+        chapter=document.chapter,
+        processed=document.processed,
+        chunking_status=document.chunking_status,
+        total_chunks=document.total_chunks,
+        total_tokens=document.total_tokens,
+        embedding_provider=document.embedding_provider,
+        embedding_dimension=document.embedding_dimension,
+        created_at=document.created_at,
+        updated_at=document.updated_at,
+    )
 
 
 @router.post("/api/categories/{category_id}/generate-flashcards")

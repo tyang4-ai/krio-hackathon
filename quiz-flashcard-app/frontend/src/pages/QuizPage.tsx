@@ -60,19 +60,44 @@ function QuizPage(): React.ReactElement {
     if (!categoryId) return;
 
     try {
-      const [catResponse, statsResponse, historyResponse, chaptersResponse] = await Promise.all([
+      const results = await Promise.allSettled([
         categoryApi.getById(Number(categoryId)),
         quizApi.getStats(Number(categoryId)),
         quizApi.getHistory(Number(categoryId)),
         quizApi.getChapters(Number(categoryId))
       ]);
 
-      setCategory(catResponse.data.data || catResponse.data);
-      setStats(statsResponse.data.data || statsResponse.data);
-      const historyData = historyResponse.data.data || historyResponse.data;
-      setHistory((historyData as any).sessions || historyData || []);
-      const chaptersData = chaptersResponse.data.data || chaptersResponse.data;
-      setChapters((chaptersData as any).chapters || chaptersData || []);
+      // Category is required
+      if (results[0].status === 'rejected') {
+        console.error('Failed to load category:', results[0].reason);
+        throw results[0].reason;
+      }
+      setCategory(results[0].value.data.data || results[0].value.data);
+
+      // Stats - optional
+      if (results[1].status === 'fulfilled') {
+        setStats(results[1].value.data.data || results[1].value.data);
+      } else {
+        console.error('Failed to load stats:', results[1].reason);
+      }
+
+      // History - optional
+      if (results[2].status === 'fulfilled') {
+        const historyData = results[2].value.data.data || results[2].value.data;
+        setHistory((historyData as any).sessions || historyData || []);
+      } else {
+        console.error('Failed to load history:', results[2].reason);
+        setHistory([]);
+      }
+
+      // Chapters - optional
+      if (results[3].status === 'fulfilled') {
+        const chaptersData = results[3].value.data.data || results[3].value.data;
+        setChapters((chaptersData as any).chapters || chaptersData || []);
+      } else {
+        console.error('Failed to load chapters:', results[3].reason);
+        setChapters([]);
+      }
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {

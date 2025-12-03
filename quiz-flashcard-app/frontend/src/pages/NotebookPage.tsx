@@ -99,21 +99,40 @@ function NotebookPage(): React.ReactElement {
 
   const loadData = async (): Promise<void> => {
     try {
-      const [catResponse, statsResponse, missedResponse] = await Promise.all([
+      const results = await Promise.allSettled([
         categoryApi.getById(categoryId!),
         notebookApi.getStats(categoryId!),
         notebookApi.getMostMissed(categoryId!, 5)
       ]);
-      // Handle both wrapped and unwrapped response formats
-      const catData = catResponse.data.data || catResponse.data;
+
+      // Category is required
+      if (results[0].status === 'rejected') {
+        console.error('Failed to load category:', results[0].reason);
+        setError('Category not found');
+        return;
+      }
+      const catData = results[0].value.data.data || results[0].value.data;
       if (!catData || !catData.id) {
         setError('Category not found');
         return;
       }
       setCategory(catData);
-      setStats(statsResponse.data.data || statsResponse.data);
-      const missedData = missedResponse.data.data || missedResponse.data;
-      setMostMissed((missedData as any).questions || missedData || []);
+
+      // Stats - optional
+      if (results[1].status === 'fulfilled') {
+        setStats(results[1].value.data.data || results[1].value.data);
+      } else {
+        console.error('Failed to load stats:', results[1].reason);
+      }
+
+      // Most missed - optional
+      if (results[2].status === 'fulfilled') {
+        const missedData = results[2].value.data.data || results[2].value.data;
+        setMostMissed((missedData as any).questions || missedData || []);
+      } else {
+        console.error('Failed to load most missed:', results[2].reason);
+        setMostMissed([]);
+      }
 
       // Load entries with filter
       const options: { reviewed?: boolean } = {};

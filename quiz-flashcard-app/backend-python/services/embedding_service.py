@@ -8,6 +8,7 @@ Supports multiple embedding providers:
 
 Embeddings are stored in PostgreSQL using pgvector extension.
 """
+import time
 from typing import List, Optional
 
 import structlog
@@ -18,6 +19,40 @@ from models.document_chunk import DocumentChunk
 from config.settings import settings
 
 logger = structlog.get_logger()
+
+
+def validate_and_format_embedding(embedding: List[float]) -> str:
+    """
+    Safely format embedding for pgvector with defensive validation.
+
+    This function validates that all values are numeric and within reasonable
+    bounds before formatting, preventing any potential SQL injection even though
+    embeddings typically come from trusted API sources.
+
+    Args:
+        embedding: List of floats from embedding API
+
+    Returns:
+        Formatted string like "[0.12345678,0.23456789,...]" safe for SQL
+
+    Raises:
+        ValueError: If embedding is empty, contains non-numeric values,
+                   or has values outside reasonable range
+    """
+    if not embedding:
+        raise ValueError("Empty embedding")
+
+    if not all(isinstance(x, (int, float)) for x in embedding):
+        raise ValueError("Embedding must contain only numbers")
+
+    # Sanity check - embeddings should be normalized values, typically -1 to 1
+    # but we allow a wider range for safety
+    if not all(-1e10 < x < 1e10 for x in embedding):
+        raise ValueError("Embedding values out of reasonable range")
+
+    # Format with explicit float conversion and fixed precision
+    # This ensures no string injection is possible
+    return "[" + ",".join(f"{float(x):.8f}" for x in embedding) + "]"
 
 # Embedding model configurations
 EMBEDDING_CONFIGS = {
@@ -38,7 +73,7 @@ EMBEDDING_CONFIGS = {
     },
 }
 
-BATCH_SIZE = 100  # Process embeddings in batches
+BATCH_SIZE = 250  # Process embeddings in batches (optimized from 100)
 
 
 class EmbeddingService:
@@ -163,8 +198,13 @@ class EmbeddingService:
         Returns:
             List of embeddings
         """
+        start_time = time.perf_counter()
         max_chars = self.config["max_chars"]
         truncated_texts = [t[:max_chars] if len(t) > max_chars else t for t in texts]
+
+        # Estimate tokens for observability (rough estimate: ~1.3 tokens per word)
+        total_chars = sum(len(t) for t in truncated_texts)
+        estimated_tokens = int(total_chars / 4)  # Rough char-to-token ratio
 
         logger.debug(
             "generating_batch_embeddings",
@@ -180,12 +220,35 @@ class EmbeddingService:
                 model=self.model,
                 input_type="document",
             )
+            duration_ms = (time.perf_counter() - start_time) * 1000
+
+            # Observability: Log batch embedding stats
+            logger.info(
+                "embedding_batch_complete",
+                provider=self.provider,
+                batch_size=len(texts),
+                duration_ms=round(duration_ms, 2),
+                tokens_processed=estimated_tokens,
+                avg_ms_per_text=round(duration_ms / len(texts), 2) if texts else 0,
+            )
             return result.embeddings
 
         # OpenAI-compatible APIs (OpenAI, Moonshot)
         response = await self.client.embeddings.create(
             model=self.model,
             input=truncated_texts,
+        )
+
+        duration_ms = (time.perf_counter() - start_time) * 1000
+
+        # Observability: Log batch embedding stats
+        logger.info(
+            "embedding_batch_complete",
+            provider=self.provider,
+            batch_size=len(texts),
+            duration_ms=round(duration_ms, 2),
+            tokens_processed=estimated_tokens,
+            avg_ms_per_text=round(duration_ms / len(texts), 2) if texts else 0,
         )
 
         # Sort by index to ensure order matches input
@@ -238,19 +301,29 @@ class EmbeddingService:
             try:
                 embeddings = await self.generate_embeddings_batch(texts)
 
-                # Store embeddings using raw SQL (pgvector)
+                # Store embeddings using batch UPDATE with CASE expression
+                # This reduces N database round trips to 1
+                updates = []
                 for chunk, embedding in zip(batch, embeddings):
-                    embedding_str = "[" + ",".join(str(x) for x in embedding) + "]"
-                    # Use string formatting for the vector cast since asyncpg
-                    # doesn't support ::vector with parameterized queries
+                    embedding_str = validate_and_format_embedding(embedding)
+                    updates.append((chunk.id, embedding_str))
+
+                if updates:
+                    # Build CASE expression for batch update
+                    case_clauses = " ".join([
+                        f"WHEN id = {chunk_id} THEN '{emb_str}'::vector"
+                        for chunk_id, emb_str in updates
+                    ])
+                    ids = [chunk_id for chunk_id, _ in updates]
+
                     await db.execute(
                         text(f"""
                             UPDATE document_chunks
-                            SET embedding = '{embedding_str}'::vector,
+                            SET embedding = CASE {case_clauses} END,
                                 embedding_status = 'complete'
-                            WHERE id = :chunk_id
+                            WHERE id = ANY(:ids)
                         """),
-                        {"chunk_id": chunk.id},
+                        {"ids": ids},
                     )
 
                 total_embedded += len(batch)
@@ -326,7 +399,7 @@ class EmbeddingService:
         """
         # Generate embedding for query
         query_embedding = await self.generate_embedding(query)
-        embedding_str = "[" + ",".join(str(x) for x in query_embedding) + "]"
+        embedding_str = validate_and_format_embedding(query_embedding)
 
         # Build query with optional document filter
         doc_filter = ""
