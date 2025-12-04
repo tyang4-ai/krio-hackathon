@@ -10,6 +10,16 @@
 
 **API Keys**: Provided by user (stored in environment variables, not in code)
 
+#### Model Configuration (2025-12-04)
+| Provider | Model | Use Case |
+|----------|-------|----------|
+| **Anthropic** | `claude-sonnet-4-20250514` | Quality-critical tasks (questions, grading, organization) |
+| **Groq** | `llama-3.1-8b-instant` | Simple flashcards |
+| **Groq** | `llama-3.3-70b-versatile` | Short explanations |
+| **OpenAI** | `gpt-4o` | Handwriting OCR (vision) |
+
+**Note**: Upgraded from Claude 3.5 Haiku to Claude Sonnet 4 for improved quality on complex tasks.
+
 #### Backup Created (2025-12-04)
 | Action | Status |
 |--------|--------|
