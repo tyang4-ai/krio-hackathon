@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
-from sqlalchemy.dialects.postgresql import JSON
+from sqlalchemy.dialects.postgresql import JSON, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import BaseModel
@@ -32,18 +32,18 @@ class AIAnalysisResult(BaseModel):
     style_guide: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     recommendations: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
 
-    # Enhanced style guide fields (Phase 2 - research-backed quality scoring)
-    # few_shot_examples: Best 3-5 questions with quality scores for few-shot learning
+    # Enhanced style guide fields (Phase 2 - Migration 011)
+    # Best sample questions with quality scores for few-shot learning
     few_shot_examples: Mapped[Optional[dict]] = mapped_column(
-        JSON, nullable=True, default=dict
+        JSONB, nullable=True, server_default='{}'
     )
-    # quality_criteria: Weighted scoring schema and analysis summary
+    # Weighted scoring schema and analysis summary
     quality_criteria: Mapped[Optional[dict]] = mapped_column(
-        JSON, nullable=True, default=dict
+        JSONB, nullable=True, server_default='{}'
     )
-    # bloom_taxonomy_targets: Detected Bloom's taxonomy levels ["remember", "apply", ...]
+    # Detected Bloom's taxonomy levels
     bloom_taxonomy_targets: Mapped[Optional[list]] = mapped_column(
-        JSON, nullable=True, default=list
+        JSONB, nullable=True, server_default='[]'
     )
 
     # Metadata

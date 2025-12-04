@@ -84,6 +84,9 @@ class GenerateQuestionsRequest(BaseModel):
     question_type: str = Field("multiple_choice", alias="contentType", description="Question type")
     custom_directions: str = Field("", alias="customDirections", description="Additional instructions")
     chapter: str = Field("", description="Chapter/topic to tag questions with")
+    # Phase 3: RAG and validation options
+    use_rag: bool = Field(False, alias="useRag", description="Use RAG for semantic context retrieval")
+    validate: bool = Field(False, description="Validate and score generated questions")
 
     model_config = {"populate_by_name": True}
 
@@ -98,6 +101,10 @@ class GeneratedQuestion(BaseModel):
     correct_answer: str
     explanation: str = ""
     tags: List[str] = []
+    # Phase 3: Quality metadata
+    quality_score: Optional[float] = None
+    bloom_level: Optional[str] = None
+    quality_scores: Optional[dict] = None
 
 
 class GenerateQuestionsResponse(BaseModel):
@@ -105,6 +112,8 @@ class GenerateQuestionsResponse(BaseModel):
     success: bool
     questions: List[GeneratedQuestion] = []
     error: Optional[str] = None
+    # Phase 3: Validation info
+    validation: Optional[dict] = None
 
 
 class GenerateFlashcardsRequest(BaseModel):
@@ -345,6 +354,8 @@ async def generate_category_questions(
             count=gen_request.count,
             difficulty=gen_request.difficulty,
             question_type=gen_request.question_type,
+            use_rag=gen_request.use_rag,
+            validate=gen_request.validate,
         )
 
         # Determine content source
@@ -359,6 +370,9 @@ async def generate_category_questions(
                 question_type=gen_request.question_type,
                 custom_directions=gen_request.custom_directions,
                 chapter=gen_request.chapter,
+                use_rag=gen_request.use_rag,
+                validate=gen_request.validate,
+                document_ids=gen_request.document_ids,
             )
         elif gen_request.document_ids:
             # Use specific documents
@@ -371,6 +385,8 @@ async def generate_category_questions(
                 question_type=gen_request.question_type,
                 custom_directions=gen_request.custom_directions,
                 chapter=gen_request.chapter,
+                use_rag=gen_request.use_rag,
+                validate=gen_request.validate,
             )
         else:
             # Use all documents in category
@@ -383,6 +399,8 @@ async def generate_category_questions(
                 question_type=gen_request.question_type,
                 custom_directions=gen_request.custom_directions,
                 chapter=gen_request.chapter,
+                use_rag=gen_request.use_rag,
+                validate=gen_request.validate,
             )
 
         await db.commit()
@@ -406,6 +424,10 @@ async def generate_category_questions(
                 correct_answer=q.correct_answer,
                 explanation=q.explanation or "",
                 tags=q.tags or [],
+                # Phase 3: Quality metadata
+                quality_score=q.quality_score,
+                bloom_level=q.bloom_level,
+                quality_scores=q.quality_scores,
             ))
 
         # If no stored questions, use raw questions
@@ -419,15 +441,25 @@ async def generate_category_questions(
                     correct_answer=q["correct_answer"],
                     explanation=q.get("explanation", ""),
                     tags=q.get("tags", []),
+                    # Phase 3: Quality metadata
+                    quality_score=q.get("quality_score"),
+                    bloom_level=q.get("bloom_level"),
+                    quality_scores=q.get("quality_scores"),
                 ))
 
         logger.info(
             "questions_generated",
             category_id=category_id,
             count=len(questions),
+            used_rag=gen_request.use_rag,
+            validated=gen_request.validate,
         )
 
-        return GenerateQuestionsResponse(success=True, questions=questions)
+        return GenerateQuestionsResponse(
+            success=True,
+            questions=questions,
+            validation=result.get("validation"),
+        )
 
     except Exception as e:
         logger.error(

@@ -4,7 +4,7 @@ Question model for quiz questions.
 from typing import Optional
 
 from sqlalchemy import Float, ForeignKey, Integer, String, Text
-from sqlalchemy.dialects.postgresql import JSON
+from sqlalchemy.dialects.postgresql import JSON, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import BaseModel
@@ -42,6 +42,13 @@ class Question(BaseModel):
     # Metadata
     tags: Mapped[Optional[list]] = mapped_column(JSON, nullable=True, default=list)
     rating: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+
+    # Quality scoring (Phase 3 - Migration 015)
+    quality_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    bloom_level: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    quality_scores: Mapped[Optional[dict]] = mapped_column(
+        JSONB, nullable=True, server_default='{}'
+    )
 
     # Relationships
     category = relationship("Category", backref="questions")

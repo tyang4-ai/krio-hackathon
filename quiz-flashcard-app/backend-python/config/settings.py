@@ -4,7 +4,6 @@ Uses Pydantic Settings for validation and type coercion.
 """
 from typing import Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import model_validator
 
 
 class Settings(BaseSettings):
@@ -17,8 +16,8 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # Database - REQUIRED: Set via DATABASE_URL environment variable
-    database_url: str = ""
+    # Database
+    database_url: str = "postgresql+asyncpg://scholarly:localdev123@postgres:5432/scholarly"
 
     # Environment
     environment: str = "development"
@@ -53,26 +52,25 @@ class Settings(BaseSettings):
     vision_model: str = "gpt-4o"
     openai_api_key: Optional[str] = None
 
-    # Embedding Provider (for vector embeddings)
-    # Options: "openai", "moonshot", "voyage"
-    embedding_provider: str = "openai"
-    embedding_model: str = "text-embedding-ada-002"  # OpenAI default
-    moonshot_embedding_model: str = "moonshot-v1-embedding"  # Kimi embedding model
-    voyage_api_key: Optional[str] = None
-    voyage_embedding_model: str = "voyage-3"  # Voyage AI embedding model (1024 dims)
-
     # Optional AI Providers
     groq_api_key: Optional[str] = None
     together_api_key: Optional[str] = None
     huggingface_api_key: Optional[str] = None
+
+    # Embedding Provider Settings (Phase 1 Chunking & Embeddings)
+    embedding_provider: str = "openai"  # Options: openai, moonshot, voyage
+    embedding_model: str = "text-embedding-ada-002"  # OpenAI default
+    moonshot_embedding_model: str = "moonshot-v1-embedding"
+    voyage_api_key: Optional[str] = None
+    voyage_embedding_model: str = "voyage-3"
 
     # AWS (required for Bedrock)
     aws_access_key_id: Optional[str] = None
     aws_secret_access_key: Optional[str] = None
     aws_region: str = "us-east-1"
 
-    # Security - REQUIRED: Set via SECRET_KEY environment variable
-    secret_key: str = ""
+    # Security
+    secret_key: str = "dev-secret-key-change-in-production"
 
     # Google OAuth
     google_client_id: Optional[str] = None
@@ -86,22 +84,12 @@ class Settings(BaseSettings):
     def model_post_init(self, __context) -> None:
         """Post-init processing to fix database URL format."""
         # Convert Railway's postgresql:// to asyncpg format
-        if self.database_url and self.database_url.startswith("postgresql://") and "+asyncpg" not in self.database_url:
+        if self.database_url.startswith("postgresql://") and "+asyncpg" not in self.database_url:
             object.__setattr__(
                 self,
                 "database_url",
                 self.database_url.replace("postgresql://", "postgresql+asyncpg://")
             )
-
-    @model_validator(mode="after")
-    def validate_production_settings(self) -> "Settings":
-        """Validate that required settings are provided in production."""
-        if self.environment == "production":
-            if not self.database_url:
-                raise ValueError("DATABASE_URL is required in production")
-            if not self.secret_key:
-                raise ValueError("SECRET_KEY is required in production")
-        return self
 
     @property
     def is_development(self) -> bool:

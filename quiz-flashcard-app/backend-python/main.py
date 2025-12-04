@@ -155,9 +155,8 @@ if settings.is_production:
     cors_origins_list.extend([
         "https://krio-hackathon-production.up.railway.app",
         "https://frontend-production-c836.up.railway.app",
-        # AWS S3 frontend (production and test)
+        # AWS S3 frontend
         "http://studyforge-frontend.s3-website-us-west-1.amazonaws.com",
-        "http://studyforge-frontend-test.s3-website-us-west-1.amazonaws.com",
     ])
     # Remove duplicates
     cors_origins_list = list(set(cors_origins_list))

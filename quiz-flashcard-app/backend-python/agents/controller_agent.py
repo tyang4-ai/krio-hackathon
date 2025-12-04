@@ -308,6 +308,8 @@ async def generate_from_documents(
     question_type: str = "multiple_choice",
     custom_directions: str = "",
     chapter: str = "",
+    use_rag: bool = False,
+    validate: bool = False,
 ) -> Dict[str, Any]:
     """
     Generate questions from category documents.
@@ -321,6 +323,8 @@ async def generate_from_documents(
         question_type: Question type
         custom_directions: Additional instructions
         chapter: Optional chapter/topic to tag questions with
+        use_rag: Whether to use RAG for context retrieval (Phase 3)
+        validate: Whether to validate and score questions (Phase 3)
 
     Returns:
         Generation result
@@ -368,6 +372,9 @@ async def generate_from_documents(
         custom_directions=custom_directions,
         document_id=documents[0].id if len(documents) == 1 else None,
         chapter=chapter,
+        use_rag=use_rag,
+        validate=validate,
+        document_ids=document_ids or [d.id for d in documents],
     )
 
 

@@ -6,6 +6,8 @@ Responsibilities:
 - Apply style guides from Analysis Agent
 - Support all question types (multiple_choice, true_false, written_answer, fill_in_blank)
 - Generate flashcards from content
+- Use RAG for semantic context retrieval (Phase 3)
+- Validate and score generated questions (Phase 3)
 """
 import json
 import re
@@ -17,6 +19,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import AIAnalysisResult, AgentMessage as AgentMessageModel, Question, Flashcard
 from services.ai_service import ai_service
+from services.rag_service import rag_service
+from services.question_validator import question_validator
 
 from .base_agent import AgentRole, BaseAgent
 
@@ -580,39 +584,95 @@ async def generate_questions(
     custom_directions: str = "",
     document_id: Optional[int] = None,
     chapter: str = "",
+    use_rag: bool = False,
+    validate: bool = False,
+    document_ids: Optional[List[int]] = None,
 ) -> Dict[str, Any]:
     """
     Generate questions for a category.
 
-    Uses analysis patterns if available.
+    Uses analysis patterns if available. Optionally uses RAG for
+    context retrieval and validates generated questions.
 
     Args:
         db: Database session
         category_id: Category to generate for
-        content: Source content
+        content: Source content (used as query for RAG or directly)
         count: Number of questions
         difficulty: Difficulty level
         question_type: Type of questions
         custom_directions: User instructions
         document_id: Optional document to link questions to
         chapter: Optional chapter/topic to tag questions with
+        use_rag: Whether to use RAG for context retrieval (Phase 3)
+        validate: Whether to validate and score questions (Phase 3)
+        document_ids: Optional list of document IDs to filter RAG search
 
     Returns:
         Generation result with questions
     """
     # Get analysis patterns if available
-    result = await db.execute(
+    analysis_result = await db.execute(
         select(AIAnalysisResult).where(AIAnalysisResult.category_id == category_id)
     )
-    analysis = result.scalar_one_or_none()
+    analysis = analysis_result.scalar_one_or_none()
 
     style_guide = analysis.style_guide if analysis else None
+    few_shot_examples = analysis.few_shot_examples if analysis else None
+    quality_criteria = analysis.quality_criteria if analysis else None
+    bloom_targets = analysis.bloom_taxonomy_targets if analysis else None
+
+    # Phase 3: Use RAG to get relevant context
+    rag_context = ""
+    if use_rag:
+        logger.info(
+            "rag_retrieval_starting",
+            category_id=category_id,
+            query_length=len(content),
+            document_ids=document_ids,
+        )
+
+        # Use content/chapter as query for semantic search
+        query = chapter if chapter else content[:500]  # Use chapter or first 500 chars as query
+
+        try:
+            chunks = await rag_service.retrieve_context(
+                db=db,
+                category_id=category_id,
+                query=query,
+                document_ids=document_ids or ([document_id] if document_id else None),
+                top_k=15,
+                use_cache=True,
+            )
+
+            if chunks:
+                # Build comprehensive prompt context
+                rag_context = rag_service.build_generation_prompt_context(
+                    chunks=chunks,
+                    few_shot_examples=few_shot_examples,
+                    quality_criteria=quality_criteria,
+                    bloom_targets=bloom_targets,
+                )
+                logger.info(
+                    "rag_context_built",
+                    num_chunks=len(chunks),
+                    context_length=len(rag_context),
+                )
+        except Exception as e:
+            logger.warning("rag_retrieval_failed", error=str(e))
+            # Fall back to using provided content
+
+    # Determine final content for generation
+    generation_content = rag_context if rag_context else content
+
+    # Generate more questions if validation is enabled (to account for filtering)
+    generation_count = int(count * 1.5) if validate else count
 
     # Generate questions
     agent = GenerationAgent()
     result = await agent.process({
-        "content": content,
-        "count": count,
+        "content": generation_content,
+        "count": generation_count,
         "difficulty": difficulty,
         "question_type": question_type,
         "style_guide": style_guide,
@@ -621,8 +681,43 @@ async def generate_questions(
     })
 
     if result["success"]:
-        # Store generated questions
         questions = result["questions"]
+
+        # Phase 3: Validate and score questions
+        if validate and questions:
+            logger.info("validation_starting", count=len(questions))
+
+            try:
+                passed, failed = await question_validator.validate_questions(
+                    questions=questions,
+                    quality_criteria=quality_criteria,
+                    source_content=generation_content[:2000],  # First 2000 chars for accuracy check
+                )
+
+                # Take only the requested count from passed questions
+                questions = passed[:count]
+
+                # Get quality report
+                quality_report = question_validator.get_quality_report(questions)
+
+                result["validation"] = {
+                    "passed": len(passed),
+                    "failed": len(failed),
+                    "quality_report": quality_report,
+                }
+
+                logger.info(
+                    "validation_complete",
+                    passed=len(passed),
+                    failed=len(failed),
+                    avg_score=quality_report.get("average_score", 0),
+                )
+            except Exception as e:
+                logger.warning("validation_failed", error=str(e))
+                # Continue without validation scores
+                questions = questions[:count]
+
+        # Store generated questions
         stored_questions = []
 
         for q_data in questions:
@@ -636,6 +731,10 @@ async def generate_questions(
                 correct_answer=q_data["correct_answer"],
                 explanation=q_data.get("explanation", ""),
                 tags=q_data.get("tags", []),
+                # Phase 3: Store quality metadata
+                quality_score=q_data.get("quality_score"),
+                bloom_level=q_data.get("bloom_level"),
+                quality_scores=q_data.get("quality_scores"),
             )
             db.add(question)
             stored_questions.append(question)
@@ -650,6 +749,8 @@ async def generate_questions(
                 "count": len(questions),
                 "difficulty": difficulty,
                 "question_type": question_type,
+                "used_rag": use_rag,
+                "validated": validate,
             },
             status="processed",
         )
@@ -659,9 +760,12 @@ async def generate_questions(
             "questions_generated_and_stored",
             category_id=category_id,
             count=len(stored_questions),
+            used_rag=use_rag,
+            validated=validate,
         )
 
         result["stored_questions"] = stored_questions
+        result["questions"] = questions  # Update with validated questions
 
     return result
 
