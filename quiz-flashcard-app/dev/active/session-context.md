@@ -2,6 +2,60 @@
 
 ## Latest Session Summary
 
+### Phase 4: SLM Integration Setup (2025-12-04) - IN PROGRESS
+
+**Goal**: Cost optimization by routing simple tasks to Small Language Models (SLMs) while keeping quality-critical tasks on Claude.
+
+**Provider**: Groq (Llama 3.1 8B/70B) - 10-50x cheaper than Claude for simple tasks
+
+**API Keys**: Provided by user (stored in environment variables, not in code)
+
+#### Backup Created (2025-12-04)
+| Action | Status |
+|--------|--------|
+| Commit RAG Phase 3 to main | ✅ c18f59a |
+| Push to GitHub | ✅ Complete |
+| Create `backend-python-slm-copy` folder | ✅ Complete |
+| Copy backend files | ✅ Complete |
+
+**SLM Copy Folder Structure:**
+```
+quiz-flashcard-app/backend-python-slm-copy/
+├── agents/          (will be modified for SLM routing)
+├── alembic/
+├── config/          (will add SLM settings)
+├── models/
+├── routers/
+├── schemas/
+├── services/        (will add task_router.py)
+├── main.py
+└── requirements.txt (will add groq dependency)
+```
+
+#### Task Routing Strategy (Quality-Safe)
+**Only 2 tasks can use SLMs** - everything else stays on Claude:
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| ALL question generation | Claude | Quality-critical |
+| Chapter boundary detection | Claude | Semantic understanding needed |
+| Document content organization | Claude | Affects downstream RAG quality |
+| Quality scoring/validation | Claude | 8-dimension judgment |
+| Written answer grading | Claude | Partial credit logic |
+| MCQ/T-F grading | **Hardcoded** | Already uses `_check_simple_answer()` |
+| Simple flashcards (vocabulary) | SLM 8B | Low-risk, structured |
+| Short explanations | SLM 70B | Basic tutoring |
+
+#### SLM Implementation Location
+All SLM changes will be made in: `quiz-flashcard-app/backend-python-slm-copy/`
+- This is a COPY of `backend-python/`
+- Main `backend-python/` remains unchanged until SLM is tested
+
+#### Plan File
+`C:\Users\22317\.claude\plans\recursive-cooking-wirth.md`
+
+---
+
 ### Horror Mode UI Skin Implementation (2025-12-04) - IN PROGRESS
 
 **Project**: Complete frontend redesign with Halloween/horror theme in separate folder.
