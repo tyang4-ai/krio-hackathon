@@ -21,6 +21,7 @@ import {
   Plus,
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
+import { ScrollReveal, StaggerReveal } from '../components/ScrollReveal';
 
 // Data
 const features = [
@@ -437,7 +438,7 @@ function LandingPage(): React.ReactElement {
       >
         <div className="max-w-7xl mx-auto relative z-10">
           {/* Section Header */}
-          <div className="mb-16 lg:mb-20">
+          <ScrollReveal animation="fade-up" className="mb-16 lg:mb-20">
             <p className={`swiss-section-number mb-2 ${
               isDarkMode ? 'text-dark-primary-10' : 'text-accent-500'
             }`}>
@@ -450,39 +451,44 @@ function LandingPage(): React.ReactElement {
               <br />
               KNOWLEDGE
             </h2>
-          </div>
+          </ScrollReveal>
 
           {/* Feature Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
             {features.map((feature, index) => (
-              <div
+              <ScrollReveal
                 key={index}
-                className={`p-8 border-2 group transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 ${
-                  isDarkMode
-                    ? 'border-gray-700 hover:bg-dark-primary-10 hover:border-dark-primary-10'
-                    : 'border-gray-300 hover:bg-accent-500 hover:border-accent-500'
-                }`}
+                animation={index % 2 === 0 ? 'fade-right' : 'fade-left'}
+                delay={(index % 2) * 200 as 0 | 200}
               >
-                <feature.icon className={`h-12 w-12 mb-6 transition-all duration-300 group-hover:rotate-12 group-hover:scale-110 ${
-                  isDarkMode
-                    ? 'text-dark-primary-10 group-hover:text-dark-surface-10'
-                    : 'text-accent-500 group-hover:text-white'
-                }`} />
-                <h3 className={`text-2xl font-black uppercase tracking-tight mb-4 transition-colors duration-200 ${
-                  isDarkMode
-                    ? 'text-white group-hover:text-dark-surface-10'
-                    : 'text-gray-900 group-hover:text-white'
-                }`}>
-                  {feature.title}
-                </h3>
-                <p className={`transition-colors duration-200 ${
-                  isDarkMode
-                    ? 'text-gray-400 group-hover:text-dark-surface-10/80'
-                    : 'text-gray-600 group-hover:text-white/80'
-                }`}>
-                  {feature.description}
-                </p>
-              </div>
+                <div
+                  className={`p-8 border-2 group transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 ${
+                    isDarkMode
+                      ? 'border-gray-700 hover:bg-dark-primary-10 hover:border-dark-primary-10'
+                      : 'border-gray-300 hover:bg-accent-500 hover:border-accent-500'
+                  }`}
+                >
+                  <feature.icon className={`h-12 w-12 mb-6 transition-all duration-300 group-hover:rotate-12 group-hover:scale-110 ${
+                    isDarkMode
+                      ? 'text-dark-primary-10 group-hover:text-dark-surface-10'
+                      : 'text-accent-500 group-hover:text-white'
+                  }`} />
+                  <h3 className={`text-2xl font-black uppercase tracking-tight mb-4 transition-colors duration-200 ${
+                    isDarkMode
+                      ? 'text-white group-hover:text-dark-surface-10'
+                      : 'text-gray-900 group-hover:text-white'
+                  }`}>
+                    {feature.title}
+                  </h3>
+                  <p className={`transition-colors duration-200 ${
+                    isDarkMode
+                      ? 'text-gray-400 group-hover:text-dark-surface-10/80'
+                      : 'text-gray-600 group-hover:text-white/80'
+                  }`}>
+                    {feature.description}
+                  </p>
+                </div>
+              </ScrollReveal>
             ))}
           </div>
         </div>
@@ -496,7 +502,7 @@ function LandingPage(): React.ReactElement {
         }`}
       >
         <div className="max-w-7xl mx-auto">
-          <div>
+          <ScrollReveal animation="fade-up">
             <p className={`swiss-section-number mb-2 ${
               isDarkMode ? 'text-dark-primary-10' : 'text-accent-500'
             }`}>
@@ -509,48 +515,53 @@ function LandingPage(): React.ReactElement {
               <br />
               PROCESS
             </h2>
-          </div>
+          </ScrollReveal>
 
           {/* Steps */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-0">
             {steps.map((step, index) => (
-              <div
+              <ScrollReveal
                 key={index}
-                className={`p-8 border-l-4 relative group transition-all duration-300 hover:scale-[1.02] ${
-                  isDarkMode
-                    ? 'border-dark-primary-10 hover:bg-dark-primary-10'
-                    : 'border-accent-500 hover:bg-accent-500'
-                }`}
+                animation="fade-up"
+                delay={(index * 200) as 0 | 200 | 400 | 600}
               >
-                {/* Large Step Number */}
-                <span className={`absolute top-4 right-4 text-8xl font-black transition-all duration-300 group-hover:scale-110 ${
-                  isDarkMode
-                    ? 'text-gray-800 group-hover:text-dark-surface-10/20'
-                    : 'text-gray-200 group-hover:text-white/20'
-                }`}>
-                  {step.step}
-                </span>
+                <div
+                  className={`p-8 border-l-4 relative group transition-all duration-300 hover:scale-[1.02] ${
+                    isDarkMode
+                      ? 'border-dark-primary-10 hover:bg-dark-primary-10'
+                      : 'border-accent-500 hover:bg-accent-500'
+                  }`}
+                >
+                  {/* Large Step Number */}
+                  <span className={`absolute top-4 right-4 text-8xl font-black transition-all duration-300 group-hover:scale-110 ${
+                    isDarkMode
+                      ? 'text-gray-800 group-hover:text-dark-surface-10/20'
+                      : 'text-gray-200 group-hover:text-white/20'
+                  }`}>
+                    {step.step}
+                  </span>
 
-                <step.icon className={`h-10 w-10 mb-6 relative z-10 transition-all duration-300 group-hover:rotate-12 group-hover:scale-110 ${
-                  isDarkMode
-                    ? 'text-dark-primary-10 group-hover:text-dark-surface-10'
-                    : 'text-accent-500 group-hover:text-white'
-                }`} />
-                <h3 className={`text-xl font-black uppercase tracking-tight mb-4 relative z-10 transition-colors duration-200 ${
-                  isDarkMode
-                    ? 'text-white group-hover:text-dark-surface-10'
-                    : 'text-gray-900 group-hover:text-white'
-                }`}>
-                  {step.title}
-                </h3>
-                <p className={`relative z-10 transition-colors duration-200 ${
-                  isDarkMode
-                    ? 'text-gray-400 group-hover:text-dark-surface-10/80'
-                    : 'text-gray-600 group-hover:text-white/80'
-                }`}>
-                  {step.description}
-                </p>
-              </div>
+                  <step.icon className={`h-10 w-10 mb-6 relative z-10 transition-all duration-300 group-hover:rotate-12 group-hover:scale-110 ${
+                    isDarkMode
+                      ? 'text-dark-primary-10 group-hover:text-dark-surface-10'
+                      : 'text-accent-500 group-hover:text-white'
+                  }`} />
+                  <h3 className={`text-xl font-black uppercase tracking-tight mb-4 relative z-10 transition-colors duration-200 ${
+                    isDarkMode
+                      ? 'text-white group-hover:text-dark-surface-10'
+                      : 'text-gray-900 group-hover:text-white'
+                  }`}>
+                    {step.title}
+                  </h3>
+                  <p className={`relative z-10 transition-colors duration-200 ${
+                    isDarkMode
+                      ? 'text-gray-400 group-hover:text-dark-surface-10/80'
+                      : 'text-gray-600 group-hover:text-white/80'
+                  }`}>
+                    {step.description}
+                  </p>
+                </div>
+              </ScrollReveal>
             ))}
           </div>
         </div>
@@ -564,76 +575,83 @@ function LandingPage(): React.ReactElement {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
             {/* Left: Checklist */}
             <div>
-              <p className={`swiss-section-number mb-2 ${
-                isDarkMode ? 'text-dark-primary-10' : 'text-accent-500'
-              }`}>
-                04. ADVANTAGES
-              </p>
-              <h2 className={`text-swiss-title font-black uppercase tracking-tight mb-12 ${
-                isDarkMode ? 'text-white' : 'text-gray-900'
-              }`}>
-                PACKED WITH
-                <br />
-                <span className={isDarkMode ? 'text-dark-primary-10' : 'text-accent-500'}>
-                  POWERFUL FEATURES
-                </span>
-              </h2>
+              <ScrollReveal animation="fade-right">
+                <p className={`swiss-section-number mb-2 ${
+                  isDarkMode ? 'text-dark-primary-10' : 'text-accent-500'
+                }`}>
+                  04. ADVANTAGES
+                </p>
+                <h2 className={`text-swiss-title font-black uppercase tracking-tight mb-12 ${
+                  isDarkMode ? 'text-white' : 'text-gray-900'
+                }`}>
+                  PACKED WITH
+                  <br />
+                  <span className={isDarkMode ? 'text-dark-primary-10' : 'text-accent-500'}>
+                    POWERFUL FEATURES
+                  </span>
+                </h2>
+              </ScrollReveal>
 
               <ul className="space-y-4">
                 {capabilities.map((capability, index) => (
-                  <li
+                  <ScrollReveal
                     key={index}
-                    className="flex items-start space-x-4 transition-all duration-300 hover:translate-x-2"
+                    animation="fade-right"
+                    delay={(index * 100) as 0 | 100 | 200 | 300 | 400 | 500 | 600}
                   >
-                    <CheckCircle className={`h-6 w-6 flex-shrink-0 mt-0.5 transition-transform duration-300 hover:scale-110 ${
-                      isDarkMode ? 'text-dark-primary-10' : 'text-accent-500'
-                    }`} />
-                    <span className={isDarkMode ? 'text-gray-200' : 'text-gray-700'}>
-                      {capability}
-                    </span>
-                  </li>
+                    <li className="flex items-start space-x-4 transition-all duration-300 hover:translate-x-2">
+                      <CheckCircle className={`h-6 w-6 flex-shrink-0 mt-0.5 transition-transform duration-300 hover:scale-110 ${
+                        isDarkMode ? 'text-dark-primary-10' : 'text-accent-500'
+                      }`} />
+                      <span className={isDarkMode ? 'text-gray-200' : 'text-gray-700'}>
+                        {capability}
+                      </span>
+                    </li>
+                  </ScrollReveal>
                 ))}
               </ul>
             </div>
 
             {/* Right: Demo Card */}
-            <div className={`p-8 border-2 transition-all duration-300 hover:scale-[1.02] ${
-              isDarkMode ? 'bg-dark-surface-20 border-gray-700' : 'bg-white border-gray-300'
-            }`}>
-              <div className="space-y-4">
-                {[
-                  { label: 'Quiz Completed', value: '85%', color: 'green' },
-                  { label: 'Learning Score', value: '78', color: 'blue' },
-                  { label: 'Study Streak', value: '5 days', color: 'orange' },
-                ].map((item, index) => (
-                  <div
-                    key={index}
-                    className={`flex items-center justify-between p-4 border-l-4 transition-all duration-300 hover:translate-x-1 ${
-                      isDarkMode ? 'bg-dark-surface-10' : 'bg-gray-50'
-                    } ${
-                      item.color === 'green'
-                        ? isDarkMode ? 'border-success' : 'border-green-500'
-                        : item.color === 'blue'
-                        ? isDarkMode ? 'border-dark-primary-10' : 'border-primary-500'
-                        : isDarkMode ? 'border-warning' : 'border-orange-500'
-                    }`}
-                  >
-                    <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
-                      {item.label}
-                    </span>
-                    <span className={`font-bold text-xl ${
-                      item.color === 'green'
-                        ? isDarkMode ? 'text-success' : 'text-green-500'
-                        : item.color === 'blue'
-                        ? isDarkMode ? 'text-dark-primary-10' : 'text-primary-500'
-                        : isDarkMode ? 'text-warning' : 'text-orange-500'
-                    }`}>
-                      {item.value}
-                    </span>
-                  </div>
-                ))}
+            <ScrollReveal animation="fade-left" delay={200}>
+              <div className={`p-8 border-2 transition-all duration-300 hover:scale-[1.02] ${
+                isDarkMode ? 'bg-dark-surface-20 border-gray-700' : 'bg-white border-gray-300'
+              }`}>
+                <div className="space-y-4">
+                  {[
+                    { label: 'Quiz Completed', value: '85%', color: 'green' },
+                    { label: 'Learning Score', value: '78', color: 'blue' },
+                    { label: 'Study Streak', value: '5 days', color: 'orange' },
+                  ].map((item, index) => (
+                    <div
+                      key={index}
+                      className={`flex items-center justify-between p-4 border-l-4 transition-all duration-300 hover:translate-x-1 ${
+                        isDarkMode ? 'bg-dark-surface-10' : 'bg-gray-50'
+                      } ${
+                        item.color === 'green'
+                          ? isDarkMode ? 'border-success' : 'border-green-500'
+                          : item.color === 'blue'
+                          ? isDarkMode ? 'border-dark-primary-10' : 'border-primary-500'
+                          : isDarkMode ? 'border-warning' : 'border-orange-500'
+                      }`}
+                    >
+                      <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
+                        {item.label}
+                      </span>
+                      <span className={`font-bold text-xl ${
+                        item.color === 'green'
+                          ? isDarkMode ? 'text-success' : 'text-green-500'
+                          : item.color === 'blue'
+                          ? isDarkMode ? 'text-dark-primary-10' : 'text-primary-500'
+                          : isDarkMode ? 'text-warning' : 'text-orange-500'
+                      }`}>
+                        {item.value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            </ScrollReveal>
           </div>
         </div>
       </section>
@@ -646,7 +664,7 @@ function LandingPage(): React.ReactElement {
         }`}
       >
         <div className="max-w-7xl mx-auto">
-          <div>
+          <ScrollReveal animation="fade-up">
             <p className={`swiss-section-number mb-2 ${
               isDarkMode ? 'text-dark-primary-10' : 'text-accent-500'
             }`}>
@@ -659,43 +677,48 @@ function LandingPage(): React.ReactElement {
               <br />
               THE FORGE
             </h2>
-          </div>
+          </ScrollReveal>
 
           {/* Review Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {reviews.map((review, index) => (
-              <div
+              <ScrollReveal
                 key={index}
-                className={`p-6 border-2 border-t-4 transition-all duration-300 hover:scale-[1.03] hover:-translate-y-1 ${
-                  isDarkMode
-                    ? 'border-gray-700 border-t-dark-primary-10 hover:border-dark-primary-10'
-                    : 'border-gray-300 border-t-accent-500 hover:border-accent-500'
-                }`}
+                animation="scale-up"
+                delay={(index * 100) as 0 | 100 | 200 | 300}
               >
-                {/* Rating */}
-                <div className={`flex mb-4 ${isDarkMode ? 'text-dark-primary-10' : 'text-accent-500'}`}>
-                  {[...Array(review.rating)].map((_, i) => (
-                    <Star key={i} className="h-4 w-4 fill-current transition-transform duration-200 hover:scale-125" />
-                  ))}
-                </div>
-
-                <p className={`mb-6 font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                  "{review.text}"
-                </p>
-
-                <div className={`border-t pt-4 ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-                  <div className={`font-bold uppercase tracking-wider text-sm ${
-                    isDarkMode ? 'text-white' : 'text-gray-900'
-                  }`}>
-                    {review.name}
+                <div
+                  className={`p-6 border-2 border-t-4 transition-all duration-300 hover:scale-[1.03] hover:-translate-y-1 h-full ${
+                    isDarkMode
+                      ? 'border-gray-700 border-t-dark-primary-10 hover:border-dark-primary-10'
+                      : 'border-gray-300 border-t-accent-500 hover:border-accent-500'
+                  }`}
+                >
+                  {/* Rating */}
+                  <div className={`flex mb-4 ${isDarkMode ? 'text-dark-primary-10' : 'text-accent-500'}`}>
+                    {[...Array(review.rating)].map((_, i) => (
+                      <Star key={i} className="h-4 w-4 fill-current transition-transform duration-200 hover:scale-125" />
+                    ))}
                   </div>
-                  <div className={`text-xs uppercase tracking-widest ${
-                    isDarkMode ? 'text-gray-500' : 'text-gray-500'
-                  }`}>
-                    {review.role}
+
+                  <p className={`mb-6 font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                    "{review.text}"
+                  </p>
+
+                  <div className={`border-t pt-4 ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                    <div className={`font-bold uppercase tracking-wider text-sm ${
+                      isDarkMode ? 'text-white' : 'text-gray-900'
+                    }`}>
+                      {review.name}
+                    </div>
+                    <div className={`text-xs uppercase tracking-widest ${
+                      isDarkMode ? 'text-gray-500' : 'text-gray-500'
+                    }`}>
+                      {review.role}
+                    </div>
                   </div>
                 </div>
-              </div>
+              </ScrollReveal>
             ))}
           </div>
         </div>
@@ -707,7 +730,7 @@ function LandingPage(): React.ReactElement {
         className="py-24 lg:py-32 px-4 sm:px-6 lg:px-8"
       >
         <div className="max-w-6xl mx-auto">
-          <div>
+          <ScrollReveal animation="fade-up">
             <p className={`swiss-section-number mb-2 ${
               isDarkMode ? 'text-dark-primary-10' : 'text-accent-500'
             }`}>
@@ -720,90 +743,94 @@ function LandingPage(): React.ReactElement {
               <br />
               CREATOR
             </h2>
-          </div>
+          </ScrollReveal>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Author Card */}
-            <div className={`lg:col-span-2 p-8 border-2 transition-all duration-300 hover:scale-[1.01] ${
-              isDarkMode ? 'border-gray-700' : 'border-gray-300'
-            }`}>
-              <div className="flex flex-col md:flex-row items-start gap-8">
-                <div className={`w-32 h-32 flex items-center justify-center flex-shrink-0 transition-transform duration-300 hover:scale-105 ${
-                  isDarkMode ? 'bg-dark-primary-10' : 'bg-accent-500'
-                }`}>
-                  <span className="text-5xl">👨‍💻</span>
-                </div>
-                <div>
-                  <h3 className={`text-2xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
-                    [Your Name]
-                  </h3>
-                  <p className={`mb-4 ${isDarkMode ? 'text-dark-primary-10' : 'text-accent-500'}`}>
-                    Creator & Developer
-                  </p>
-                  <p className={`leading-relaxed mb-6 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                    [Your bio will go here. Share your story, your passion for education technology,
-                    and what inspired you to build StudyForge. Talk about your background, your
-                    vision for the project, and what drives you to help students learn more effectively.]
-                  </p>
-                  <div className="flex space-x-4">
-                    {[Github, Linkedin, Mail].map((Icon, i) => (
-                      <a
-                        key={i}
-                        href="#"
-                        className={`p-3 border-2 transition-all duration-200 hover:scale-110 ${
-                          isDarkMode
-                            ? 'border-gray-600 text-gray-400 hover:border-dark-primary-10 hover:text-dark-primary-10'
-                            : 'border-gray-300 text-gray-500 hover:border-accent-500 hover:text-accent-500'
-                        }`}
-                      >
-                        <Icon className="h-5 w-5" />
-                      </a>
-                    ))}
+            <ScrollReveal animation="fade-right" className="lg:col-span-2">
+              <div className={`p-8 border-2 transition-all duration-300 hover:scale-[1.01] h-full ${
+                isDarkMode ? 'border-gray-700' : 'border-gray-300'
+              }`}>
+                <div className="flex flex-col md:flex-row items-start gap-8">
+                  <div className={`w-32 h-32 flex items-center justify-center flex-shrink-0 transition-transform duration-300 hover:scale-105 ${
+                    isDarkMode ? 'bg-dark-primary-10' : 'bg-accent-500'
+                  }`}>
+                    <span className="text-5xl">👨‍💻</span>
+                  </div>
+                  <div>
+                    <h3 className={`text-2xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
+                      [Your Name]
+                    </h3>
+                    <p className={`mb-4 ${isDarkMode ? 'text-dark-primary-10' : 'text-accent-500'}`}>
+                      Creator & Developer
+                    </p>
+                    <p className={`leading-relaxed mb-6 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                      [Your bio will go here. Share your story, your passion for education technology,
+                      and what inspired you to build StudyForge. Talk about your background, your
+                      vision for the project, and what drives you to help students learn more effectively.]
+                    </p>
+                    <div className="flex space-x-4">
+                      {[Github, Linkedin, Mail].map((Icon, i) => (
+                        <a
+                          key={i}
+                          href="#"
+                          className={`p-3 border-2 transition-all duration-200 hover:scale-110 ${
+                            isDarkMode
+                              ? 'border-gray-600 text-gray-400 hover:border-dark-primary-10 hover:text-dark-primary-10'
+                              : 'border-gray-300 text-gray-500 hover:border-accent-500 hover:text-accent-500'
+                          }`}
+                        >
+                          <Icon className="h-5 w-5" />
+                        </a>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            </ScrollReveal>
 
             {/* Hackathon Card */}
-            <div className={`p-8 border-2 transition-all duration-300 hover:scale-[1.02] ${
-              isDarkMode
-                ? 'border-dark-primary-10 bg-dark-primary-10/10'
-                : 'border-accent-500 bg-accent-500/10'
-            }`}>
-              <div className="flex items-center space-x-3 mb-6">
-                <Plus className={`h-6 w-6 transition-transform duration-300 hover:rotate-90 ${isDarkMode ? 'text-dark-primary-10' : 'text-accent-500'}`} />
-                <h3 className={`text-xl font-bold ${isDarkMode ? 'text-dark-primary-10' : 'text-accent-500'}`}>
-                  For the Hackathon
-                </h3>
+            <ScrollReveal animation="fade-left" delay={200}>
+              <div className={`p-8 border-2 transition-all duration-300 hover:scale-[1.02] h-full ${
+                isDarkMode
+                  ? 'border-dark-primary-10 bg-dark-primary-10/10'
+                  : 'border-accent-500 bg-accent-500/10'
+              }`}>
+                <div className="flex items-center space-x-3 mb-6">
+                  <Plus className={`h-6 w-6 transition-transform duration-300 hover:rotate-90 ${isDarkMode ? 'text-dark-primary-10' : 'text-accent-500'}`} />
+                  <h3 className={`text-xl font-bold ${isDarkMode ? 'text-dark-primary-10' : 'text-accent-500'}`}>
+                    For the Hackathon
+                  </h3>
+                </div>
+                <p className={`leading-relaxed mb-6 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                  StudyForge was built for [Hackathon Name]. This project represents
+                  [X hours/days] of passionate development, combining cutting-edge AI
+                  with thoughtful UX design to revolutionize how students learn.
+                </p>
+                <div className="space-y-3 text-sm">
+                  <div className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>
+                    <span className={`inline-block w-24 ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>
+                      Tech Stack:
+                    </span>
+                    <span>React, FastAPI, PostgreSQL, AI/LLM</span>
+                  </div>
+                  <div className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>
+                    <span className={`inline-block w-24 ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>
+                      Category:
+                    </span>
+                    <span>Education Technology</span>
+                  </div>
+                  <div className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>
+                    <span className={`inline-block w-24 ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>
+                      Status:
+                    </span>
+                    <span className={`font-medium ${isDarkMode ? 'text-success' : 'text-green-500'}`}>
+                      Live & Running
+                    </span>
+                  </div>
+                </div>
               </div>
-              <p className={`leading-relaxed mb-6 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                StudyForge was built for [Hackathon Name]. This project represents
-                [X hours/days] of passionate development, combining cutting-edge AI
-                with thoughtful UX design to revolutionize how students learn.
-              </p>
-              <div className="space-y-3 text-sm">
-                <div className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>
-                  <span className={`inline-block w-24 ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>
-                    Tech Stack:
-                  </span>
-                  <span>React, FastAPI, PostgreSQL, AI/LLM</span>
-                </div>
-                <div className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>
-                  <span className={`inline-block w-24 ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>
-                    Category:
-                  </span>
-                  <span>Education Technology</span>
-                </div>
-                <div className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>
-                  <span className={`inline-block w-24 ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>
-                    Status:
-                  </span>
-                  <span className={`font-medium ${isDarkMode ? 'text-success' : 'text-green-500'}`}>
-                    Live & Running
-                  </span>
-                </div>
-              </div>
-            </div>
+            </ScrollReveal>
           </div>
         </div>
       </section>
@@ -815,34 +842,36 @@ function LandingPage(): React.ReactElement {
         }`}
       >
         <div className="max-w-4xl mx-auto text-center">
-          <p className={`swiss-section-number mb-4 ${
-            isDarkMode ? 'text-dark-surface-10/60' : 'text-white/60'
-          }`}>
-            07. ACTION
-          </p>
-          <h2 className="text-swiss-title font-black uppercase tracking-tight mb-8">
-            READY TO
-            <br />
-            FORGE YOUR
-            <br />
-            FUTURE?
-          </h2>
-          <p className={`text-xl mb-12 max-w-2xl mx-auto ${
-            isDarkMode ? 'text-dark-surface-10/80' : 'text-white/80'
-          }`}>
-            Join students transforming study habits with AI-powered learning.
-          </p>
-          <Link
-            to="/dashboard"
-            className={`inline-flex items-center px-12 py-5 font-bold uppercase tracking-wider text-lg transition-all duration-300 hover:scale-105 ${
-              isDarkMode
-                ? 'bg-dark-surface-10 text-dark-primary-10 hover:bg-white'
-                : 'bg-white text-accent-500 hover:bg-primary-500 hover:text-white'
-            }`}
-          >
-            START LEARNING NOW
-            <ArrowRight className="ml-3 h-6 w-6 transition-transform duration-200 group-hover:translate-x-1" />
-          </Link>
+          <ScrollReveal animation="scale-up">
+            <p className={`swiss-section-number mb-4 ${
+              isDarkMode ? 'text-dark-surface-10/60' : 'text-white/60'
+            }`}>
+              07. ACTION
+            </p>
+            <h2 className="text-swiss-title font-black uppercase tracking-tight mb-8">
+              READY TO
+              <br />
+              FORGE YOUR
+              <br />
+              FUTURE?
+            </h2>
+            <p className={`text-xl mb-12 max-w-2xl mx-auto ${
+              isDarkMode ? 'text-dark-surface-10/80' : 'text-white/80'
+            }`}>
+              Join students transforming study habits with AI-powered learning.
+            </p>
+            <Link
+              to="/dashboard"
+              className={`inline-flex items-center px-12 py-5 font-bold uppercase tracking-wider text-lg transition-all duration-300 hover:scale-105 ${
+                isDarkMode
+                  ? 'bg-dark-surface-10 text-dark-primary-10 hover:bg-white'
+                  : 'bg-white text-accent-500 hover:bg-primary-500 hover:text-white'
+              }`}
+            >
+              START LEARNING NOW
+              <ArrowRight className="ml-3 h-6 w-6 transition-transform duration-200 group-hover:translate-x-1" />
+            </Link>
+          </ScrollReveal>
         </div>
       </section>
 

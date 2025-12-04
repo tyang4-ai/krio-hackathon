@@ -695,6 +695,231 @@ body {
   animation: swiss-slide-up 0.6s ease-out forwards;
 }
 
+/* ============================================
+   Scroll-Triggered Animations
+   ============================================ */
+
+/* Base scroll animation states */
+.scroll-animate {
+  opacity: 0;
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.scroll-animate.visible {
+  opacity: 1;
+}
+
+/* Fade animations */
+.scroll-fade-up {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.scroll-fade-up.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.scroll-fade-down {
+  opacity: 0;
+  transform: translateY(-40px);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.scroll-fade-down.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.scroll-fade-left {
+  opacity: 0;
+  transform: translateX(60px);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.scroll-fade-left.visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.scroll-fade-right {
+  opacity: 0;
+  transform: translateX(-60px);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.scroll-fade-right.visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Scale animations */
+.scroll-scale-up {
+  opacity: 0;
+  transform: scale(0.8);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.scroll-scale-up.visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.scroll-scale-in {
+  opacity: 0;
+  transform: scale(1.1);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.scroll-scale-in.visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Rotation animations */
+.scroll-rotate-in {
+  opacity: 0;
+  transform: rotate(-10deg) scale(0.9);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.scroll-rotate-in.visible {
+  opacity: 1;
+  transform: rotate(0) scale(1);
+}
+
+/* Blur animation */
+.scroll-blur-in {
+  opacity: 0;
+  filter: blur(10px);
+  transition: opacity 0.6s ease-out, filter 0.6s ease-out;
+}
+
+.scroll-blur-in.visible {
+  opacity: 1;
+  filter: blur(0);
+}
+
+/* Clip reveal animation */
+.scroll-clip-up {
+  clip-path: inset(100% 0 0 0);
+  transition: clip-path 0.8s cubic-bezier(0.77, 0, 0.175, 1);
+}
+
+.scroll-clip-up.visible {
+  clip-path: inset(0 0 0 0);
+}
+
+.scroll-clip-left {
+  clip-path: inset(0 100% 0 0);
+  transition: clip-path 0.8s cubic-bezier(0.77, 0, 0.175, 1);
+}
+
+.scroll-clip-left.visible {
+  clip-path: inset(0 0 0 0);
+}
+
+/* Bar/line grow animation */
+.scroll-bar-grow {
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.8s cubic-bezier(0.77, 0, 0.175, 1);
+}
+
+.scroll-bar-grow.visible {
+  transform: scaleX(1);
+}
+
+/* Stagger delay classes for children */
+.scroll-stagger > *:nth-child(1) { transition-delay: 0ms; }
+.scroll-stagger > *:nth-child(2) { transition-delay: 100ms; }
+.scroll-stagger > *:nth-child(3) { transition-delay: 200ms; }
+.scroll-stagger > *:nth-child(4) { transition-delay: 300ms; }
+.scroll-stagger > *:nth-child(5) { transition-delay: 400ms; }
+.scroll-stagger > *:nth-child(6) { transition-delay: 500ms; }
+.scroll-stagger > *:nth-child(7) { transition-delay: 600ms; }
+.scroll-stagger > *:nth-child(8) { transition-delay: 700ms; }
+
+/* Faster stagger */
+.scroll-stagger-fast > *:nth-child(1) { transition-delay: 0ms; }
+.scroll-stagger-fast > *:nth-child(2) { transition-delay: 50ms; }
+.scroll-stagger-fast > *:nth-child(3) { transition-delay: 100ms; }
+.scroll-stagger-fast > *:nth-child(4) { transition-delay: 150ms; }
+.scroll-stagger-fast > *:nth-child(5) { transition-delay: 200ms; }
+.scroll-stagger-fast > *:nth-child(6) { transition-delay: 250ms; }
+.scroll-stagger-fast > *:nth-child(7) { transition-delay: 300ms; }
+.scroll-stagger-fast > *:nth-child(8) { transition-delay: 350ms; }
+
+/* Duration modifiers */
+.scroll-duration-fast {
+  transition-duration: 0.3s !important;
+}
+
+.scroll-duration-slow {
+  transition-duration: 1s !important;
+}
+
+.scroll-duration-slower {
+  transition-duration: 1.5s !important;
+}
+
+/* Custom delay utilities */
+.scroll-delay-100 { transition-delay: 100ms !important; }
+.scroll-delay-200 { transition-delay: 200ms !important; }
+.scroll-delay-300 { transition-delay: 300ms !important; }
+.scroll-delay-400 { transition-delay: 400ms !important; }
+.scroll-delay-500 { transition-delay: 500ms !important; }
+.scroll-delay-600 { transition-delay: 600ms !important; }
+.scroll-delay-700 { transition-delay: 700ms !important; }
+.scroll-delay-800 { transition-delay: 800ms !important; }
+
+/* Counter animation for numbers */
+@keyframes count-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.scroll-count-up.visible {
+  animation: count-up 0.6s ease-out forwards;
+}
+
+/* Bounce subtle animation */
+@keyframes scroll-bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.scroll-bounce.visible {
+  animation: scroll-bounce 0.6s ease-out;
+}
+
+/* Text reveal line by line */
+.scroll-text-reveal {
+  overflow: hidden;
+}
+
+.scroll-text-reveal > * {
+  opacity: 0;
+  transform: translateY(100%);
+  transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+}
+
+.scroll-text-reveal.visible > * {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 /* Respect reduced motion preference */
 @media (prefers-reduced-motion: reduce) {
   .animate-swiss-fade-in,
@@ -710,5 +935,28 @@ body {
     animation: none;
     opacity: 1;
     transform: none;
+  }
+
+  /* Disable scroll animations for reduced motion */
+  .scroll-fade-up,
+  .scroll-fade-down,
+  .scroll-fade-left,
+  .scroll-fade-right,
+  .scroll-scale-up,
+  .scroll-scale-in,
+  .scroll-rotate-in,
+  .scroll-blur-in,
+  .scroll-clip-up,
+  .scroll-clip-left,
+  .scroll-bar-grow,
+  .scroll-bounce,
+  .scroll-count-up,
+  .scroll-text-reveal > * {
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+    clip-path: none !important;
+    transition: none !important;
+    animation: none !important;
   }
 }
