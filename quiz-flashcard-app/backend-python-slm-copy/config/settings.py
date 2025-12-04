@@ -65,7 +65,7 @@ class Settings(BaseSettings):
     # Groq Settings (Primary SLM provider)
     groq_base_url: str = "https://api.groq.com/openai/v1"
     groq_model_small: str = "llama-3.1-8b-instant"      # ~800 tok/s, $0.05/$0.08 per 1M
-    groq_model_large: str = "llama-3.1-70b-versatile"   # ~250 tok/s, $0.59/$0.79 per 1M
+    groq_model_large: str = "llama-3.3-70b-versatile"   # ~250 tok/s, $0.59/$0.79 per 1M (upgraded from 3.1)
 
     # Cerebras Settings (Fallback SLM provider)
     cerebras_api_key: Optional[str] = None
