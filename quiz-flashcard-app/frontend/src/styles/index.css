@@ -417,3 +417,298 @@ body {
 .dark .focus\:ring-indigo-500:focus {
   --tw-ring-color: #407dc7;
 }
+
+/* ============================================
+   Swiss International Typographic Style
+   ============================================ */
+
+/* Swiss Grid Pattern - 24px grid lines */
+.swiss-grid-pattern {
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.dark .swiss-grid-pattern {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Swiss Dot Matrix - 16px spacing */
+.swiss-dots {
+  background-image: radial-gradient(rgba(0, 0, 0, 0.04) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+
+.dark .swiss-dots {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+
+/* Swiss Diagonal Lines - 45 degree */
+.swiss-diagonal {
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 5px,
+    rgba(0, 0, 0, 0.02) 5px,
+    rgba(0, 0, 0, 0.02) 10px
+  );
+}
+
+.dark .swiss-diagonal {
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 5px,
+    rgba(255, 255, 255, 0.02) 5px,
+    rgba(255, 255, 255, 0.02) 10px
+  );
+}
+
+/* Swiss Noise Texture - subtle paper grain */
+.swiss-noise {
+  position: relative;
+}
+
+.swiss-noise::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.015;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  pointer-events: none;
+}
+
+/* Swiss Section Number */
+.swiss-section-number {
+  @apply text-sm font-bold tracking-widest uppercase;
+}
+
+/* Swiss Heading - massive uppercase */
+.swiss-heading {
+  @apply font-black uppercase tracking-tight leading-none;
+}
+
+/* Swiss Button Base */
+.swiss-btn {
+  @apply rounded-none font-bold uppercase tracking-wider transition-colors duration-200;
+}
+
+.swiss-btn-primary {
+  @apply swiss-btn px-8 py-4 bg-accent-500 text-white border-2 border-accent-500;
+}
+
+.swiss-btn-primary:hover {
+  @apply bg-transparent text-accent-500;
+}
+
+.dark .swiss-btn-primary {
+  @apply bg-dark-primary-10 text-white border-dark-primary-10;
+}
+
+.dark .swiss-btn-primary:hover {
+  @apply bg-transparent text-dark-primary-10;
+}
+
+.swiss-btn-secondary {
+  @apply swiss-btn px-8 py-4 bg-transparent border-2 border-gray-400 text-gray-700;
+}
+
+.swiss-btn-secondary:hover {
+  @apply border-accent-500 text-accent-500;
+}
+
+.dark .swiss-btn-secondary {
+  @apply border-gray-600 text-gray-300;
+}
+
+.dark .swiss-btn-secondary:hover {
+  @apply border-dark-primary-10 text-dark-primary-10;
+}
+
+/* ============================================
+   Swiss Animation Keyframes
+   ============================================ */
+
+/* Entrance Animations */
+@keyframes swiss-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes swiss-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes swiss-slide-left {
+  from {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes swiss-slide-right {
+  from {
+    opacity: 0;
+    transform: translateX(-40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Geometric Shape Animations */
+@keyframes swiss-float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+@keyframes swiss-pulse {
+  0%, 100% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.03);
+  }
+}
+
+@keyframes swiss-rotate-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes swiss-dash-flow {
+  from {
+    stroke-dashoffset: 628;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes swiss-bar-grow {
+  from {
+    transform: scaleX(0);
+    transform-origin: left;
+  }
+  to {
+    transform: scaleX(1);
+    transform-origin: left;
+  }
+}
+
+/* Stagger Animations for Lists */
+@keyframes swiss-stagger-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Utility Classes for Animations */
+.animate-swiss-fade-in {
+  animation: swiss-fade-in 0.6s ease-out forwards;
+}
+
+.animate-swiss-slide-up {
+  animation: swiss-slide-up 0.5s ease-out forwards;
+}
+
+.animate-swiss-slide-left {
+  animation: swiss-slide-left 0.5s ease-out forwards;
+}
+
+.animate-swiss-slide-right {
+  animation: swiss-slide-right 0.5s ease-out forwards;
+}
+
+.animate-swiss-float {
+  animation: swiss-float 4s ease-in-out infinite;
+}
+
+.animate-swiss-pulse {
+  animation: swiss-pulse 3s ease-in-out infinite;
+}
+
+.animate-swiss-rotate {
+  animation: swiss-rotate-slow 20s linear infinite;
+}
+
+.animate-swiss-dash {
+  animation: swiss-dash-flow 2s ease-out forwards;
+}
+
+.animate-swiss-bar {
+  animation: swiss-bar-grow 0.8s ease-out forwards;
+}
+
+/* Delay utilities for staggered animations */
+.animation-delay-100 { animation-delay: 100ms; }
+.animation-delay-200 { animation-delay: 200ms; }
+.animation-delay-300 { animation-delay: 300ms; }
+.animation-delay-400 { animation-delay: 400ms; }
+.animation-delay-500 { animation-delay: 500ms; }
+.animation-delay-600 { animation-delay: 600ms; }
+.animation-delay-700 { animation-delay: 700ms; }
+.animation-delay-800 { animation-delay: 800ms; }
+
+/* Initial opacity for animated elements */
+.animate-on-scroll {
+  opacity: 0;
+}
+
+.animate-on-scroll.is-visible {
+  animation: swiss-slide-up 0.6s ease-out forwards;
+}
+
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .animate-swiss-fade-in,
+  .animate-swiss-slide-up,
+  .animate-swiss-slide-left,
+  .animate-swiss-slide-right,
+  .animate-swiss-float,
+  .animate-swiss-pulse,
+  .animate-swiss-rotate,
+  .animate-swiss-dash,
+  .animate-swiss-bar,
+  .animate-on-scroll.is-visible {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}

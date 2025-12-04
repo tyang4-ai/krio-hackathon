@@ -2,204 +2,157 @@
 
 ## Latest Session Summary
 
-### Gap Analysis Completed (2025-12-04)
+### Landing Page Swiss Style Animations (2025-12-04)
 
-Comprehensive codebase exploration revealed:
+**Completed Task**: Added animations and flow to the Swiss International Style landing page.
 
+#### What Was Implemented:
+
+**CSS Animations Added** (`frontend/src/styles/index.css` lines 533-714):
+- `swiss-fade-in` - Simple opacity fade
+- `swiss-slide-up` - Opacity + translateY(30px) entrance
+- `swiss-slide-left` / `swiss-slide-right` - Horizontal slide entrances
+- `swiss-float` - Infinite floating animation (4s cycle, 12px movement)
+- `swiss-pulse` - Infinite pulse with opacity and scale (3s cycle)
+- `swiss-rotate-slow` - 20s rotation for decorative elements
+- `swiss-bar-grow` - Horizontal bar expansion from left
+- `swiss-dash-flow` - SVG stroke-dashoffset animation
+- Animation delay utilities: `.animation-delay-100` through `.animation-delay-800`
+- `prefers-reduced-motion` media query support
+
+**Hero Section Animations** (`LandingPage.tsx` lines 220-460):
+- Section number: slides up with 100ms delay
+- "STUDY FORGE" headline: slides up with 200ms delay
+- Accent bar: grows from left with 400ms delay
+- Tagline: slides up with 500ms delay
+- CTA buttons container: slides up with 600ms delay
+- Stats row: slides up with 700ms delay
+- Geometric shapes: floating/pulsing animations
+  - Eye ellipse: 6s pulse
+  - Center pupil: 4s pulse with 500ms delay
+  - C-curves: 5-6s float with staggered delays
+  - Bottom arc: 4.5s float
+  - Primary square: 7s float
+  - Parallelogram grid: 5s pulse
+  - Decorative bars: staggered bar-grow animations
+
+**Other Sections**: Kept hover-only animations (removed scroll-triggered visibility)
+- `hover:scale-[1.02]` on cards
+- `hover:-translate-y-1` for lift effects
+- `group-hover:rotate-12` on icons
+- Color inversion transitions on hover
+
+#### Critical Bug Fix:
+**Problem**: After implementing scroll-triggered animations using IntersectionObserver, all sections below the hero became invisible.
+
+**Root Cause**: The `useScrollAnimation` hook used `isVisible('section-id')` which returned `false` initially. Elements had `opacity-0` class and relied on the observer to add `opacity-100`, but the observer wasn't triggering properly due to timing issues with ref registration.
+
+**Solution**: Removed scroll-triggered visibility entirely. Made all sections visible by default. Kept only:
+1. Hero entrance animations (work because they use CSS animation-delay, not JS)
+2. Geometric shape floating/pulsing animations
+3. Hover effects on interactive elements
+
+**Removed Code**:
+- `useScrollAnimation` hook (~30 lines)
+- `registerSection()` and `isVisible()` calls
+- All `isVisible('section-id') ? 'opacity-100' : 'opacity-0'` conditionals
+
+#### Files Modified:
+| File | Changes |
+|------|---------|
+| `frontend/src/styles/index.css` | Added ~180 lines of animation keyframes and utilities |
+| `frontend/src/pages/LandingPage.tsx` | Added hero animations, removed scroll-triggered code |
+| `frontend/tailwind.config.js` | Already had Swiss typography scales from previous session |
+
+---
+
+### Previous Sessions (Reference)
+
+#### Gap Analysis Completed (2025-12-04)
 | Finding | Status |
 |---------|--------|
 | Phase 1 (Chunking & Embeddings) | ✅ Complete |
-| Phase 2 (Enhanced Style Guide) | ✅ Complete |
+| Phase 2 (Enhanced Style Guide) | ⚠️ **PARTIAL** - DB columns exist, Python code NOT updated |
 | Phase 3 (RAG Generation) | ❌ **NOT IMPLEMENTED** |
 | Automated Tests | ❌ 0% coverage |
 
-**Critical Discovery**: The dev docs claimed Phase 3 was implemented, but the files don't exist:
-- `services/rag_service.py` - **FILE NOT FOUND**
-- `services/question_validator.py` - **FILE NOT FOUND**
+#### Production Environment Fix (2025-12-04)
+Fixed `.env.production` to point to the correct production backend.
 
-### Production Environment Fix (2025-12-04)
-
-Fixed `.env.production` to point to the correct production backend:
-- **Before**: `VITE_API_URL=http://Studyforge-test-backend...` (WRONG)
-- **After**: `VITE_API_URL=http://studyforge-backend-v2...` (CORRECT)
-- Rebuilt and redeployed frontend to S3
-
-### Guest Login Deployed (2025-12-03)
-
-- Added guest authentication (`/api/auth/guest`)
-- Fixed guest category creation (FK violation for user_id=-1)
-- Production backend now supports guest mode
-
-### Deployment Status
-
-| Environment | RAG Pipeline | Guest Login | Notes |
-|-------------|--------------|-------------|-------|
-| **Production** | ❌ Not deployed | ✅ Deployed | Intentionally pre-RAG for stability |
-| **Test** | ✅ Deployed (v53-54) | ✅ Deployed | Full RAG features for testing |
-
-**Important**: RAG features (chunking, embeddings, pgvector) remain on test environment only until fully tested.
+#### Swiss Style Landing Page Redesign (2025-12-03)
+Complete redesign using Swiss International Typographic Style:
+- Removed all Framer Motion animations and particles
+- Added massive typography (`text-swiss-hero`, `text-swiss-title`)
+- Added CSS texture patterns (grid, dots, diagonal)
+- Added geometric Bauhaus-style eye composition
+- Changed to flat design with visible borders
+- Added section number prefixes (01. SYSTEM, 02. FEATURES, etc.)
 
 ---
-
-## Summary of Changes This Session
-
-### 1. RAG Pipeline Phase 1 - Database & Chunking (COMPLETED)
-**Major feature**: Implemented semantic document indexing for improved quiz/flashcard generation.
-
-**New Files Created:**
-- `backend-python/alembic/versions/20251201_000001_009_add_chunking_tables.py` - Migration for pgvector + chunking tables
-- `backend-python/alembic/versions/20251201_000002_010_flexible_embedding_dimension.py` - Flexible embedding dimension support
-- `backend-python/models/document_chunk.py` - SQLAlchemy model for document chunks with embeddings
-- `backend-python/models/document_topic.py` - SQLAlchemy model for topic hierarchy
-- `backend-python/models/document_concept_map.py` - SQLAlchemy model for concept maps
-- `backend-python/services/chunking_service.py` - Semantic chunking with topic detection
-- `backend-python/services/embedding_service.py` - OpenAI ada-002 embedding generation
-
-**Files Modified:**
-- `backend-python/models/__init__.py` - Added new model imports
-- `backend-python/models/document.py` - Added chunking_status, total_chunks, total_tokens fields
-- `backend-python/requirements.txt` - Added pgvector==0.2.4, tiktoken==0.5.2
-
-**Key Features:**
-- Semantic chunking with 800-1200 token chunks and 100-token overlap
-- Page-level topic detection using AI
-- Boundary refinement for coherent chunks
-- Multi-topic tagging per chunk
-- Concept map generation
-- OpenAI ada-002 embeddings with pgvector storage
-- Batch embedding (100 at a time)
-- Similarity search with category filtering
-
-**Database Tables Added:**
-- `document_chunks` - Stores chunks with embeddings (pgvector)
-- `document_topics` - Hierarchical topic structure
-- `document_concept_maps` - JSON concept maps per document
-
-**Research Foundation:** Based on 12 academic papers including MC-Indexing, SuperRAG, SCAN, and Malaysian Math Education study showing 92-96% validity improvement with RAG.
-
----
-
-### 2. User Isolation for Categories (COMPLETED - v52)
-**Critical bug fix**: Categories were globally shared across all users. Now each user sees only their own categories.
-
-**Files Modified:**
-- `backend-python/models/category.py` - Added `user_id` foreign key to users table
-- `backend-python/services/category_service.py` - Added `user_id` filtering to all methods
-- `backend-python/routers/categories.py` - Added `get_current_user` auth dependency to all endpoints
-- `backend-python/alembic/versions/20251201_000000_008_add_user_id_to_categories.py` - Migration for new column
-
-**Implementation Details:**
-- Added `user_id` column to categories table with FK to users, CASCADE on delete
-- All category service methods now accept optional `user_id` parameter
-- All category router endpoints require authentication via `get_current_user`
-- Queries filter by `user_id` to ensure data isolation
-- Migration 008 adds column, index, and foreign key constraint
-
-### 2. Batch Document Selection Feature (COMPLETED)
-Added ability for users to select multiple documents and perform batch operations.
-
-**Files Modified:**
-- `frontend/src/pages/CategoryDashboard.tsx` - Added batch selection UI and handlers
-
-**Implementation Details:**
-- Added state: `selectedDocIds: Set<number>`, `batchChapter`, `showBatchChapterModal`, `batchUpdating`
-- Added handlers: `toggleDocSelection()`, `toggleSelectAll()`, `handleBatchDelete()`, `handleBatchAssignChapter()`
-- UI includes checkboxes on each document row, "Select All" toggle, batch action bar with "Assign Chapter" and "Delete" buttons
-- Uses existing `documentApi.updateChapter(id, chapter)` endpoint for chapter assignment
-- Batch delete uses `Promise.all()` with `documentApi.delete(id)`
-
-### 3. Removed Auto-Download for Chapter PDFs (COMPLETED)
-Previously, after organization, the app would auto-download chapter PDFs. Now they are only auto-uploaded as documents.
-
-**Files Modified:**
-- `frontend/src/pages/CategoryDashboard.tsx` - Removed download link creation in `handleOrganize()`
-
-### 4. Enhanced Organize Loading Indicator (COMPLETED)
-Updated the organize loading bar to use the full AILoadingIndicator component with stage-based progress.
-
-**Files Modified:**
-- `frontend/src/components/AILoadingIndicator.tsx` - Added 'organize' content type with custom stage labels
-- `frontend/src/pages/CategoryDashboard.tsx` - Replaced simple progress bar with AILoadingIndicator
-
-**Stage Labels for Organize:**
-- extracting: "Reading your documents..."
-- analyzing: "Identifying chapters & topics..."
-- generating: "Creating chapter PDFs..."
-- validating: "Uploading organized notes..."
-- complete: "Organization complete!"
-
-### 5. PDF Formatting Fixes (Previous Session - v49-v51)
-Fixed word-per-line PDF extraction issues with smart paragraph detection.
-
-**Files Modified:**
-- `backend-python/agents/chapter_agent.py` - Added text normalization with regex patterns
-
-**Key Patterns Added:**
-- Detect word-per-line (>60% single-word paragraphs) and join with spaces
-- Break before ALL-CAPS headers
-- Break before definition patterns (Term-: or -suffix:)
-- Break at bullet points
 
 ## Current State
 
-### Frontend Build: SUCCESS
-All changes compile successfully. Deployed to S3.
+### Frontend Dev Server: RUNNING
+- Port 3000: http://localhost:3000
+- All sections visible and animated
+- Dark mode working
 
-### Backend: v52 DEPLOYED
-Backend deployed to Elastic Beanstalk with user isolation migration (008).
+### Files in Good State:
+- `LandingPage.tsx` - ~928 lines, clean, no unused code
+- `index.css` - ~714 lines with Swiss animations
+- `tailwind.config.js` - Has Swiss typography scales
 
-## Next Steps
+---
 
-1. **Test user isolation** - Verify different users see different categories
-2. **Clean up old shared categories** - May need to assign existing categories to users or delete
+## Next Steps (After This Session)
+
+### Immediate:
+1. **Commit and push** the landing page animation changes
+2. **Deploy to test frontend** (S3) to verify in production-like environment
+
+### Future Work:
+1. **RAG Pipeline Phase 3** - `rag_service.py`, `question_validator.py`
+2. **Automated Tests** - 0% coverage currently
+3. **Landing page scroll animations** - If desired later, use CSS-only approach (no IntersectionObserver), or use a library like `react-intersection-observer`
+
+---
 
 ## Key Files Reference
 
 | File | Purpose |
 |------|---------|
-| `frontend/src/pages/CategoryDashboard.tsx` | Main category dashboard with documents, batch operations |
-| `frontend/src/components/AILoadingIndicator.tsx` | Reusable AI loading component with stages |
-| `frontend/src/services/api.ts` | API client with `documentApi.updateChapter()` |
-| `backend-python/models/category.py` | Category model with user_id FK |
-| `backend-python/services/category_service.py` | Category service with user filtering |
-| `backend-python/routers/categories.py` | Category routes with auth |
-| `backend-python/agents/chapter_agent.py` | PDF generation with text normalization |
+| `frontend/src/pages/LandingPage.tsx` | Swiss-style landing page with animations |
+| `frontend/src/styles/index.css` | Swiss patterns + animation keyframes |
+| `frontend/tailwind.config.js` | Swiss typography scales |
+| `frontend/src/contexts/ThemeContext.tsx` | Dark mode toggle |
 
-## API Endpoints Used
+---
 
-- `GET /api/categories` - Get user's categories (now requires auth)
-- `POST /api/categories` - Create category for user (now requires auth)
-- `PATCH /api/documents/{id}/chapter` - Update document chapter tag
-- `DELETE /api/documents/{id}` - Delete document
-- `POST /api/categories/{id}/organize` - Organize notes into chapters
+## Deployment Status
 
-## Deployment History
+| Environment | Landing Page | Notes |
+|-------------|--------------|-------|
+| **Local** | ✅ Running | http://localhost:3000 |
+| **Test** | ⏳ Needs deploy | S3: studyforge-frontend-test |
+| **Production** | ⏳ Needs deploy | S3: studyforge-frontend |
 
-| Version | Date | Changes |
-|---------|------|---------|
-| v55 | 2025-12-04 | Fixed .env.production to point to production backend |
-| v54 | 2025-12-03 | Guest login + guest category FK fix |
-| v53 | 2025-12-02 | RAG Pipeline Phase 1 - chunking & embeddings |
-| v52 | 2025-12-01 | User isolation for categories |
-| v51 | 2025-11-30 | PDF formatting fixes |
-| v50 | 2025-11-30 | Batch document operations |
+---
 
-## Next Steps (Priority Order)
+## Handoff Notes
 
-### Priority 1: Implement Phase 3 (RAG Generation)
-1. **Create `services/rag_service.py`** - Semantic search with pgvector
-2. **Create `services/question_validator.py`** - 8-dimension quality scoring
-3. **Add migration** - `quality_score`, `bloom_level` columns to questions table
-4. **Wire routers** - Add `use_rag`, `validate` parameters to ai.py
-5. **Integrate** - Replace content truncation with RAG retrieval
+**What was just completed:**
+- Fixed CTA button visibility (removed `isVisible('cta-section')` conditional)
+- Removed unused `useScrollAnimation` hook
+- Cleaned up imports (removed `useState`, `useRef`, `useEffect`)
 
-### Priority 2: Add Automated Tests
-- `test_chunking_service.py` - Token counting, boundary detection
-- `test_embedding_service.py` - Embedding generation, similarity search
-- `test_auth.py` - JWT validation, guest login
-- `test_categories.py` - CRUD, user isolation
+**Commands to run:**
+```bash
+# Verify frontend builds
+cd quiz-flashcard-app/frontend
+npm run build
 
-### Priority 3: Frontend Integration
-- Pass `use_rag` and `validate` parameters
-- Display quality scores in UI
-- Show generation statistics
+# Deploy to test S3
+aws s3 sync dist/ s3://studyforge-frontend-test --delete
+```
+
+**No uncommitted work in progress** - All changes are complete and ready for commit.
