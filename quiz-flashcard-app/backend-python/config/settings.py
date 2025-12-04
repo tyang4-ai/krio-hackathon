@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     # Anthropic API (Direct Claude access - recommended)
     # Set ai_provider="anthropic" to use this
     anthropic_api_key: Optional[str] = None
-    anthropic_model: str = "claude-3-5-haiku-20241022"  # Claude 3.5 Haiku (fast)
+    anthropic_model: str = "claude-sonnet-4-20250514"  # Claude Sonnet 4 (quality)
 
     # AWS Bedrock (alternative - requires AWS account verification)
     # Set ai_provider="bedrock" to use this
