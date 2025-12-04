@@ -7,6 +7,12 @@ export default {
   darkMode: 'class',
   theme: {
     extend: {
+      // Swiss International Typographic Style - Massive responsive typography
+      fontSize: {
+        'swiss-hero': ['clamp(4rem, 12vw, 10rem)', { lineHeight: '0.85', letterSpacing: '-0.02em' }],
+        'swiss-title': ['clamp(2.5rem, 6vw, 5rem)', { lineHeight: '0.9', letterSpacing: '-0.01em' }],
+        'swiss-subtitle': ['clamp(1.5rem, 3vw, 2.5rem)', { lineHeight: '1', letterSpacing: '0' }],
+      },
       colors: {
         primary: {
           50: '#e6f0f3',
