@@ -57,6 +57,21 @@ class Settings(BaseSettings):
     together_api_key: Optional[str] = None
     huggingface_api_key: Optional[str] = None
 
+    # SLM Provider Settings (Phase 4)
+    # Use Small Language Models for cost optimization on simple tasks
+    slm_provider: str = "groq"  # Options: groq, cerebras
+    slm_enabled: bool = True    # Feature flag to enable/disable SLM routing
+
+    # Groq Settings (Primary SLM provider)
+    groq_base_url: str = "https://api.groq.com/openai/v1"
+    groq_model_small: str = "llama-3.1-8b-instant"      # ~800 tok/s, $0.05/$0.08 per 1M
+    groq_model_large: str = "llama-3.1-70b-versatile"   # ~250 tok/s, $0.59/$0.79 per 1M
+
+    # Cerebras Settings (Fallback SLM provider)
+    cerebras_api_key: Optional[str] = None
+    cerebras_base_url: str = "https://api.cerebras.ai/v1"
+    cerebras_model: str = "llama3.1-8b"
+
     # Embedding Provider Settings (Phase 1 Chunking & Embeddings)
     embedding_provider: str = "openai"  # Options: openai, moonshot, voyage
     embedding_model: str = "text-embedding-ada-002"  # OpenAI default

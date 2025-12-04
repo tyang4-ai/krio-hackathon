@@ -3,6 +3,7 @@ from .ai_service import AIService, ai_service
 from .activity_logger import ActivityLogger, activity_logger
 from .rag_service import RAGService, rag_service
 from .question_validator import QuestionValidator, question_validator
+from .task_router import TaskRouter, task_router, TaskType, ModelTier
 
 __all__ = [
     "AIService",
@@ -13,4 +14,8 @@ __all__ = [
     "rag_service",
     "QuestionValidator",
     "question_validator",
+    "TaskRouter",
+    "task_router",
+    "TaskType",
+    "ModelTier",
 ]
