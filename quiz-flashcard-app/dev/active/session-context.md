@@ -18,6 +18,48 @@
 | Create `backend-python-slm-copy` folder | ✅ Complete |
 | Copy backend files | ✅ Complete |
 
+#### SLM Implementation Progress (Branch: `feature/slm-integration`)
+| Step | File | Status |
+|------|------|--------|
+| 1 | `config/settings.py` - Add SLM settings | ✅ Complete |
+| 2 | `services/ai_service.py` - Add Groq client | ✅ Complete |
+| 3 | `services/task_router.py` - Create routing | ✅ Complete |
+| 4 | `agents/generation_agent.py` - SLM flashcards | ✅ Complete |
+| 5 | `agents/explanation_agent.py` - SLM explanations | ✅ Complete |
+| 6 | `requirements.txt` - Add groq note | ✅ Complete |
+
+**All Steps Complete!** Ready for testing.
+
+**Step 5 Details** (explanation_agent.py):
+- Added task_router and ai_service imports
+- Modified `process()` to use SLM for short explanations
+- Short query criteria: <100 chars query + ≤2 history messages
+- Uses 70B model via `generate_with_slm(use_large_model=True)`
+- Falls back to Claude for complex/long conversations
+- Added `used_slm` flag to response
+
+**Step 4 Details** (generation_agent.py):
+- Added task_router import
+- Modified `generate_flashcards()` to use SLM for "concepts" difficulty
+- Uses 8B model via `generate_with_slm()` for vocabulary flashcards
+- Falls back to Claude for complex flashcards (easy/medium/hard)
+- Added `used_slm` flag to response
+
+**Step 3 Details** (task_router.py):
+- Created `TaskType` enum for all AI tasks
+- Created `ModelTier` enum (SLM_SMALL, SLM_LARGE, LLM, HARDCODED)
+- Task routing: Quality-critical → Claude, Simple → SLM
+- `get_model_tier()`, `should_use_slm()` methods
+- Automatic fallback to Claude if SLM disabled
+- Updated `services/__init__.py` with exports
+
+**Step 2 Details** (ai_service.py):
+- Added `_groq_client` initialization with Groq API
+- Added `generate_with_slm()` method with automatic fallback to Claude
+- Added `has_slm` property to check availability
+- Supports JSON mode for structured output
+- Uses 8B model by default, 70B for complex tasks
+
 **SLM Copy Folder Structure:**
 ```
 quiz-flashcard-app/backend-python-slm-copy/

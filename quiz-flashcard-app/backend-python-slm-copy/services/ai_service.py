@@ -26,6 +26,7 @@ class AIService:
 
     Handles text generation and vision tasks across multiple providers.
     Direct Anthropic API is the recommended primary provider.
+    SLM (Groq) available for cost-optimized simple tasks (Phase 4).
     """
 
     def __init__(self):
@@ -33,6 +34,7 @@ class AIService:
         self._moonshot_client: Optional[AsyncOpenAI] = None
         self._nvidia_client: Optional[AsyncOpenAI] = None
         self._openai_client: Optional[AsyncOpenAI] = None
+        self._groq_client: Optional[AsyncOpenAI] = None  # Phase 4: SLM
         self._anthropic_client = None
         self._bedrock_client = None
         self._bedrock_runtime = None
@@ -112,6 +114,18 @@ class AIService:
                 api_key=settings.openai_api_key,
             )
             logger.info("openai_client_initialized", model=settings.vision_model)
+
+        # Phase 4: Initialize Groq client (SLM for cost-optimized tasks)
+        if settings.groq_api_key and settings.slm_enabled:
+            self._groq_client = AsyncOpenAI(
+                api_key=settings.groq_api_key,
+                base_url=settings.groq_base_url,
+            )
+            logger.info(
+                "groq_client_initialized",
+                models=[settings.groq_model_small, settings.groq_model_large],
+                base_url=settings.groq_base_url,
+            )
 
     async def generate_text(
         self,
@@ -528,6 +542,133 @@ class AIService:
             temperature=temperature,
         )
 
+    async def generate_with_slm(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None,
+        max_tokens: int = 2048,
+        temperature: float = 0.3,
+        use_large_model: bool = False,
+        json_mode: bool = False,
+    ) -> str:
+        """
+        Generate text using SLM (Groq) for cost-optimized simple tasks.
+
+        Phase 4: Use Small Language Models for:
+        - Simple flashcard generation (vocabulary)
+        - Short explanations (post-grading tutoring)
+
+        Falls back to Claude if Groq is unavailable.
+
+        Args:
+            prompt: User prompt
+            system_prompt: Optional system prompt
+            max_tokens: Maximum tokens to generate
+            temperature: Sampling temperature (0-1)
+            use_large_model: Use 70B model instead of 8B (for explanations)
+            json_mode: Request JSON response format
+
+        Returns:
+            Generated text response
+        """
+        # Select model based on task complexity
+        model = settings.groq_model_large if use_large_model else settings.groq_model_small
+
+        # If Groq is not available, fall back to Claude
+        if not self._groq_client:
+            logger.info(
+                "slm_fallback_to_claude",
+                reason="groq_client_not_available",
+            )
+            if json_mode:
+                return await self.generate_json(
+                    prompt=prompt,
+                    system_prompt=system_prompt,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                )
+            return await self.generate_text(
+                prompt=prompt,
+                system_prompt=system_prompt,
+                max_tokens=max_tokens,
+                temperature=temperature,
+            )
+
+        messages: List[Dict[str, Any]] = []
+
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+
+        messages.append({"role": "user", "content": prompt})
+
+        logger.info(
+            "slm_generate_text",
+            provider="groq",
+            model=model,
+            prompt_length=len(prompt),
+            json_mode=json_mode,
+        )
+
+        try:
+            # Build request kwargs
+            kwargs = {
+                "model": model,
+                "messages": messages,
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+            }
+
+            # Add JSON mode if requested (Groq supports this)
+            if json_mode:
+                kwargs["response_format"] = {"type": "json_object"}
+
+            response = await self._groq_client.chat.completions.create(**kwargs)
+
+            result = response.choices[0].message.content or ""
+
+            # Log usage for cost tracking
+            usage = getattr(response, 'usage', None)
+            logger.info(
+                "slm_generate_text_success",
+                provider="groq",
+                model=model,
+                response_length=len(result),
+                usage={
+                    "prompt_tokens": usage.prompt_tokens if usage else 0,
+                    "completion_tokens": usage.completion_tokens if usage else 0,
+                } if usage else None,
+            )
+
+            return result
+
+        except Exception as e:
+            logger.error(
+                "slm_generate_text_error",
+                provider="groq",
+                model=model,
+                error=str(e),
+            )
+
+            # Fall back to Claude on error
+            logger.info(
+                "slm_fallback_to_claude",
+                reason="groq_error",
+                error=str(e),
+            )
+            if json_mode:
+                return await self.generate_json(
+                    prompt=prompt,
+                    system_prompt=system_prompt,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                )
+            return await self.generate_text(
+                prompt=prompt,
+                system_prompt=system_prompt,
+                max_tokens=max_tokens,
+                temperature=temperature,
+            )
+
     def _get_client(self, provider: str) -> Optional[AsyncOpenAI]:
         """Get the appropriate client for a provider."""
         if provider == "moonshot":
@@ -571,6 +712,11 @@ class AIService:
     def has_vision(self) -> bool:
         """Check if vision (OpenAI) is available."""
         return self._openai_client is not None
+
+    @property
+    def has_slm(self) -> bool:
+        """Check if SLM (Groq) is available for cost-optimized tasks."""
+        return self._groq_client is not None and settings.slm_enabled
 
 
 # Global AI service instance

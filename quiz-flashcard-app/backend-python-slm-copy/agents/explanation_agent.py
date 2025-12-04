@@ -6,10 +6,15 @@ This agent helps students understand:
 - The underlying concepts
 - Related topics and connections
 - Step-by-step reasoning
+
+Phase 4: Uses SLM (70B) for short explanations to reduce cost.
 """
 from typing import Any, Dict, List, Optional
 
 import structlog
+
+from services.ai_service import ai_service
+from services.task_router import task_router, TaskType
 
 from .base_agent import AgentRole, BaseAgent
 
@@ -75,16 +80,43 @@ class ExplanationAgent(BaseAgent):
             conversation_history=conversation_history,
         )
 
+        # Phase 4: Determine if we should use SLM for this explanation
+        # Use SLM for short, simple queries without complex conversation history
+        is_short_query = len(user_query) < 100 and len(conversation_history) <= 2
+        use_slm = is_short_query and task_router.should_use_slm(TaskType.SHORT_EXPLANATION)
+
         try:
-            response = await self.generate(
-                prompt=prompt,
-                max_tokens=1024,
-                temperature=0.7,
-            )
+            if use_slm:
+                # Use SLM (Groq 70B) for short explanations - faster and cheaper
+                task_router.log_routing_decision(
+                    TaskType.SHORT_EXPLANATION,
+                    context=f"query_len={len(user_query)}, history_len={len(conversation_history)}",
+                )
+                response = await ai_service.generate_with_slm(
+                    prompt=prompt,
+                    system_prompt=EXPLANATION_SYSTEM_PROMPT,
+                    max_tokens=1024,
+                    temperature=0.7,
+                    use_large_model=True,  # Use 70B model for better explanations
+                    json_mode=False,
+                )
+                logger.info(
+                    "explanation_generated_with_slm",
+                    model="groq_70b",
+                    query_length=len(user_query),
+                )
+            else:
+                # Use Claude for complex explanations or long conversations
+                response = await self.generate(
+                    prompt=prompt,
+                    max_tokens=1024,
+                    temperature=0.7,
+                )
 
             return {
                 "success": True,
                 "explanation": response.strip(),
+                "used_slm": use_slm,
             }
         except Exception as e:
             logger.error("explanation_generation_failed", error=str(e))

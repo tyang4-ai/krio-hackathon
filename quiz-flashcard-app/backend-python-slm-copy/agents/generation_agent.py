@@ -8,6 +8,7 @@ Responsibilities:
 - Generate flashcards from content
 - Use RAG for semantic context retrieval (Phase 3)
 - Validate and score generated questions (Phase 3)
+- Use SLM for simple vocabulary flashcards (Phase 4)
 """
 import json
 import re
@@ -21,6 +22,7 @@ from models import AIAnalysisResult, AgentMessage as AgentMessageModel, Question
 from services.ai_service import ai_service
 from services.rag_service import rag_service
 from services.question_validator import question_validator
+from services.task_router import task_router, TaskType
 
 from .base_agent import AgentRole, BaseAgent
 
@@ -421,18 +423,48 @@ Rules: {num_options} options {option_letters}, correct_answer is letter. All que
 
         prompt = self._build_flashcard_prompt(content, count, difficulty, custom_directions, chapter)
 
+        # Phase 4: Use SLM for simple vocabulary flashcards (concepts mode)
+        use_slm = (
+            difficulty == "concepts" and
+            task_router.should_use_slm(TaskType.FLASHCARD_VOCABULARY)
+        )
+
         try:
-            response = await self.generate_json(prompt, max_tokens=3000)
+            if use_slm:
+                # Use SLM (Groq) for vocabulary flashcards - faster and cheaper
+                task_router.log_routing_decision(
+                    TaskType.FLASHCARD_VOCABULARY,
+                    context=f"flashcards count={count}",
+                )
+                response = await ai_service.generate_with_slm(
+                    prompt=prompt,
+                    system_prompt=GENERATION_SYSTEM_PROMPT,
+                    max_tokens=3000,
+                    temperature=0.3,
+                    use_large_model=False,  # Use 8B model for simple flashcards
+                    json_mode=True,
+                )
+                logger.info(
+                    "flashcards_generated_with_slm",
+                    count=count,
+                    model="groq_8b",
+                )
+            else:
+                # Use Claude for complex flashcards
+                response = await self.generate_json(prompt, max_tokens=3000)
+
             flashcards = self._parse_flashcards_response(response)
 
             logger.info(
                 "flashcards_generated",
                 count=len(flashcards),
+                used_slm=use_slm,
             )
 
             return {
                 "success": True,
                 "flashcards": flashcards,
+                "used_slm": use_slm,
             }
 
         except Exception as e:
