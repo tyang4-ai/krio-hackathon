@@ -67,9 +67,8 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # Check for guest mode
+    # Handle guest token
     if credentials.credentials == "guest":
-        logger.info("guest_mode_access")
         return create_guest_user()
 
     # Verify the token
@@ -120,7 +119,7 @@ async def get_optional_user(
     if not credentials:
         return None
 
-    # Check for guest mode
+    # Handle guest token
     if credentials.credentials == "guest":
         return create_guest_user()
 
@@ -156,8 +155,8 @@ async def get_current_user_id(
     """
     Dependency to get just the user ID without database lookup.
 
-    Supports guest mode with "guest" token.
     Useful for operations that only need the user ID.
+    Supports guest mode with "guest" token.
     """
     if not credentials:
         raise HTTPException(
@@ -166,7 +165,7 @@ async def get_current_user_id(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # Check for guest mode
+    # Handle guest token
     if credentials.credentials == "guest":
         return GUEST_USER_ID
 

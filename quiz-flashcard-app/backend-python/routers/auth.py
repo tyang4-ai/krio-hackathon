@@ -185,7 +185,7 @@ async def guest_login():
     guest_user = UserResponse(
         id=GUEST_USER_ID,
         google_id="guest",
-        email="guest@studyforge.app",  # Use a real-looking domain
+        email="guest@studyforge.app",
         name="Guest User",
         avatar_url=None,
         is_active=True,

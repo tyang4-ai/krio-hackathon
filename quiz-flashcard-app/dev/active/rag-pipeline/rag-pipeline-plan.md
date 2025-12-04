@@ -1,6 +1,6 @@
 # RAG Pipeline Implementation Plan
 
-**Last Updated:** 2025-12-01
+**Last Updated:** 2025-12-04
 
 ## Executive Summary
 
@@ -95,7 +95,7 @@ This implementation is based on findings from 12 academic papers.
 | EmbeddingService - OpenAI ada-002 | ✅ | `services/embedding_service.py` |
 | Concept map generator | ✅ | `services/chunking_service.py` |
 
-### Phase 2: Enhanced Style Guide 🔄 IN PROGRESS
+### Phase 2: Enhanced Style Guide ✅ COMPLETE
 
 **Research Foundation:** Based on 6 academic papers on question quality evaluation:
 - Ahmed et al. (BMC Medical Education 2025) - Facility/Discrimination metrics
@@ -136,13 +136,16 @@ This implementation is based on findings from 12 academic papers.
 
 ### Phase 3: RAG Generation 🔲 TODO
 
-| Task | Status |
-|------|--------|
-| Integrate chunking into document upload | 🔲 |
-| Update GenerationAgent - use RAG retrieval | 🔲 |
-| Update GenerationAgent - include few-shot | 🔲 |
-| Implement QuestionValidator | 🔲 |
-| Add refinement loop | 🔲 |
+| Task | Status | Notes |
+|------|--------|-------|
+| Create RAGService | 🔲 | `services/rag_service.py` - semantic search with pgvector |
+| Create QuestionValidator | 🔲 | `services/question_validator.py` - 8-dimension quality scoring |
+| Add question quality columns | 🔲 | Migration for `quality_score`, `bloom_level` |
+| Wire router parameters | 🔲 | Add `use_rag`, `validate` to ai.py |
+| Update GenerationAgent | 🔲 | Replace content truncation with RAG retrieval |
+| Include few-shot examples | 🔲 | Use AnalysisAgent's extracted high-quality samples |
+| Add refinement loop | 🔲 | Re-generate questions that score below threshold |
+| Integrate chunking in upload | 🔲 | Trigger chunking when document uploaded |
 
 ---
 
@@ -239,10 +242,19 @@ tiktoken==0.5.2      # Token counting for OpenAI
 
 ---
 
+## Current Status Summary (2025-12-04)
+
+| Phase | Status | Notes |
+|-------|--------|-------|
+| Phase 1 (Chunking & Embeddings) | ✅ Complete | All tables, models, services created |
+| Phase 2 (Enhanced Style Guide) | ✅ Complete | 8-dimension scoring, few-shot extraction |
+| Phase 3 (RAG Generation) | 🔲 **Not Started** | Files don't exist yet |
+
 ## Next Steps
 
-1. Deploy migration to test database (enable pgvector)
-2. Integrate chunking into document upload flow
-3. Test chunking with sample documents
-4. Implement Phase 2: Enhanced Style Guide
-5. Implement Phase 3: RAG Generation
+1. **Create `services/rag_service.py`** - Semantic retrieval with pgvector
+2. **Create `services/question_validator.py`** - 8-dimension quality scoring
+3. **Add migration** - `quality_score`, `bloom_level` columns to questions table
+4. **Wire routers** - Add `use_rag`, `validate` params to ai.py endpoints
+5. **Integrate** - Replace content truncation with RAG retrieval in GenerationAgent
+6. **Test** - End-to-end RAG generation flow
