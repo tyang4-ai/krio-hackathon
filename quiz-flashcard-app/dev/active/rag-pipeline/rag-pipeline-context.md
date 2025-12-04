@@ -1,10 +1,20 @@
 # RAG Pipeline - Development Context
 
-**Last Updated:** 2025-12-01
+**Last Updated:** 2025-12-04
+
+## Implementation Status
+
+| Phase | Description | Status |
+|-------|-------------|--------|
+| Phase 1 | Database & Chunking | ✅ Complete |
+| Phase 2 | Enhanced Style Guide | ✅ Complete |
+| Phase 3 | RAG Generation | ✅ Complete |
+| Phase 4 | SLM Integration | ✅ Complete |
+| Phase 5 | Deployment | ✅ Test Deployed |
 
 ## Key Files Reference
 
-### New Models (Pipeline 1)
+### New Models (Phase 1)
 
 | File | Purpose |
 |------|---------|
@@ -12,28 +22,35 @@
 | [document_topic.py](../../../backend-python/models/document_topic.py) | Topic hierarchy model |
 | [document_concept_map.py](../../../backend-python/models/document_concept_map.py) | Concept relationship mapping |
 
-### New Services (Pipeline 1)
+### New Services (Phase 1-4)
 
 | File | Purpose |
 |------|---------|
 | [chunking_service.py](../../../backend-python/services/chunking_service.py) | 4-phase semantic chunking |
 | [embedding_service.py](../../../backend-python/services/embedding_service.py) | OpenAI ada-002 embeddings |
+| [rag_service.py](../../../backend-python/services/rag_service.py) | RAG context retrieval with pgvector (Phase 3) |
+| [question_validator.py](../../../backend-python/services/question_validator.py) | 8-dimension quality validation (Phase 3) |
+| [task_router.py](../../../backend-python-slm-copy/services/task_router.py) | SLM/LLM routing logic (Phase 4) |
 
 ### Migrations
 
 | File | Content |
 |------|---------|
-| [009_add_chunking_tables.py](../../../backend-python/alembic/versions/20251201_000001_009_add_chunking_tables.py) | pgvector + chunking tables |
+| [009_add_chunking_tables.py](../../../backend-python/alembic/versions/20251201_000001_009_add_chunking_tables.py) | pgvector + chunking tables (Phase 1) |
+| [011_add_enhanced_style_guide.py](../../../backend-python/alembic/versions/20251201_000003_011_add_enhanced_style_guide_columns.py) | few_shot_examples, quality_criteria, bloom_taxonomy (Phase 2) |
+| [015_add_question_quality.py](../../../backend-python/alembic/versions/20251203_000000_015_add_question_quality_columns.py) | quality_score, bloom_level, quality_scores on questions (Phase 3) |
 
-### Existing Files to Modify (Phase 2 & 3)
+### Modified Files (Phase 2-4)
 
-| File | Planned Changes |
-|------|-----------------|
-| [agents/analysis_agent.py](../../../backend-python/agents/analysis_agent.py) | Add few-shot extraction, validation rules |
-| [agents/generation_agent.py](../../../backend-python/agents/generation_agent.py) | RAG retrieval, validation loop |
-| [services/document_service.py](../../../backend-python/services/document_service.py) | Trigger chunking on upload |
-| [routers/documents.py](../../../backend-python/routers/documents.py) | New chunk-related endpoints |
-| [routers/ai.py](../../../backend-python/routers/ai.py) | Updated generation endpoints |
+| File | Changes Made |
+|------|--------------|
+| [agents/analysis_agent.py](../../../backend-python/agents/analysis_agent.py) | ✅ 8-dimension quality scoring, few-shot extraction, Bloom's taxonomy |
+| [agents/generation_agent.py](../../../backend-python/agents/generation_agent.py) | ✅ RAG retrieval, validation, SLM routing for flashcards |
+| [agents/explanation_agent.py](../../../backend-python/agents/explanation_agent.py) | ✅ SLM routing for short explanations |
+| [services/ai_service.py](../../../backend-python/services/ai_service.py) | ✅ Groq client, `generate_with_slm()` method |
+| [routers/documents.py](../../../backend-python/routers/documents.py) | ✅ Chunk endpoints (chunk, embed, index, search) |
+| [routers/ai.py](../../../backend-python/routers/ai.py) | ✅ useRag/validate params, quality fields in response |
+| [config/settings.py](../../../backend-python/config/settings.py) | ✅ Embedding provider, SLM settings, Claude Sonnet 4 |
 
 ---
 
@@ -121,8 +138,33 @@
 
 ### AI Provider for Chunking
 - Uses existing anthropic/openai settings
-- Haiku model for fast topic extraction
+- Claude Sonnet 4 for quality-critical tasks
 - Batch processing for efficiency
+
+### Model Selection (Phase 4)
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Question generation | Claude Sonnet 4 | Quality-critical |
+| Document organization | Claude Sonnet 4 | Semantic understanding |
+| Quality scoring | Claude Sonnet 4 | 8-dimension judgment |
+| Written grading | Claude Sonnet 4 | Partial credit logic |
+| Simple flashcards | Groq Llama 8B | Low-risk, structured |
+| Short explanations | Groq Llama 70B | Basic tutoring |
+| MCQ/TF grading | Hardcoded | No AI needed |
+
+### Quality Scoring Weights (Phase 2-3)
+```python
+QUALITY_WEIGHTS = {
+    "clarity": 0.15,
+    "content_accuracy": 0.20,
+    "answer_accuracy": 0.15,
+    "distractor_quality": 0.10,
+    "cognitive_level": 0.10,
+    "rationale_quality": 0.10,
+    "single_concept": 0.10,
+    "cover_test": 0.10,
+}
+```
 
 ---
 

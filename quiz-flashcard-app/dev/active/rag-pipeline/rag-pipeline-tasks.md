@@ -1,8 +1,8 @@
 # RAG Pipeline - Task Checklist
 
-**Last Updated:** 2025-12-01
+**Last Updated:** 2025-12-04
 
-## Phase 1: Database & Chunking (Foundation)
+## Phase 1: Database & Chunking (Foundation) ✅ COMPLETE
 
 ### Database Setup
 - [x] Create migration for pgvector extension
@@ -40,50 +40,48 @@
 
 ---
 
-## Phase 2: Enhanced Style Guide
+## Phase 2: Enhanced Style Guide ✅ COMPLETE
 
 ### Database Schema
-- [ ] Add few_shot_examples JSONB to ai_analysis
-- [ ] Add validation_rules JSONB to ai_analysis
-- [ ] Add bloom_taxonomy_targets TEXT[] to ai_analysis
-- [ ] Create migration (010)
+- [x] Add few_shot_examples JSONB to ai_analysis
+- [x] Add quality_criteria JSONB to ai_analysis (renamed from validation_rules)
+- [x] Add bloom_taxonomy_targets JSONB to ai_analysis
+- [x] Create migration (011_add_enhanced_style_guide_columns.py)
 
 ### AnalysisAgent Enhancement
-- [ ] Extract 3-5 best sample questions as few-shot examples
-- [ ] Identify validation rules from patterns
-- [ ] Detect Bloom's taxonomy levels being tested
-- [ ] Store structured output in enhanced schema
+- [x] Extract 3-5 best sample questions as few-shot examples (score >= 4.0)
+- [x] 8-dimension quality scoring with research-backed weights
+- [x] Detect Bloom's taxonomy levels being tested
+- [x] Store structured output in enhanced schema
 
 ---
 
-## Phase 3: RAG Generation
+## Phase 3: RAG Generation ✅ COMPLETE
 
 ### Integration
 - [x] Integrate chunking into document upload flow (API endpoints added)
-- [ ] Add background task for chunking
-- [ ] Add background task for embedding
+- [x] RAG retrieval integrated into generation flow (optional via `useRag` param)
+- [x] Question validation integrated (optional via `validate` param)
 
 ### RAG Retrieval
-- [ ] Create RAGService for retrieval
-- [ ] Topic extraction from user request
-- [ ] Vector search with category filtering
-- [ ] Chunk ranking and selection
+- [x] Create RAGService (`services/rag_service.py`) - ~320 lines
+- [x] Topic extraction from user request (chapter parameter)
+- [x] Vector search with category filtering via pgvector
+- [x] Chunk ranking and selection with token budgeting
+- [x] In-memory caching with MD5 keys
 
 ### GenerationAgent Updates
-- [ ] Use RAG-retrieved chunks instead of full doc
-- [ ] Include few-shot examples from style guide
-- [ ] Generate 1.5x questions for filtering
+- [x] Use RAG-retrieved chunks via `rag_service.retrieve_context()`
+- [x] Include few-shot examples from style guide
+- [x] Generate 1.5x questions for filtering (when validate=true)
+- [x] Store quality_score, bloom_level, quality_scores on Question model
 
 ### QuestionValidator
-- [ ] Check against validation_rules
-- [ ] Verify factual accuracy against source chunks
-- [ ] Check for duplicates (semantic similarity)
-- [ ] Style rule enforcement
-
-### Refinement Loop
-- [ ] Fix style violations automatically
-- [ ] Regenerate failed questions
-- [ ] Max 2 refinement attempts
+- [x] Create QuestionValidator (`services/question_validator.py`) - ~380 lines
+- [x] 8-dimension quality scoring (same weights as AnalysisAgent)
+- [x] Minimum threshold filtering (default: 3.5)
+- [x] Batch scoring and refinement
+- [x] Quality report generation
 
 ### API Updates
 - [x] New chunk-related endpoints in documents router
@@ -93,31 +91,48 @@
   - GET `/api/documents/{id}/chunks` - Get chunks
   - GET `/api/documents/{id}/concept-map` - Get concept map
   - POST `/api/categories/{id}/search-chunks` - Vector search
-- [ ] Updated generation endpoints in ai router
+- [x] Updated generation endpoints in ai router
+  - Added `useRag` parameter (enables RAG context retrieval)
+  - Added `validate` parameter (enables quality validation)
+  - Response includes `quality_score`, `bloom_level`, `quality_scores`
+  - Response includes `validation` report (pass/fail counts)
 
 ---
 
-## Phase 4: Testing & Optimization
+## Phase 4: SLM Integration ✅ COMPLETE
+
+### Cost Optimization
+- [x] Add Groq as SLM provider (Llama 3.1 8B / Llama 3.3 70B)
+- [x] Create TaskRouter for intelligent model selection
+- [x] Route simple flashcards to SLM 8B
+- [x] Route short explanations to SLM 70B
+- [x] Keep quality-critical tasks on Claude Sonnet 4
+- [x] Automatic fallback to Claude if SLM fails
+
+### Files Created/Modified
+- [x] `config/settings.py` - SLM provider settings
+- [x] `services/ai_service.py` - Groq client + `generate_with_slm()`
+- [x] `services/task_router.py` - New file for routing logic
+- [x] `agents/generation_agent.py` - SLM for flashcards
+- [x] `agents/explanation_agent.py` - SLM for short explanations
 
 ### Testing
-- [ ] Test with PDF documents
-- [ ] Test with PowerPoint documents
-- [ ] Test with plain text documents
-- [ ] Test chunking accuracy
-- [ ] Test embedding quality
-- [ ] Test RAG retrieval relevance
+- [x] Test Groq API connection (both 8B and 70B)
+- [x] Test TaskRouter routing logic
+- [x] Test ExplanationAgent with SLM
+- [x] Verify Claude fallback works
 
-### Optimization
-- [ ] Tune chunking parameters (tokens, overlap)
-- [ ] Optimize embedding batch size
-- [ ] Add caching for embeddings
-- [ ] Performance benchmarking
+## Phase 5: Deployment ✅ COMPLETE
 
-### Deployment
-- [ ] Deploy to test environment
-- [ ] Run migration on test database
-- [ ] Verify pgvector extension works
-- [ ] Test full pipeline end-to-end
+### Test Environment
+- [x] Deploy to test environment (Studyforge-test-backend)
+- [x] Run migration 015 on test database
+- [x] Verify pgvector extension works
+- [x] Test RAG + validation end-to-end
+- [x] Test backward compatibility (without useRag/validate)
+
+### Production
+- [ ] Deploy to production (pending final testing)
 - [ ] Monitor for issues
 
 ---
