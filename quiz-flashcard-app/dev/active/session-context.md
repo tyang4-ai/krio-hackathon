@@ -2,6 +2,210 @@
 
 ## Latest Session Summary
 
+### Production Bug Fix: Guest User Quiz Submission (2025-12-04)
+
+**Issue**: Quiz submission failing with 500 Internal Server Error when logged in as guest user.
+
+**Error Details**:
+- Frontend POST to `/api/quiz/{session_id}/submit` returning 500
+- CORS policy block in browser due to 500 error response
+
+**Root Cause Analysis**:
+1. Guest users are created with `id = -1` in `middleware/auth_middleware.py`
+2. `QuestionAttempt` model has foreign key constraint: `user_id -> users.id`
+3. When submitting quiz with guest auth, code tried to insert `user_id=-1` into `question_attempts`
+4. PostgreSQL rejected this with FK violation since user with id=-1 doesn't exist in users table
+
+**Fix Applied** (`routers/quiz.py` line 309):
+```python
+# Before:
+user_id = current_user.id if current_user else None
+
+# After:
+# Guest users (id=-1) should be treated as anonymous (user_id=None)
+# to avoid FK violation on question_attempts.user_id
+user_id = current_user.id if current_user and current_user.id > 0 else None
+```
+
+**Verification**:
+```bash
+curl -s -X POST "https://api.studyforge.co/api/quiz/5/submit" \
+  -H "Authorization: Bearer guest" \
+  -H "Content-Type: application/json" \
+  -d '{"answers":{"4":"D","5":"A"}}'
+# Response: {"session_id":5,"score":2,"total":2,"percentage":100.0,...}
+```
+
+**Deployment**: Fix deployed to production backend `Studyforge-backend-v2` via `eb deploy`.
+
+---
+
+### RAG Pipeline Phase 2 & 3 Implementation (2025-12-04)
+
+**Current Progress:**
+
+#### Step 1.1: Updated `models/ai_analysis.py` ✅
+Added missing columns to AIAnalysisResult model:
+- `few_shot_examples` (JSONB) - Best sample questions with quality scores
+- `quality_criteria` (JSONB) - Weighted scoring schema and analysis summary
+- `bloom_taxonomy_targets` (JSONB) - Detected Bloom's taxonomy levels
+
+#### Step 1.2: Updated `agents/analysis_agent.py` ✅
+Added 8-dimension quality scoring:
+- `QUALITY_WEIGHTS` dict with research-backed weights (clarity 15%, content_accuracy 20%, etc.)
+- `score_questions()` method - AI-powered scoring on 8 dimensions
+- `extract_few_shot_examples()` - Filters questions scoring >= 4.0
+- `extract_bloom_targets()` - Extracts unique Bloom's taxonomy levels
+- `build_quality_criteria()` - Builds summary with averages by dimension
+- Updated `analyze_samples()` to call scoring and store enhanced fields
+- Updated `get_analysis_status()` to return enhanced fields
+
+#### Step 2: Create RAG Service ✅
+Created `services/rag_service.py` (~320 lines):
+- `RAGService` class with context token budgeting
+- `retrieve_context()` - Uses embedding_service.search_similar_chunks()
+- `format_context_for_prompt()` - Formats chunks with metadata, respects token budget
+- `get_context_with_concepts()` - Multi-topic retrieval with deduplication
+- `build_generation_prompt_context()` - Combines RAG context + few-shot + quality criteria
+- In-memory cache with MD5 keys for repeated queries
+- Updated `services/__init__.py` to export RAGService
+
+#### Step 3: Create Question Validator ✅
+Created `services/question_validator.py` (~380 lines):
+- `QuestionValidator` class with configurable thresholds
+- `validate_questions()` - Scores batch, returns (passed, failed) tuple
+- `validate_and_refine()` - Validates and attempts to refine low-scoring questions
+- `_score_batch()` - AI-powered 8-dimension scoring
+- `_refine_batch()` - AI-powered question improvement
+- `get_quality_report()` - Generates statistics and distribution
+- Same QUALITY_WEIGHTS as analysis_agent.py for consistency
+- Updated `services/__init__.py` to export QuestionValidator
+
+#### Step 4: Add Migration for Question Columns ✅
+Created migration `20251203_000000_015_add_question_quality_columns.py`:
+- `quality_score` (Float) - Weighted overall quality score
+- `bloom_level` (String) - Bloom's taxonomy level
+- `quality_scores` (JSONB) - Detailed per-dimension scores
+- Indexes on `quality_score` and `bloom_level`
+- Fixed migration 014 to depend on 011 (was broken chain)
+- Updated `models/question.py` with new columns
+
+#### Step 5: Update GenerationAgent ✅
+Updated `agents/generation_agent.py`:
+- Added imports for `rag_service` and `question_validator`
+- Added `use_rag`, `validate`, `document_ids` parameters to `generate_questions()`
+- RAG retrieval: Uses `rag_service.retrieve_context()` with chapter/content as query
+- Builds comprehensive prompt with `rag_service.build_generation_prompt_context()`
+- Validation: Generates 1.5x questions, filters with `question_validator.validate_questions()`
+- Stores `quality_score`, `bloom_level`, `quality_scores` on Question model
+- Added validation report to result
+
+#### Step 6: Wire Router Parameters ✅
+Updated `routers/ai.py`:
+- Added `use_rag`, `validate` to `GenerateQuestionsRequest` with aliases (useRag)
+- Added `quality_score`, `bloom_level`, `quality_scores` to `GeneratedQuestion`
+- Added `validation` dict to `GenerateQuestionsResponse`
+- Updated `generate_category_questions` to pass new params
+- Updated logging to include `use_rag` and `validate` flags
+
+Updated `agents/controller_agent.py`:
+- Added `use_rag`, `validate` parameters to `generate_from_documents()`
+- Passes document_ids to generate_questions for RAG filtering
+
+#### Step 7: Test Locally ✅
+- Fixed missing `embedding_provider` and related settings in `config/settings.py`
+- Verified `services.rag_service` imports successfully
+- Verified `services.question_validator` imports successfully
+- Verified `agents.generation_agent` imports successfully
+- Verified `agents.controller_agent` imports successfully
+- All Phase 3 code imports without errors
+
+---
+
+## Phase 3 Implementation Complete! 🎉
+
+All RAG Pipeline Phase 3 components are now implemented:
+
+| Component | File | Status |
+|-----------|------|--------|
+| RAG Service | `services/rag_service.py` | ✅ Created |
+| Question Validator | `services/question_validator.py` | ✅ Created |
+| Question Quality Columns | Migration 015 | ✅ Created |
+| Generation Agent RAG | `agents/generation_agent.py` | ✅ Updated |
+| Router Parameters | `routers/ai.py` | ✅ Updated |
+| Settings | `config/settings.py` | ✅ Updated |
+
+### Deployment Steps (In Progress)
+
+#### Step 8: Run Migration 015 on Test Database ✅
+```bash
+# Connected to test database (studyforge-db-test)
+cd quiz-flashcard-app/backend-python
+alembic upgrade head
+# Result: 015 (head) - migration applied successfully
+```
+
+#### Step 9: Deploy to Test Environment ✅
+```bash
+# Deployed to Elastic Beanstalk test
+eb use Studyforge-test-backend
+eb deploy
+# Result: Environment update completed successfully (05:06:21)
+```
+
+#### Step 10: Test RAG and Validation ✅ COMPLETE
+
+**Issue Found & Fixed**: `quality_scores` JSONB column was missing from database despite migration 015 being marked as applied.
+
+**Fix Applied**: Manually added the missing column:
+```sql
+ALTER TABLE questions ADD COLUMN IF NOT EXISTS quality_scores JSONB DEFAULT '{}'
+```
+
+**Test Results - With RAG and Validation:**
+```bash
+POST /api/categories/2/generate-questions
+{"count": 3, "useRag": true, "validate": true, "chapter": "Cardiovascular System"}
+```
+
+Response:
+- `success: true`
+- Generated 1 high-quality question (3 failed validation, filtered out)
+- Quality score: 4.75 (excellent)
+- Bloom level: "apply"
+- All 8 dimensions scored (clarity: 5, content_accuracy: 5, etc.)
+- Validation report included pass/fail counts and distribution
+
+**Test Results - Without RAG/Validate (Backward Compatible):**
+```bash
+POST /api/categories/2/generate-questions
+{"count": 2, "chapter": "Cardiovascular System"}
+```
+
+Response:
+- `success: true`
+- Generated 2 questions without quality scoring
+- `quality_score`, `bloom_level`, `quality_scores` all null (as expected)
+- `validation` field is null
+
+---
+
+## Phase 3 Deployment Complete! 🎉
+
+All RAG Pipeline components are deployed and tested on the test environment:
+
+| Test | Result |
+|------|--------|
+| Migration 015 | ✅ Applied (with manual fix for quality_scores) |
+| Backend Deploy | ✅ Studyforge-test-backend |
+| RAG + Validation | ✅ Working - filters low-quality questions |
+| Backward Compatible | ✅ Works without useRag/validate |
+| Quality Scoring | ✅ 8-dimension scores stored |
+| Bloom Taxonomy | ✅ Detected and stored |
+| Validation Report | ✅ Included in response |
+
+---
+
 ### Landing Page Swiss Style Animations (2025-12-04)
 
 **Completed Task**: Added animations and flow to the Swiss International Style landing page.
@@ -107,13 +311,15 @@ Complete redesign using Swiss International Typographic Style:
 ## Next Steps (After This Session)
 
 ### Immediate:
-1. **Commit and push** the landing page animation changes
+1. **Commit and push** all Phase 3 RAG Pipeline changes
 2. **Deploy to test frontend** (S3) to verify in production-like environment
+3. **Test frontend with RAG options** - Add UI toggle for useRag/validate
 
 ### Future Work:
-1. **RAG Pipeline Phase 3** - `rag_service.py`, `question_validator.py`
+1. ~~**RAG Pipeline Phase 3** - `rag_service.py`, `question_validator.py`~~ ✅ COMPLETE
 2. **Automated Tests** - 0% coverage currently
-3. **Landing page scroll animations** - If desired later, use CSS-only approach (no IntersectionObserver), or use a library like `react-intersection-observer`
+3. **Production Deployment** - Deploy to production after more testing
+4. **Landing page scroll animations** - If desired later, use CSS-only approach (no IntersectionObserver)
 
 ---
 

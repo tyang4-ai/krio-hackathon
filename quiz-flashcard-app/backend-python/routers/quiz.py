@@ -304,7 +304,9 @@ async def submit_quiz(
 ):
     """Submit quiz answers and get results."""
     try:
-        user_id = current_user.id if current_user else None
+        # Guest users (id=-1) should be treated as anonymous (user_id=None)
+        # to avoid FK violation on question_attempts.user_id
+        user_id = current_user.id if current_user and current_user.id > 0 else None
         results = await quiz_service.submit_quiz_answers(
             db,
             session_id,
