@@ -7,13 +7,15 @@
 4. [Database Schema](#database-schema)
 5. [Backend Services](#backend-services)
 6. [Multi-Agent AI System](#multi-agent-ai-system)
-7. [Frontend Components](#frontend-components)
-8. [API Reference](#api-reference)
-9. [AI Integration](#ai-integration)
-10. [Personalization System](#personalization-system)
-11. [Development Setup](#development-setup)
-12. [Deployment](#deployment)
-13. [API Contract Validation Guidelines](#api-contract-validation-guidelines)
+7. [RAG Pipeline](#rag-pipeline)
+8. [Frontend Components](#frontend-components)
+9. [API Reference](#api-reference)
+10. [AI Integration](#ai-integration)
+11. [Personalization System](#personalization-system)
+12. [Development Setup](#development-setup)
+13. [Deployment](#deployment)
+14. [Deployment Environments](#deployment-environments)
+15. [API Contract Validation Guidelines](#api-contract-validation-guidelines)
 
 ---
 
@@ -1111,6 +1113,248 @@ checkMathEquivalence(userAnswer, correctAnswer)
 
 ---
 
+## RAG Pipeline
+
+StudyForge implements a Retrieval-Augmented Generation (RAG) pipeline to improve question generation quality by using semantic search over document content instead of simple truncation.
+
+### Overview
+
+The RAG pipeline consists of three phases:
+1. **Phase 1**: Semantic Chunking & Embeddings - Breaking documents into meaningful chunks with vector embeddings
+2. **Phase 2**: Enhanced Style Guide - 8-dimension quality scoring with few-shot example extraction
+3. **Phase 3**: RAG-Based Generation - Semantic retrieval, quality validation, and filtering
+
+### Architecture
+
+```
+Document Upload
+    ↓
+┌─────────────────────────────────────────┐
+│ Phase 1: Chunking & Embedding           │
+│ ┌─────────────┐    ┌─────────────────┐ │
+│ │ Chunking    │───▶│ Embedding       │ │
+│ │ Service     │    │ Service         │ │
+│ │ (semantic)  │    │ (OpenAI ada-002)│ │
+│ └─────────────┘    └─────────────────┘ │
+│         ↓                   ↓          │
+│ ┌─────────────┐    ┌─────────────────┐ │
+│ │ Topic       │    │ pgvector        │ │
+│ │ Detection   │    │ Storage         │ │
+│ └─────────────┘    └─────────────────┘ │
+└─────────────────────────────────────────┘
+                    ↓
+Question Generation Request
+                    ↓
+┌─────────────────────────────────────────┐
+│ Phase 3: RAG Generation                 │
+│ ┌─────────────┐                        │
+│ │ RAG Service │ ◀── Semantic Query     │
+│ │ (retrieval) │                        │
+│ └─────────────┘                        │
+│         ↓                              │
+│ ┌─────────────────────────────────────┐│
+│ │ Generation Agent                    ││
+│ │ • Few-shot examples (Phase 2)       ││
+│ │ • Quality rubric (8 dimensions)     ││
+│ │ • Retrieved context chunks          ││
+│ │ • 1.5x overgeneration               ││
+│ └─────────────────────────────────────┘│
+│         ↓                              │
+│ ┌─────────────────────────────────────┐│
+│ │ Question Validator                  ││
+│ │ • 8-dimension scoring               ││
+│ │ • Filter < 3.0 threshold            ││
+│ │ • Refinement loop for borderline    ││
+│ └─────────────────────────────────────┘│
+└─────────────────────────────────────────┘
+```
+
+### Database Tables
+
+#### document_chunks
+Stores semantically chunked document content with embeddings.
+
+```sql
+CREATE TABLE document_chunks (
+    id SERIAL PRIMARY KEY,
+    document_id INTEGER REFERENCES documents(id) ON DELETE CASCADE,
+    chunk_index INTEGER NOT NULL,
+    content TEXT NOT NULL,
+    start_page INTEGER,
+    end_page INTEGER,
+    token_count INTEGER,
+    embedding vector(1536),  -- pgvector for OpenAI ada-002
+    topic_ids INTEGER[],
+    overlap_start INTEGER,   -- Overlap tracking
+    overlap_end INTEGER,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+#### document_topics
+Stores detected topics per document.
+
+```sql
+CREATE TABLE document_topics (
+    id SERIAL PRIMARY KEY,
+    document_id INTEGER REFERENCES documents(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    embedding vector(1536),
+    page_numbers INTEGER[],
+    created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+#### document_concept_maps
+Stores concept relationships within documents.
+
+```sql
+CREATE TABLE document_concept_maps (
+    id SERIAL PRIMARY KEY,
+    document_id INTEGER REFERENCES documents(id) ON DELETE CASCADE,
+    concept_data JSONB NOT NULL,  -- {nodes: [], edges: []}
+    created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+### Services
+
+#### ChunkingService (`services/chunking_service.py`)
+Semantic document chunking with intelligent boundaries.
+
+**Key Features**:
+- Target chunk size: 800-1200 tokens
+- Overlap: 100 tokens between chunks
+- Boundary detection: paragraphs, sentences, sections
+- Page-level topic detection using AI
+- Multi-topic tagging per chunk
+
+**Methods**:
+```python
+async def chunk_document(document_id: int) -> List[DocumentChunk]
+async def detect_topics(document_id: int) -> List[DocumentTopic]
+async def build_concept_map(document_id: int) -> DocumentConceptMap
+```
+
+#### EmbeddingService (`services/embedding_service.py`)
+Vector embedding generation and storage.
+
+**Key Features**:
+- Uses OpenAI text-embedding-ada-002 (1536 dimensions)
+- Batch processing for efficiency
+- pgvector storage with cosine similarity
+- Async parallel processing
+
+**Methods**:
+```python
+async def embed_chunks(chunks: List[DocumentChunk]) -> None
+async def embed_topics(topics: List[DocumentTopic]) -> None
+async def similarity_search(query: str, limit: int = 10) -> List[DocumentChunk]
+```
+
+#### RAGService (`services/rag_service.py`)
+Retrieval-augmented generation context builder.
+
+**Key Features**:
+- Semantic query construction
+- LRU caching (1000 entries, 5-min TTL)
+- Cache stampede prevention
+- Token-limited context formatting
+- Source attribution
+
+**Methods**:
+```python
+async def build_query(request: GenerationRequest) -> str
+async def retrieve_context(query: str, document_ids: List[int]) -> List[DocumentChunk]
+def format_context(chunks: List[DocumentChunk], max_tokens: int) -> str
+```
+
+#### QuestionValidator (`services/question_validator.py`)
+8-dimension quality scoring and filtering.
+
+**Key Features**:
+- Research-backed quality dimensions
+- AI-based batch validation (up to 10 per call)
+- Heuristic fallback scoring
+- Refinement loop for borderline questions
+- Concurrent validation with semaphore
+
+**Methods**:
+```python
+async def validate_questions(questions: List[Question]) -> List[ScoredQuestion]
+async def refine_low_scoring_questions(questions: List[ScoredQuestion]) -> List[Question]
+def calculate_heuristic_score(question: Question) -> float
+```
+
+### 8-Dimension Quality Scoring
+
+Questions are scored on 8 dimensions (5.0 scale):
+
+| Dimension | Weight | Description |
+|-----------|--------|-------------|
+| Clarity | 15% | Clear, unambiguous wording |
+| Content Accuracy | 20% | Factually correct based on source |
+| Answer Accuracy | 15% | Correct answer is unambiguously correct |
+| Distractor Quality | 15% | Plausible but clearly wrong options |
+| Cognitive Level | 10% | Appropriate Bloom's taxonomy level |
+| Rationale Quality | 10% | Helpful explanation for learning |
+| Single Concept | 10% | Tests one concept clearly |
+| Cover Test | 5% | Answer not obvious from question alone |
+
+**Quality Thresholds**:
+- `>= 4.0`: High quality, used as few-shot examples
+- `>= 3.0`: Acceptable, included in results
+- `< 3.0`: Filtered out or sent for refinement
+
+### Few-Shot Example Extraction
+
+The AnalysisAgent extracts high-quality examples from:
+1. User-provided sample questions (rated >= 4.0)
+2. Previously generated questions with high scores
+3. Questions with explicit positive ratings
+
+**Storage** (in `ai_analysis_results` table):
+```python
+few_shot_examples: List[Dict]  # [{question, answer, score, bloom_level}, ...]
+quality_criteria: Dict         # Extracted quality patterns
+bloom_taxonomy_targets: List[str]  # Target cognitive levels
+```
+
+### API Changes
+
+**New Request Parameters**:
+```python
+class GenerateRequest(BaseModel):
+    # ... existing fields ...
+    use_rag: bool = True           # Enable RAG retrieval
+    validate: bool = True          # Enable quality validation
+    document_ids: List[int] = []   # Filter to specific documents
+```
+
+**New Response Fields**:
+```python
+class GenerateResponse(BaseModel):
+    # ... existing fields ...
+    generation_stats: Dict = {
+        "generated_count": 8,      # Before filtering
+        "validated_count": 5,      # After filtering
+        "filtered_count": 3,       # Removed by filter
+        "average_score": 4.2,      # Mean quality score
+        "chunks_used": 12          # RAG chunks retrieved
+    }
+```
+
+### Research Foundation
+
+Implementation backed by academic research showing:
+- RAG improves question validity from 12-15% to 92-96%
+- Few-shot improves accuracy from 16% to 80%
+- ~31% of generated questions need filtering
+- Content-aware chunking beats fixed-size by 42.8% recall
+
+---
+
 ## Frontend Components
 
 ### Pages
@@ -2000,6 +2244,93 @@ services:
 - [ ] Set up backups for SQLite database
 - [ ] Add logging (e.g., Winston)
 - [ ] Configure CDN for static assets (optional)
+
+---
+
+## Deployment Environments
+
+StudyForge maintains separate test and production environments on AWS.
+
+### Testing Environment
+
+| Component | URL |
+|-----------|-----|
+| Backend | `Studyforge-test-backend.eba-rufp4rir.us-west-1.elasticbeanstalk.com` |
+| Frontend | `http://studyforge-frontend-test.s3-website-us-west-1.amazonaws.com` |
+| Database | `***REDACTED_DB_HOST***` |
+
+**Purpose**: Development testing, feature validation, CI/CD staging
+
+### Production Environment
+
+| Component | URL |
+|-----------|-----|
+| Backend | `studyforge-backend-v2.eba-rufp4rir.us-west-1.elasticbeanstalk.com` |
+| Frontend | `http://studyforge-frontend.s3-website-us-west-1.amazonaws.com` |
+| Database | `***REDACTED_HOST***` |
+
+**Purpose**: Live user-facing application
+
+### Environment Configuration
+
+**CRITICAL**: Each environment must be self-contained:
+- Test frontend → Test backend ONLY
+- Production frontend → Production backend ONLY
+
+**Frontend `.env` files**:
+```bash
+# .env (local development)
+VITE_GOOGLE_CLIENT_ID=<dev-client-id>
+
+# .env.production (for production builds)
+VITE_API_URL=http://studyforge-backend-v2.eba-rufp4rir.us-west-1.elasticbeanstalk.com
+VITE_GOOGLE_CLIENT_ID=<production-client-id>
+```
+
+### Deployment Commands
+
+**Backend (Elastic Beanstalk)**:
+```bash
+cd quiz-flashcard-app/backend-python
+
+# Deploy to test
+eb deploy Studyforge-test-backend
+
+# Deploy to production
+eb deploy studyforge-backend-v2
+
+# Check environment status
+eb status studyforge-backend-v2
+
+# View environment variables
+eb printenv studyforge-backend-v2
+```
+
+**Frontend (S3 Static Hosting)**:
+```bash
+cd quiz-flashcard-app/frontend
+
+# Build for production
+npm run build
+
+# Deploy to test
+aws s3 sync dist/ s3://studyforge-frontend-test/ --delete
+
+# Deploy to production
+aws s3 sync dist/ s3://studyforge-frontend/ --delete
+```
+
+### Google OAuth Configuration
+
+Each environment requires matching Google OAuth Client IDs:
+1. Backend `GOOGLE_CLIENT_ID` env var
+2. Frontend `VITE_GOOGLE_CLIENT_ID` env var
+3. Google Cloud Console authorized origins
+
+**Authorized JavaScript Origins** (Google Cloud Console):
+- Test: `http://studyforge-frontend-test.s3-website-us-west-1.amazonaws.com`
+- Production: `http://studyforge-frontend.s3-website-us-west-1.amazonaws.com`
+- Local: `http://localhost:5173`
 
 ---
 

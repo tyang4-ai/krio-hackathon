@@ -1,4 +1,45 @@
-# Session Context - 2025-12-02 (Updated)
+# Session Context - 2025-12-04 (Updated)
+
+## Latest Session Summary
+
+### Gap Analysis Completed (2025-12-04)
+
+Comprehensive codebase exploration revealed:
+
+| Finding | Status |
+|---------|--------|
+| Phase 1 (Chunking & Embeddings) | ✅ Complete |
+| Phase 2 (Enhanced Style Guide) | ✅ Complete |
+| Phase 3 (RAG Generation) | ❌ **NOT IMPLEMENTED** |
+| Automated Tests | ❌ 0% coverage |
+
+**Critical Discovery**: The dev docs claimed Phase 3 was implemented, but the files don't exist:
+- `services/rag_service.py` - **FILE NOT FOUND**
+- `services/question_validator.py` - **FILE NOT FOUND**
+
+### Production Environment Fix (2025-12-04)
+
+Fixed `.env.production` to point to the correct production backend:
+- **Before**: `VITE_API_URL=http://Studyforge-test-backend...` (WRONG)
+- **After**: `VITE_API_URL=http://studyforge-backend-v2...` (CORRECT)
+- Rebuilt and redeployed frontend to S3
+
+### Guest Login Deployed (2025-12-03)
+
+- Added guest authentication (`/api/auth/guest`)
+- Fixed guest category creation (FK violation for user_id=-1)
+- Production backend now supports guest mode
+
+### Deployment Status
+
+| Environment | RAG Pipeline | Guest Login | Notes |
+|-------------|--------------|-------------|-------|
+| **Production** | ❌ Not deployed | ✅ Deployed | Intentionally pre-RAG for stability |
+| **Test** | ✅ Deployed (v53-54) | ✅ Deployed | Full RAG features for testing |
+
+**Important**: RAG features (chunking, embeddings, pgvector) remain on test environment only until fully tested.
+
+---
 
 ## Summary of Changes This Session
 
@@ -136,14 +177,29 @@ Backend deployed to Elastic Beanstalk with user isolation migration (008).
 
 | Version | Date | Changes |
 |---------|------|---------|
+| v55 | 2025-12-04 | Fixed .env.production to point to production backend |
+| v54 | 2025-12-03 | Guest login + guest category FK fix |
 | v53 | 2025-12-02 | RAG Pipeline Phase 1 - chunking & embeddings |
 | v52 | 2025-12-01 | User isolation for categories |
 | v51 | 2025-11-30 | PDF formatting fixes |
 | v50 | 2025-11-30 | Batch document operations |
 
-## Next Steps (RAG Pipeline)
+## Next Steps (Priority Order)
 
-1. **Deploy migration** - Enable pgvector extension on test database
-2. **Integrate chunking** - Add to document upload flow
-3. **Phase 2** - Enhanced style guide with few-shot examples
-4. **Phase 3** - RAG-based generation with validation
+### Priority 1: Implement Phase 3 (RAG Generation)
+1. **Create `services/rag_service.py`** - Semantic search with pgvector
+2. **Create `services/question_validator.py`** - 8-dimension quality scoring
+3. **Add migration** - `quality_score`, `bloom_level` columns to questions table
+4. **Wire routers** - Add `use_rag`, `validate` parameters to ai.py
+5. **Integrate** - Replace content truncation with RAG retrieval
+
+### Priority 2: Add Automated Tests
+- `test_chunking_service.py` - Token counting, boundary detection
+- `test_embedding_service.py` - Embedding generation, similarity search
+- `test_auth.py` - JWT validation, guest login
+- `test_categories.py` - CRUD, user isolation
+
+### Priority 3: Frontend Integration
+- Pass `use_rag` and `validate` parameters
+- Display quality scores in UI
+- Show generation statistics

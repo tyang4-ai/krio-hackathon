@@ -20,8 +20,13 @@ from services.category_service import category_service
 router = APIRouter(prefix="/api/categories", tags=["Categories"])
 
 
-def get_db_user_id(user: User) -> Optional[int]:
-    """Convert user ID to database-compatible value. Guest users get NULL."""
+def get_effective_user_id(user: User) -> int | None:
+    """
+    Get the effective user ID for database operations.
+
+    Returns None for guest users (GUEST_USER_ID) to avoid FK violations,
+    since there's no actual user record with ID -1.
+    """
     if user.id == GUEST_USER_ID:
         return None
     return user.id
@@ -35,7 +40,7 @@ async def get_all_categories(
     """
     Get all categories with their statistics for the current user.
     """
-    user_id = get_db_user_id(current_user)
+    user_id = get_effective_user_id(current_user)
     categories_with_stats = await category_service.get_all_categories_with_stats(db, user_id=user_id)
 
     categories = [
@@ -64,7 +69,7 @@ async def get_category(
     """
     Get a single category by ID with statistics.
     """
-    user_id = get_db_user_id(current_user)
+    user_id = get_effective_user_id(current_user)
     result = await category_service.get_category_with_stats(db, category_id, user_id=user_id)
 
     if not result:
@@ -95,7 +100,7 @@ async def create_category(
     """
     Create a new category for the current user.
     """
-    user_id = get_db_user_id(current_user)
+    user_id = get_effective_user_id(current_user)
     category = await category_service.create_category(db, category_data, user_id=user_id)
     stats = await category_service.get_category_stats(db, category.id)
 
@@ -121,7 +126,7 @@ async def update_category(
     """
     Update a category.
     """
-    user_id = get_db_user_id(current_user)
+    user_id = get_effective_user_id(current_user)
     category = await category_service.update_category(db, category_id, category_data, user_id=user_id)
 
     if not category:
@@ -153,7 +158,7 @@ async def delete_category(
     """
     Delete a category and all its related content.
     """
-    user_id = get_db_user_id(current_user)
+    user_id = get_effective_user_id(current_user)
     deleted = await category_service.delete_category(db, category_id, user_id=user_id)
 
     if not deleted:
