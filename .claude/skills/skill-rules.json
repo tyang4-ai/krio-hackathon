@@ -1,0 +1,132 @@
+{
+  "version": "1.0.0",
+  "skills": {
+    "error-tracking": {
+      "type": "domain",
+      "enforcement": "suggest",
+      "priority": "critical",
+      "promptTriggers": {
+        "keywords": [
+          "error",
+          "exception",
+          "sentry",
+          "tracking",
+          "monitoring",
+          "lambda error",
+          "lambda failure",
+          "agent failure",
+          "orchestrator error",
+          "try catch",
+          "error handling"
+        ],
+        "intentPatterns": [
+          "(add|implement|create|setup).*?(error|sentry|tracking|monitoring)",
+          "(track|monitor|capture).*?(error|exception|failure)",
+          "lambda.*?(fail|error|exception)",
+          "agent.*?(fail|error|exception)"
+        ]
+      },
+      "fileTriggers": {
+        "pathPatterns": [
+          "**/Clinisight.AI/clinisight_backend/**/*.py",
+          "**/Clinisight.AI/clinisight_backend/orchestrator/**/*.py",
+          "**/Clinisight.AI/clinisight_backend/agents/**/*.py",
+          "**/Clinisight.AI/clinisight_backend/shared/**/*.py"
+        ],
+        "contentPatterns": [
+          "def.*?handler\\(",
+          "lambda_handler",
+          "except\\s+Exception",
+          "import\\s+boto3",
+          "raise\\s+\\w+Error"
+        ]
+      }
+    },
+    "skill-developer": {
+      "type": "domain",
+      "enforcement": "suggest",
+      "priority": "medium",
+      "promptTriggers": {
+        "keywords": [
+          "skill",
+          "trigger",
+          "hook",
+          "skill-rules",
+          "activation",
+          "progressive disclosure",
+          "500-line rule",
+          "claude code best practices",
+          "skill system",
+          "yaml frontmatter"
+        ],
+        "intentPatterns": [
+          "(create|add|modify|update).*?skill",
+          "(debug|troubleshoot|fix).*?skill.*?(activation|trigger)",
+          "skill.*?(not|isn't|doesn't).*?(activat|trigger|work)",
+          "(understand|explain|learn).*?skill.*?system"
+        ]
+      },
+      "fileTriggers": {
+        "pathPatterns": [
+          "**/.claude/skills/**/*.md",
+          "**/.claude/skills/skill-rules.json",
+          "**/.claude/hooks/**/*.ts",
+          "**/.claude/hooks/**/*.sh"
+        ]
+      }
+    },
+    "backend-dev-guidelines": {
+      "type": "domain",
+      "enforcement": "suggest",
+      "priority": "high",
+      "description": "Backend development patterns for Python/AWS Lambda/DynamoDB",
+      "promptTriggers": {
+        "keywords": [
+          "backend",
+          "lambda",
+          "lambda function",
+          "orchestrator",
+          "agent",
+          "handler",
+          "dynamodb",
+          "boto3",
+          "aws",
+          "serverless",
+          "error handling",
+          "security",
+          "validation",
+          "pii detection",
+          "hipaa",
+          "healthcare"
+        ],
+        "intentPatterns": [
+          "(create|add|implement|build).*?(lambda|agent|orchestrator|handler)",
+          "(fix|handle|debug).*?(error|exception|lambda)",
+          "(add|implement).*?(validation|security|error.*?handling)",
+          "(organize|structure|refactor).*?(backend|lambda|agent)",
+          "(how to|best practice).*?(lambda|dynamodb|aws|serverless)"
+        ]
+      },
+      "fileTriggers": {
+        "pathPatterns": [
+          "**/Clinisight.AI/clinisight_backend/**/*.py",
+          "**/Clinisight.AI/clinisight_backend/orchestrator/**/*.py",
+          "**/Clinisight.AI/clinisight_backend/agents/**/*.py",
+          "**/Clinisight.AI/clinisight_backend/shared/**/*.py"
+        ],
+        "pathExclusions": [
+          "**/*.test.py",
+          "**/*.spec.py",
+          "**/__pycache__/**"
+        ],
+        "contentPatterns": [
+          "def.*?handler\\(",
+          "lambda_handler",
+          "boto3\\.",
+          "dynamodb\\.",
+          "except\\s+Exception"
+        ]
+      }
+    }
+  }
+}

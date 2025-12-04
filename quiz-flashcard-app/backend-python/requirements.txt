@@ -46,8 +46,3 @@ httpx==0.26.0
 
 # Utilities
 python-dotenv==1.0.0
-
-# RAG Pipeline / Chunking (Pipeline 1)
-pgvector==0.2.4
-tiktoken==0.5.2
-voyageai==0.3.2  # Voyage AI embeddings (fallback provider)

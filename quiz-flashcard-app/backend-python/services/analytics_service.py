@@ -477,43 +477,31 @@ class AnalyticsService:
                 return "Outstanding performance and consistency! You're ready for any exam."
             return "Exceptional accuracy! Maintain your streak to solidify long-term retention."
 
-    async def get_content_totals(self, user_id: Optional[int] = None, category_id: Optional[int] = None) -> dict:
+    async def get_content_totals(self, category_id: Optional[int] = None) -> dict:
         """
-        Get total counts of questions, flashcards, and quizzes for a specific user.
+        Get total counts of questions, flashcards, and quizzes.
 
         Returns:
-            - total_questions: Total questions belonging to user's categories
-            - total_flashcards: Total flashcards belonging to user's categories
-            - total_quizzes: Total completed quiz sessions for user's categories
+            - total_questions: Total questions in database
+            - total_flashcards: Total flashcards in database
+            - total_quizzes: Total completed quiz sessions
         """
-        # Count questions (join with Category to filter by user)
-        questions_query = select(func.count(Question.id)).select_from(Question).join(
-            Category, Question.category_id == Category.id
-        )
-        if user_id:
-            questions_query = questions_query.where(Category.user_id == user_id)
+        # Count questions
+        questions_query = select(func.count(Question.id))
         if category_id:
             questions_query = questions_query.where(Question.category_id == category_id)
         questions_result = await self.db.execute(questions_query)
         total_questions = questions_result.scalar() or 0
 
-        # Count flashcards (join with Category to filter by user)
-        flashcards_query = select(func.count(Flashcard.id)).select_from(Flashcard).join(
-            Category, Flashcard.category_id == Category.id
-        )
-        if user_id:
-            flashcards_query = flashcards_query.where(Category.user_id == user_id)
+        # Count flashcards
+        flashcards_query = select(func.count(Flashcard.id))
         if category_id:
             flashcards_query = flashcards_query.where(Flashcard.category_id == category_id)
         flashcards_result = await self.db.execute(flashcards_query)
         total_flashcards = flashcards_result.scalar() or 0
 
-        # Count completed quizzes (join with Category to filter by user)
-        quizzes_query = select(func.count(QuizSession.id)).select_from(QuizSession).join(
-            Category, QuizSession.category_id == Category.id
-        ).where(QuizSession.completed == True)
-        if user_id:
-            quizzes_query = quizzes_query.where(Category.user_id == user_id)
+        # Count completed quizzes
+        quizzes_query = select(func.count(QuizSession.id)).where(QuizSession.completed == True)
         if category_id:
             quizzes_query = quizzes_query.where(QuizSession.category_id == category_id)
         quizzes_result = await self.db.execute(quizzes_query)

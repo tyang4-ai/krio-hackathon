@@ -25,11 +25,6 @@ from .grading import PartialCreditGrade, ExamFocusEvent
 # Analytics
 from .question_attempt import QuestionAttempt
 
-# RAG Pipeline / Chunking (Pipeline 1)
-from .document_chunk import DocumentChunk
-from .document_topic import DocumentTopic
-from .document_concept_map import DocumentConceptMap
-
 __all__ = [
     "Base",
     # Core
@@ -55,8 +50,4 @@ __all__ = [
     "ExamFocusEvent",
     # Analytics
     "QuestionAttempt",
-    # RAG Pipeline / Chunking
-    "DocumentChunk",
-    "DocumentTopic",
-    "DocumentConceptMap",
 ]
