@@ -1,9 +1,0 @@
-{
-  "name": "Check TypeScript Types",
-  "description": "Run TypeScript type checking on the frontend",
-  "trigger": "manual",
-  "action": {
-    "type": "command",
-    "command": "cd frontend && npm run type-check"
-  }
-}

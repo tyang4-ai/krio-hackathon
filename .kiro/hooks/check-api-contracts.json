@@ -1,0 +1,9 @@
+{
+  "name": "Verify API Contracts",
+  "description": "Check frontend-backend API contract alignment",
+  "trigger": "manual",
+  "action": {
+    "type": "message",
+    "message": "I'll verify API contract alignment between frontend and backend:\n\n✓ Route paths match\n✓ Request body field names (snake_case vs camelCase)\n✓ Response structure (wrapped vs unwrapped)\n✓ Error response formats\n✓ Field name consistency\n\nWhich API endpoints should I check?"
+  }
+}

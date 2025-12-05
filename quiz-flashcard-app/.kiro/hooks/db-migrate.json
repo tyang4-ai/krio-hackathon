@@ -1,9 +1,0 @@
-{
-  "name": "Apply Database Migrations",
-  "description": "Run pending Alembic migrations",
-  "trigger": "manual",
-  "action": {
-    "type": "command",
-    "command": "docker-compose exec backend alembic upgrade head"
-  }
-}
