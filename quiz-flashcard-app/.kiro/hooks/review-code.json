@@ -1,9 +1,0 @@
-{
-  "name": "Review Recent Code",
-  "description": "Review recently written code for best practices and architectural consistency",
-  "trigger": "manual",
-  "action": {
-    "type": "message",
-    "message": "I'll review the recent code changes for:\n\n✓ Adherence to coding standards\n✓ Proper error handling\n✓ Type safety (TypeScript/Python)\n✓ Security best practices\n✓ Performance considerations\n✓ Test coverage\n✓ Documentation completeness\n\nWhich files or features should I review?"
-  }
-}

@@ -1,0 +1,9 @@
+{
+  "name": "Create Database Migration",
+  "description": "Generate a new Alembic migration after model changes",
+  "trigger": "manual",
+  "action": {
+    "type": "message",
+    "message": "Create a new database migration. Ask the user for a migration message, then run: docker-compose exec backend alembic revision --autogenerate -m \"<message>\""
+  }
+}

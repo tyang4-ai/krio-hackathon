@@ -1,0 +1,9 @@
+{
+  "name": "Format Code",
+  "description": "Format Python code with black and TypeScript with prettier",
+  "trigger": "manual",
+  "action": {
+    "type": "command",
+    "command": "docker-compose exec backend black . && cd frontend && npm run format"
+  }
+}

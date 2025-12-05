@@ -1,9 +1,0 @@
-{
-  "name": "Update Documentation",
-  "description": "Update project documentation before context reset or major changes",
-  "trigger": "manual",
-  "action": {
-    "type": "message",
-    "message": "Please update the project documentation:\n\n1. Update DEVDOC.md with any new features or changes\n2. Update README.md if setup instructions changed\n3. Document any new API endpoints\n4. Update .kiro steering rules if patterns changed\n5. Note any breaking changes or migration steps\n\nWhat specific areas should I focus on?"
-  }
-}
