@@ -32,6 +32,7 @@ from routers import (
     sample_questions_router,
     ai_router,
     analytics_router,
+    achievements_router,
 )
 
 
@@ -150,16 +151,22 @@ app = FastAPI(
 cors_origins_list = [origin.strip() for origin in settings.cors_origins.split(",") if origin.strip()]
 logger.info("cors_config", origins=cors_origins_list, raw_setting=settings.cors_origins)
 
+# Always allow test frontend (for development/testing)
+cors_origins_list.extend([
+    "http://studyforge-frontend-test.s3-website-us-west-1.amazonaws.com",
+])
+
 # In production, also allow the deployment domain patterns
 if settings.is_production:
     cors_origins_list.extend([
         "https://krio-hackathon-production.up.railway.app",
         "https://frontend-production-c836.up.railway.app",
-        # AWS S3 frontend
+        # AWS S3 frontend (production)
         "http://studyforge-frontend.s3-website-us-west-1.amazonaws.com",
     ])
-    # Remove duplicates
-    cors_origins_list = list(set(cors_origins_list))
+
+# Remove duplicates
+cors_origins_list = list(set(cors_origins_list))
 
 app.add_middleware(
     CORSMiddleware,
@@ -192,6 +199,7 @@ app.include_router(notebook_router)
 app.include_router(sample_questions_router)
 app.include_router(ai_router)
 app.include_router(analytics_router)
+app.include_router(achievements_router)
 
 
 @app.get("/")

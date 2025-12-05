@@ -22,6 +22,9 @@ import type {
   User,
   AuthResponse,
   AnalyticsDashboard,
+  UserAchievementsResponse,
+  AchievementDetail,
+  Achievement,
 } from '../types';
 
 const API_BASE = import.meta.env.VITE_API_URL
@@ -410,6 +413,33 @@ interface ExplainQuestionResponse {
 export const aiApi = {
   explainQuestion: (request: ExplainQuestionRequest): Promise<AxiosResponse<{ data: ExplainQuestionResponse }>> =>
     api.post('/explain', request),
+};
+
+// Achievements (Kiroween Hackathon - Education + Web3)
+export const achievementsApi = {
+  // Get all achievement definitions
+  getAll: (): Promise<AxiosResponse<{ data: { achievements: Achievement[]; total: number } }>> =>
+    api.get('/achievements'),
+
+  // Get user's achievements with unlock status and progress
+  getUserAchievements: (): Promise<AxiosResponse<{ data: UserAchievementsResponse }>> =>
+    api.get('/achievements/user'),
+
+  // Get detailed achievement info (for modal/certificate view)
+  getDetail: (achievementId: number): Promise<AxiosResponse<{ data: AchievementDetail }>> =>
+    api.get(`/achievements/user/${achievementId}`),
+
+  // Manually trigger achievement check
+  checkAchievements: (): Promise<AxiosResponse<{ data: UserAchievementsResponse }>> =>
+    api.post('/achievements/check'),
+
+  // Verify achievement on-chain
+  verify: (ipfsHash: string): Promise<AxiosResponse<{ data: { is_valid: boolean; ipfs_hash: string; tx_hash?: string; message: string } }>> =>
+    api.post(`/achievements/verify/${ipfsHash}`),
+
+  // Get leaderboard
+  getLeaderboard: (limit: number = 10): Promise<AxiosResponse<{ data: { leaderboard: unknown[]; message: string } }>> =>
+    api.get('/achievements/leaderboard', { params: { limit } }),
 };
 
 export default api;

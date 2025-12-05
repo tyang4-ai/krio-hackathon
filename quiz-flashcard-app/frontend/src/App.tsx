@@ -18,6 +18,7 @@ import QuizSession from './pages/QuizSession';
 import QuizResults from './pages/QuizResults';
 import LoginPage from './pages/LoginPage';
 import AnalyticsDashboard from './pages/AnalyticsDashboard';
+import AchievementsPage from './pages/AchievementsPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 function App(): React.ReactElement {
@@ -35,6 +36,7 @@ function App(): React.ReactElement {
               <Route element={<Layout />}>
                 <Route path="/dashboard" element={<Home />} />
                 <Route path="/analytics" element={<AnalyticsDashboard />} />
+                <Route path="/achievements" element={<AchievementsPage />} />
                 <Route path="/category/:categoryId" element={<CategoryDashboard />} />
                 <Route path="/category/:categoryId/quiz" element={<QuizPage />} />
                 <Route path="/category/:categoryId/quiz/session/:sessionId" element={<QuizSession />} />

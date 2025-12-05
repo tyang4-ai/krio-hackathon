@@ -25,6 +25,9 @@ from .grading import PartialCreditGrade, ExamFocusEvent
 # Analytics
 from .question_attempt import QuestionAttempt
 
+# Achievements (blockchain-verified)
+from .achievement import Achievement, UserAchievement
+
 __all__ = [
     "Base",
     # Core
@@ -50,4 +53,7 @@ __all__ = [
     "ExamFocusEvent",
     # Analytics
     "QuestionAttempt",
+    # Achievements
+    "Achievement",
+    "UserAchievement",
 ]

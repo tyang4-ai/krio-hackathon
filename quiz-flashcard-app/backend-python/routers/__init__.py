@@ -9,6 +9,7 @@ from .notebook import router as notebook_router
 from .sample_questions import router as sample_questions_router
 from .ai import router as ai_router
 from .analytics import router as analytics_router
+from .achievements import router as achievements_router
 
 __all__ = [
     "health_router",
@@ -21,4 +22,5 @@ __all__ = [
     "sample_questions_router",
     "ai_router",
     "analytics_router",
+    "achievements_router",
 ]

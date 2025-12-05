@@ -13,6 +13,7 @@ import {
   TrendingUp,
   Clock,
   Target,
+  Trophy,
   // Category icons
   GraduationCap,
   BookMarked,
@@ -39,6 +40,7 @@ import {
 import { categoryApi, analyticsApi } from '../services/api';
 import { useError } from '../contexts/ErrorContext';
 import { useTour } from '../contexts/TourContext';
+import { useAuth } from '../contexts/AuthContext';
 import EmptyState from '../components/EmptyState';
 import type { Category } from '../types';
 
@@ -110,10 +112,12 @@ function Home(): React.ReactElement {
   const [quickStats, setQuickStats] = useState<QuickStats | null>(null);
   const { showSuccess, showWarning, handleApiError } = useError();
   const { startTour, isTourCompleted, activeTour } = useTour();
+  const { user, isAuthenticated } = useAuth();
 
+  // Re-fetch data when auth state changes (login/logout)
   useEffect(() => {
     loadCategories();
-  }, []);
+  }, [user, isAuthenticated]);
 
   // Start home tour on first visit (after loading)
   useEffect(() => {
@@ -310,6 +314,13 @@ function Home(): React.ReactElement {
           <p className="text-gray-600 dark:text-gray-400 mt-1">Organize your study materials by class or subject</p>
         </div>
         <div className="flex items-center gap-3">
+          <Link
+            to="/achievements"
+            className="btn-secondary flex items-center space-x-2"
+          >
+            <Trophy className="h-5 w-5" />
+            <span className="hidden sm:inline">Achievements</span>
+          </Link>
           <Link
             to="/analytics"
             data-tour="analytics-btn"

@@ -46,3 +46,6 @@ httpx==0.26.0
 
 # Utilities
 python-dotenv==1.0.0
+
+# Blockchain (IPFS + Base L2)
+web3==6.15.1

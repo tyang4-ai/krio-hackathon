@@ -37,7 +37,8 @@ async def get_overview(
 
     Returns total attempts, accuracy, time spent, sessions, and streak.
     """
-    user_id = current_user.id if current_user else None
+    # Guest users (id=-1) should be treated as anonymous (user_id=None)
+    user_id = current_user.id if current_user and current_user.id > 0 else None
     service = AnalyticsService(db)
     return await service.get_user_overview(user_id, days)
 
@@ -52,7 +53,8 @@ async def get_category_performance(
 
     Returns accuracy, attempts, and mastery score per category.
     """
-    user_id = current_user.id if current_user else None
+    # Guest users (id=-1) should be treated as anonymous (user_id=None)
+    user_id = current_user.id if current_user and current_user.id > 0 else None
     service = AnalyticsService(db)
     return await service.get_category_performance(user_id)
 
@@ -66,7 +68,8 @@ async def get_difficulty_breakdown(
     """
     Get performance by difficulty level (easy/medium/hard).
     """
-    user_id = current_user.id if current_user else None
+    # Guest users (id=-1) should be treated as anonymous (user_id=None)
+    user_id = current_user.id if current_user and current_user.id > 0 else None
     service = AnalyticsService(db)
     return await service.get_difficulty_breakdown(user_id, category_id)
 
@@ -80,7 +83,8 @@ async def get_question_type_breakdown(
     """
     Get performance by question type.
     """
-    user_id = current_user.id if current_user else None
+    # Guest users (id=-1) should be treated as anonymous (user_id=None)
+    user_id = current_user.id if current_user and current_user.id > 0 else None
     service = AnalyticsService(db)
     return await service.get_question_type_breakdown(user_id, category_id)
 
@@ -98,7 +102,8 @@ async def get_trend_data(
 
     Granularity options: day, week, month
     """
-    user_id = current_user.id if current_user else None
+    # Guest users (id=-1) should be treated as anonymous (user_id=None)
+    user_id = current_user.id if current_user and current_user.id > 0 else None
     service = AnalyticsService(db)
     return await service.get_trend_data(user_id, category_id, days, granularity)
 
@@ -115,7 +120,8 @@ async def get_hardest_questions(
 
     Useful for identifying weak areas to focus on.
     """
-    user_id = current_user.id if current_user else None
+    # Guest users (id=-1) should be treated as anonymous (user_id=None)
+    user_id = current_user.id if current_user and current_user.id > 0 else None
     service = AnalyticsService(db)
     return await service.get_hardest_questions(user_id, category_id, limit)
 
@@ -132,7 +138,8 @@ async def get_learning_score(
     Factors in accuracy, consistency, improvement trend, and difficulty progression.
     Includes letter grade and personalized recommendation.
     """
-    user_id = current_user.id if current_user else None
+    # Guest users (id=-1) should be treated as anonymous (user_id=None)
+    user_id = current_user.id if current_user and current_user.id > 0 else None
     service = AnalyticsService(db)
     return await service.calculate_learning_score(user_id, category_id)
 
@@ -149,7 +156,8 @@ async def get_full_dashboard(
 
     Combines all analytics endpoints for efficient loading.
     """
-    user_id = current_user.id if current_user else None
+    # Guest users (id=-1) should be treated as anonymous (user_id=None)
+    user_id = current_user.id if current_user and current_user.id > 0 else None
     service = AnalyticsService(db)
 
     # Fetch all data in parallel would be ideal, but for simplicity:
@@ -160,7 +168,7 @@ async def get_full_dashboard(
     trend_data = await service.get_trend_data(user_id, category_id, days, "day")
     hardest_questions = await service.get_hardest_questions(user_id, category_id, 10)
     learning_score = await service.calculate_learning_score(user_id, category_id)
-    content_totals = await service.get_content_totals(category_id)
+    content_totals = await service.get_content_totals(category_id, user_id)
 
     return {
         "overview": overview,
@@ -187,7 +195,8 @@ async def get_category_analytics(
     """
     Get detailed analytics for a specific category.
     """
-    user_id = current_user.id if current_user else None
+    # Guest users (id=-1) should be treated as anonymous (user_id=None)
+    user_id = current_user.id if current_user and current_user.id > 0 else None
     service = AnalyticsService(db)
 
     overview = await service.get_user_overview(user_id, days)

@@ -288,9 +288,11 @@ Example question formats:
 - "What does the term 'photosynthesis' refer to?"
 
 Output ONLY valid JSON:
-{{"questions":[{{"question_text":"What is/Which term...?","question_type":"multiple_choice","difficulty":"concepts","options":{options_example},"correct_answer":"A","explanation":"brief definition","tags":{tags_output}}}]}}
+{{"questions":[{{"question_text":"What is/Which term...?","question_type":"multiple_choice","difficulty":"concepts","options":{options_example},"correct_answer":"C","explanation":"brief definition","tags":{tags_output}}}]}}
 
-Rules: {num_options} options {option_letters}, correct_answer is letter. Focus on testing terminology and definitions. Generate exactly {count}."""
+Rules: {num_options} options {option_letters}, correct_answer is letter (A, B, C, or D).
+IMPORTANT: Randomly distribute correct answers across A, B, C, D - do NOT make all answers the same letter!
+Focus on testing terminology and definitions. Generate exactly {count}."""
 
             return f"""Generate {count} {difficulty.upper()} multiple choice questions from this content:
 
@@ -299,9 +301,11 @@ Rules: {num_options} options {option_letters}, correct_answer is letter. Focus o
 Difficulty: {difficulty_guidance}
 
 Output ONLY valid JSON:
-{{"questions":[{{"question_text":"Question?","question_type":"multiple_choice","difficulty":"{difficulty}","options":{options_example},"correct_answer":"A","explanation":"why","tags":{tags_output}}}]}}
+{{"questions":[{{"question_text":"Question?","question_type":"multiple_choice","difficulty":"{difficulty}","options":{options_example},"correct_answer":"B","explanation":"why","tags":{tags_output}}}]}}
 
-Rules: {num_options} options {option_letters}, correct_answer is letter. All questions MUST be {difficulty} difficulty. Generate exactly {count}."""
+Rules: {num_options} options {option_letters}, correct_answer is letter (A, B, C, or D).
+IMPORTANT: Randomly distribute correct answers across A, B, C, D - do NOT make all answers the same letter!
+All questions MUST be {difficulty} difficulty. Generate exactly {count}."""
 
     def _parse_questions_response(self, response: str) -> List[Dict[str, Any]]:
         """Parse the AI response into questions."""

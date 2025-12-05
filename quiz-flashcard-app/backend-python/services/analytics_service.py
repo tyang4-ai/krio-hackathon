@@ -10,7 +10,7 @@ Provides aggregation queries for:
 """
 from datetime import datetime, timedelta
 from typing import Optional
-from sqlalchemy import func, case, and_, desc
+from sqlalchemy import func, case, and_, desc, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
@@ -49,8 +49,13 @@ class AnalyticsService:
             func.avg(QuestionAttempt.time_spent_seconds).label("avg_time"),
         ).where(QuestionAttempt.answered_at >= since_date)
 
+        # Include guest users (user_id=NULL) when no specific user is requested
+        # or when user_id=None is explicitly passed (guest session)
         if user_id:
             query = query.where(QuestionAttempt.user_id == user_id)
+        else:
+            # For guest/anonymous: include records where user_id IS NULL
+            query = query.where(QuestionAttempt.user_id.is_(None))
         if category_id:
             query = query.where(QuestionAttempt.category_id == category_id)
 
@@ -113,8 +118,11 @@ class AnalyticsService:
             .order_by(desc("total_attempts"))
         )
 
+        # Include guest users when user_id is None
         if user_id:
             query = query.where(QuestionAttempt.user_id == user_id)
+        else:
+            query = query.where(QuestionAttempt.user_id.is_(None))
         if category_id:
             query = query.where(QuestionAttempt.category_id == category_id)
 
@@ -159,8 +167,11 @@ class AnalyticsService:
             .group_by(QuestionAttempt.difficulty)
         )
 
+        # Include guest users when user_id is None
         if user_id:
             query = query.where(QuestionAttempt.user_id == user_id)
+        else:
+            query = query.where(QuestionAttempt.user_id.is_(None))
         if category_id:
             query = query.where(QuestionAttempt.category_id == category_id)
 
@@ -197,8 +208,11 @@ class AnalyticsService:
             .group_by(QuestionAttempt.question_type)
         )
 
+        # Include guest users when user_id is None
         if user_id:
             query = query.where(QuestionAttempt.user_id == user_id)
+        else:
+            query = query.where(QuestionAttempt.user_id.is_(None))
         if category_id:
             query = query.where(QuestionAttempt.category_id == category_id)
 
@@ -252,8 +266,11 @@ class AnalyticsService:
             .order_by(date_field)
         )
 
+        # Include guest users when user_id is None
         if user_id:
             query = query.where(QuestionAttempt.user_id == user_id)
+        else:
+            query = query.where(QuestionAttempt.user_id.is_(None))
         if category_id:
             query = query.where(QuestionAttempt.category_id == category_id)
 
@@ -303,8 +320,11 @@ class AnalyticsService:
             .limit(limit)
         )
 
+        # Include guest users when user_id is None
         if user_id:
             query = query.where(QuestionAttempt.user_id == user_id)
+        else:
+            query = query.where(QuestionAttempt.user_id.is_(None))
         if category_id:
             query = query.where(QuestionAttempt.category_id == category_id)
 
@@ -394,8 +414,11 @@ class AnalyticsService:
             .order_by(desc("study_date"))
         )
 
+        # Include guest users when user_id is None
         if user_id:
             query = query.where(QuestionAttempt.user_id == user_id)
+        else:
+            query = query.where(QuestionAttempt.user_id.is_(None))
         if category_id:
             query = query.where(QuestionAttempt.category_id == category_id)
 
@@ -477,31 +500,50 @@ class AnalyticsService:
                 return "Outstanding performance and consistency! You're ready for any exam."
             return "Exceptional accuracy! Maintain your streak to solidify long-term retention."
 
-    async def get_content_totals(self, category_id: Optional[int] = None) -> dict:
+    async def get_content_totals(self, category_id: Optional[int] = None, user_id: Optional[int] = None) -> dict:
         """
-        Get total counts of questions, flashcards, and quizzes.
+        Get total counts of questions, flashcards, and quizzes for a user.
 
         Returns:
-            - total_questions: Total questions in database
-            - total_flashcards: Total flashcards in database
-            - total_quizzes: Total completed quiz sessions
+            - total_questions: Total questions in user's categories
+            - total_flashcards: Total flashcards in user's categories
+            - total_quizzes: Total completed quiz sessions for user's categories
         """
-        # Count questions
-        questions_query = select(func.count(Question.id))
+        # Count questions - join with categories to filter by user
+        questions_query = select(func.count(Question.id)).join(
+            Category, Question.category_id == Category.id
+        )
+        if user_id:
+            questions_query = questions_query.where(Category.user_id == user_id)
+        else:
+            # For guest/anonymous: include records where user_id IS NULL
+            questions_query = questions_query.where(Category.user_id.is_(None))
         if category_id:
             questions_query = questions_query.where(Question.category_id == category_id)
         questions_result = await self.db.execute(questions_query)
         total_questions = questions_result.scalar() or 0
 
-        # Count flashcards
-        flashcards_query = select(func.count(Flashcard.id))
+        # Count flashcards - join with categories to filter by user
+        flashcards_query = select(func.count(Flashcard.id)).join(
+            Category, Flashcard.category_id == Category.id
+        )
+        if user_id:
+            flashcards_query = flashcards_query.where(Category.user_id == user_id)
+        else:
+            flashcards_query = flashcards_query.where(Category.user_id.is_(None))
         if category_id:
             flashcards_query = flashcards_query.where(Flashcard.category_id == category_id)
         flashcards_result = await self.db.execute(flashcards_query)
         total_flashcards = flashcards_result.scalar() or 0
 
-        # Count completed quizzes
-        quizzes_query = select(func.count(QuizSession.id)).where(QuizSession.completed == True)
+        # Count completed quizzes - join with categories to filter by user
+        quizzes_query = select(func.count(QuizSession.id)).join(
+            Category, QuizSession.category_id == Category.id
+        ).where(QuizSession.completed == True)
+        if user_id:
+            quizzes_query = quizzes_query.where(Category.user_id == user_id)
+        else:
+            quizzes_query = quizzes_query.where(Category.user_id.is_(None))
         if category_id:
             quizzes_query = quizzes_query.where(QuizSession.category_id == category_id)
         quizzes_result = await self.db.execute(quizzes_query)

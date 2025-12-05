@@ -8,6 +8,22 @@ from .category import (
     CategoryListResponse,
     CategoryStats,
 )
+from .achievement import (
+    AchievementRarity,
+    VerificationStatus,
+    AchievementCategory,
+    AchievementBase,
+    AchievementResponse,
+    AchievementListResponse,
+    UserAchievementResponse,
+    AchievementWithProgress,
+    UserAchievementsResponse,
+    CertificateData,
+    AchievementDetailResponse,
+    VerifyAchievementRequest,
+    VerifyAchievementResponse,
+    AwardAchievementResponse,
+)
 
 __all__ = [
     "BaseSchema",
@@ -21,4 +37,19 @@ __all__ = [
     "CategoryResponse",
     "CategoryListResponse",
     "CategoryStats",
+    # Achievements
+    "AchievementRarity",
+    "VerificationStatus",
+    "AchievementCategory",
+    "AchievementBase",
+    "AchievementResponse",
+    "AchievementListResponse",
+    "UserAchievementResponse",
+    "AchievementWithProgress",
+    "UserAchievementsResponse",
+    "CertificateData",
+    "AchievementDetailResponse",
+    "VerifyAchievementRequest",
+    "VerifyAchievementResponse",
+    "AwardAchievementResponse",
 ]

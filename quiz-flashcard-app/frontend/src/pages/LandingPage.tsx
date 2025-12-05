@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { ScrollReveal, StaggerReveal } from '../components/ScrollReveal';
+import SkullIcon from '../assets/skull.svg';
 
 // Data
 const features = [
@@ -755,34 +756,55 @@ function LandingPage(): React.ReactElement {
                   <div className={`w-32 h-32 flex items-center justify-center flex-shrink-0 transition-transform duration-300 hover:scale-105 ${
                     isDarkMode ? 'bg-dark-primary-10' : 'bg-accent-500'
                   }`}>
-                    <span className="text-5xl">👨‍💻</span>
+                    <img src={SkullIcon} alt="Skull" className="w-20 h-20" style={{ filter: isDarkMode ? 'invert(0)' : 'invert(1)' }} />
                   </div>
                   <div>
                     <h3 className={`text-2xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
-                      [Your Name]
+                      Fireclaw
                     </h3>
                     <p className={`mb-4 ${isDarkMode ? 'text-dark-primary-10' : 'text-accent-500'}`}>
                       Creator & Developer
                     </p>
                     <p className={`leading-relaxed mb-6 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                      [Your bio will go here. Share your story, your passion for education technology,
-                      and what inspired you to build StudyForge. Talk about your background, your
-                      vision for the project, and what drives you to help students learn more effectively.]
+                      [too lazy to write the bio]
                     </p>
                     <div className="flex space-x-4">
-                      {[Github, Linkedin, Mail].map((Icon, i) => (
-                        <a
-                          key={i}
-                          href="#"
-                          className={`p-3 border-2 transition-all duration-200 hover:scale-110 ${
-                            isDarkMode
-                              ? 'border-gray-600 text-gray-400 hover:border-dark-primary-10 hover:text-dark-primary-10'
-                              : 'border-gray-300 text-gray-500 hover:border-accent-500 hover:text-accent-500'
-                          }`}
-                        >
-                          <Icon className="h-5 w-5" />
-                        </a>
-                      ))}
+                      <a
+                        href="https://github.com/tyang4-ai"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`p-3 border-2 transition-all duration-200 hover:scale-110 ${
+                          isDarkMode
+                            ? 'border-gray-600 text-gray-400 hover:border-dark-primary-10 hover:text-dark-primary-10'
+                            : 'border-gray-300 text-gray-500 hover:border-accent-500 hover:text-accent-500'
+                        }`}
+                      >
+                        <Github className="h-5 w-5" />
+                      </a>
+                      <a
+                        href="https://www.linkedin.com/in/tianbao-yang-206a32377/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`p-3 border-2 transition-all duration-200 hover:scale-110 ${
+                          isDarkMode
+                            ? 'border-gray-600 text-gray-400 hover:border-dark-primary-10 hover:text-dark-primary-10'
+                            : 'border-gray-300 text-gray-500 hover:border-accent-500 hover:text-accent-500'
+                        }`}
+                      >
+                        <Linkedin className="h-5 w-5" />
+                      </a>
+                      <a
+                        href="https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`p-3 border-2 transition-all duration-200 hover:scale-110 ${
+                          isDarkMode
+                            ? 'border-gray-600 text-gray-400 hover:border-dark-primary-10 hover:text-dark-primary-10'
+                            : 'border-gray-300 text-gray-500 hover:border-accent-500 hover:text-accent-500'
+                        }`}
+                      >
+                        <Mail className="h-5 w-5" />
+                      </a>
                     </div>
                   </div>
                 </div>
@@ -803,8 +825,8 @@ function LandingPage(): React.ReactElement {
                   </h3>
                 </div>
                 <p className={`leading-relaxed mb-6 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                  StudyForge was built for [Hackathon Name]. This project represents
-                  [X hours/days] of passionate development, combining cutting-edge AI
+                  StudyForge was built for Kiro hackathon. This project represents
+                  2 and a half weeks of passionate development, combining cutting-edge AI
                   with thoughtful UX design to revolutionize how students learn.
                 </p>
                 <div className="space-y-3 text-sm">

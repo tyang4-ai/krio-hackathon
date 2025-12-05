@@ -319,3 +319,69 @@ export interface AnalyticsDashboard {
   hardest_questions: HardestQuestion[];
   learning_score: LearningScore;
 }
+
+// Achievements (Kiroween Hackathon - Education + Web3)
+export type AchievementRarity = 'common' | 'rare' | 'epic' | 'legendary';
+export type VerificationStatus = 'pending' | 'uploaded' | 'verified' | 'failed';
+export type AchievementCategory = 'accuracy' | 'streak' | 'volume' | 'mastery';
+
+export interface Achievement {
+  id: number;
+  slug: string;
+  name: string;
+  description: string;
+  category: AchievementCategory;
+  icon_name: string;
+  icon_color: string;
+  rarity: AchievementRarity;
+  points: number;
+  trigger_type: string;
+  is_active: boolean;
+  sort_order: number;
+}
+
+export interface AchievementWithProgress {
+  achievement: Achievement;
+  is_unlocked: boolean;
+  earned_at?: string;
+  progress?: number;  // 0-100 for locked
+  progress_text?: string;  // e.g., "50/100 questions"
+  verification_status?: VerificationStatus;
+  ipfs_url?: string;
+  tx_hash?: string;
+}
+
+export interface UserAchievementsResponse {
+  achievements: AchievementWithProgress[];
+  total_points: number;
+  unlocked_count: number;
+  total_count: number;
+}
+
+export interface AchievementDetail {
+  id: number;
+  achievement: Achievement;
+  earned_at: string;
+  context_data?: Record<string, unknown>;
+  ipfs_hash?: string;
+  ipfs_url?: string;
+  tx_hash?: string;
+  block_number?: number;
+  chain_id: number;
+  verification_status: VerificationStatus;
+  certificate_data?: {
+    version: string;
+    type: string;
+    achievement_slug: string;
+    achievement_name: string;
+    achievement_rarity: string;
+    recipient_user_id: number;
+    recipient_display?: string;
+    earned_timestamp: string;
+    context?: Record<string, unknown>;
+    chain_name: string;
+    chain_id: number;
+    signature?: string;
+  };
+  basescan_url?: string;
+}

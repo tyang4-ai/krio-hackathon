@@ -14,10 +14,22 @@ dist/
 build/
 *.egg-info/
 
-# Environment files
+# Environment files (ALL .env files with secrets)
 .env
 .env.local
 .env.*.local
+.env.production.local
+.env.test
+*/.env
+*/*/.env
+backend-python/.env
+backend-python-slm-copy/.env
+backend/.env
+frontend/.env
+frontend/.env.local
+frontend/.env.production.local
+frontend/.env.test
+frontend-horror/.env
 
 # IDE
 .idea/
@@ -56,3 +68,11 @@ postgres_data/
 
 # Claude Code configuration
 .claude/
+
+# Deployment artifacts
+*.zip
+backend-deploy*.zip
+backend-deploy*.tar
+
+# Elastic Beanstalk
+.elasticbeanstalk/

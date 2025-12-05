@@ -1,6 +1,378 @@
-# Session Context - 2025-12-04 (Updated)
+# Session Context - 2025-12-05 (Updated 08:50)
 
 ## Latest Session Summary
+
+### Git Cleanup & Commit (2025-12-05 08:50) ✅
+
+**Security cleanup before commit:**
+- Removed `.env.test` from git tracking (contained test backend URLs)
+- Removed `frontend/node_modules/.vite/` from tracking
+- Updated `.gitignore` to exclude all `.env` files and deployment artifacts
+- Added `.elasticbeanstalk/` to gitignore
+
+**Files committed:**
+- Backend: achievements system, bug fixes, analytics improvements
+- Frontend: achievements page, landing page updates, skull icon
+- Dev docs: session context updates
+
+---
+
+### Landing Page Update & Deploy (2025-12-05 08:35) ✅
+
+**Updated creator/about section in landing page**:
+
+| Change | Before | After |
+|--------|--------|-------|
+| Hackathon Name | `[Hackathon Name]` | `Kiro hackathon` |
+| Development Time | `[X hours/days]` | `2 and a half weeks` |
+| Creator Name | `[Your Name]` | `Fireclaw` |
+| Bio | `[Standard bio...]` | `[too lazy to write the bio]` |
+| GitHub Link | Placeholder | https://github.com/tyang4-ai |
+| LinkedIn Link | Placeholder | https://www.linkedin.com/in/tianbao-yang-206a32377/ |
+| Email Link | Placeholder | https://www.youtube.com/watch?v=dQw4w9WgXcQ (rickroll) |
+
+**File Modified**: `frontend/src/pages/LandingPage.tsx`
+- Lines 761-807: Updated author card (name, bio, social links)
+- Lines 826-829: Updated hackathon card (hackathon name, development time)
+
+**Deployed to Production**: ✅ S3 `studyforge-frontend` (08:33)
+
+**Verification**:
+- ✅ "Kiro hackathon" in bundle
+- ✅ "Fireclaw" in bundle
+- ✅ "2 and a half weeks" in bundle
+- ✅ GitHub link in bundle
+- ✅ Rickroll link in bundle
+
+---
+
+### Production Deployment (2025-12-05 08:25) ✅
+
+**All fixes deployed to PRODUCTION**
+
+| Component | Environment | Status |
+|-----------|-------------|--------|
+| Backend | `studyforge-backend-v2` | ✅ Deployed (08:17) |
+| Frontend | `studyforge-frontend` S3 | ✅ Deployed (08:33) |
+
+**Production Test Results**:
+
+| Test | Result | Details |
+|------|--------|---------|
+| Backend Health | ✅ PASS | healthy, DB connected, environment=production, v5.0.0 |
+| Achievements API | ✅ PASS | 15 achievements loaded |
+| Analytics Dashboard | ✅ PASS | User-isolated data (6 questions, 2 quizzes for guest) |
+| Frontend HTTP | ✅ PASS | 200 OK |
+| Frontend API URL | ✅ PASS | Uses `studyforge-backend-v2` |
+| Google Client ID | ✅ PASS | Correct ID `...46j4u7` in bundle |
+| Landing Page | ✅ PASS | Updated creator section with Fireclaw, Kiro hackathon |
+
+**Production URLs**:
+- Backend: http://studyforge-backend-v2.eba-rufp4rir.us-west-1.elasticbeanstalk.com
+- Frontend: http://studyforge-frontend.s3-website-us-west-1.amazonaws.com
+
+---
+
+### Bug Fixes Deployed (2025-12-05 08:05) ✅
+
+**Deployed to**: Studyforge-test-backend (and now PRODUCTION)
+
+**3 Critical Bug Fixes Implemented This Session**:
+
+| Bug | Root Cause | Fix | File |
+|-----|-----------|-----|------|
+| Google OAuth login failing on test frontend | `.env.production.local` had wrong Google Client ID (ends in `34j0l` instead of `46j4u7`) | Updated to correct client ID, rebuilt, redeployed to S3 | `frontend/.env.production.local` |
+| Home page showing wrong data counts after login | `get_content_totals()` showed global counts instead of user-specific | Added `user_id` parameter, join with categories to filter by user | `services/analytics_service.py` |
+| Multiple choice questions always had "A" as correct answer | Prompt example showed `"correct_answer":"A"` - AI followed it literally | Changed example to "B"/"C", added "IMPORTANT: Randomly distribute correct answers" instruction | `agents/generation_agent.py` |
+
+**Files Modified**:
+
+1. **`frontend/.env.production.local`**:
+   - Line 14: Changed Google Client ID from `...34j0l` to `...46j4u7`
+
+2. **`frontend/.env`**:
+   - Line 15: Changed Google Client ID from `...34j0l` to `...46j4u7`
+
+3. **`backend-python/services/analytics_service.py`**:
+   - Lines 503-556: Rewrote `get_content_totals()` to:
+     - Accept `user_id` parameter
+     - Join questions/flashcards/quizzes with categories table
+     - Filter by `Category.user_id == user_id` for logged-in users
+     - Filter by `Category.user_id.is_(None)` for guests
+
+4. **`backend-python/routers/analytics.py`**:
+   - Line 171: Changed `get_content_totals(category_id)` to `get_content_totals(category_id, user_id)`
+
+5. **`backend-python/agents/generation_agent.py`**:
+   - Lines 290-295: Changed concepts mode example from `"correct_answer":"A"` to `"correct_answer":"C"`, added randomization instruction
+   - Lines 301-308: Changed regular MCQ example from `"correct_answer":"A"` to `"correct_answer":"B"`, added randomization instruction
+
+**Test Results (2025-12-05 08:10)**:
+
+| Test | Result | Details |
+|------|--------|---------|
+| Backend Health | ✅ PASS | healthy, DB connected, version 5.0.0 |
+| Analytics Dashboard (guest) | ✅ PASS | Shows 5 questions, 0 flashcards, 6 quizzes (guest user data) |
+| Achievements List | ✅ PASS | Returns 15 achievements |
+| User Achievements | ✅ PASS | Progress tracking, all 15 achievements shown |
+| MCQ Generation - Batch 1 | ✅ PASS | Answers: C, A, B, C, B (distributed!) |
+| MCQ Generation - Batch 2 | ✅ PASS | Answers: B, A, C, D, C (all 4 letters used!) |
+
+**Deployment Commands**:
+```bash
+# Frontend (S3)
+cd quiz-flashcard-app/frontend
+npm run build
+aws s3 sync dist/ s3://studyforge-frontend-test --delete
+
+# Backend (Elastic Beanstalk)
+cd quiz-flashcard-app
+python create_zip.py
+cd backend-python
+eb deploy Studyforge-test-backend --staged
+```
+
+---
+
+### Previous Session Bug Fixes (2025-12-05 23:22) ✅
+
+**Deployed to**: Studyforge-test-backend
+
+**4 Critical Bug Fixes Implemented**:
+
+| Bug | Root Cause | Fix | File |
+|-----|-----------|-----|------|
+| Sample question analysis slow (~60 sec) | Two sequential AI calls to Claude | Parallelized with `asyncio.gather()` (~30 sec now) | `agents/analysis_agent.py` |
+| Analytics dashboard not updating for guests | Queries excluded `user_id=NULL` | Added `user_id.is_(None)` to all 7 query methods | `services/analytics_service.py` |
+| Achievements not unlocking after quiz | Quiz submit didn't trigger achievement checks | Added `check_quiz_achievements()`, `check_volume_achievements()`, `check_streak_achievements()` after commit | `routers/quiz.py` |
+| Achievement service didn't support guests | Methods only accepted `int` user_id | Changed all 8 methods to accept `Optional[int]`, handle NULL in queries | `services/achievement_service.py` |
+
+**Files Modified**:
+
+1. **`backend-python/agents/analysis_agent.py`**:
+   - Line 12: Added `import asyncio`
+   - Lines 531-542: Changed sequential calls to `asyncio.gather(agent.process(), agent.score_questions())`
+
+2. **`backend-python/services/analytics_service.py`**:
+   - Line 13: Added `or_` to imports
+   - Lines 52-58, 121-125, 170-174, 211-215, 269-273, 323-327, 417-421: Added guest user handling to all 7 query methods
+
+3. **`backend-python/routers/quiz.py`**:
+   - Line 34: Added `from services.achievement_service import AchievementService`
+   - Lines 320-344: Added achievement check block after quiz submit with error handling
+
+4. **`backend-python/services/achievement_service.py`**:
+   - Lines 176, 218, 262, 295-296, 331, 348, 375-377, 437, 560: Changed `user_id: int` to `user_id: Optional[int]`
+   - Lines 445-448, 463-466, 568-571, 397-411: Updated queries to handle NULL user_id
+
+**Deployment Command**:
+```bash
+cd quiz-flashcard-app/backend-python
+eb deploy Studyforge-test-backend
+# Result: Environment update completed successfully (07:22:39)
+```
+
+---
+
+### Comprehensive Test Suite Results (2025-12-05) ✅
+
+**Test Environment**:
+- Backend: http://Studyforge-test-backend.eba-rufp4rir.us-west-1.elasticbeanstalk.com
+- Frontend: http://studyforge-frontend-test.s3-website-us-west-1.amazonaws.com
+
+**API Endpoint Test Results** (via curl):
+
+| Endpoint | Status | Notes |
+|----------|--------|-------|
+| `/health` | ✅ PASS | healthy, DB connected, version 5.0.0 |
+| `/api/auth/guest` | ✅ PASS | Returns guest token (id=-1) |
+| `/api/categories` | ✅ PASS | Returns 2 categories with stats |
+| `/api/categories/2` | ✅ PASS | Returns category detail |
+| `/api/categories/2/documents` | ✅ PASS | Returns 10 documents |
+| `/api/categories/2/questions` | ✅ PASS | Returns 23 questions |
+| `/api/categories/2/flashcards` | ✅ PASS | Returns empty list |
+| `/api/achievements` | ✅ PASS | Returns 15 achievements |
+| `/api/achievements/user` | ✅ PASS | Returns achievements with progress |
+| `/api/achievements/verify/{hash}` | ✅ PASS | Returns pending (Phase 3) |
+| `/api/achievements/leaderboard` | ✅ PASS | Returns "coming soon" |
+| `/api/analytics/overview` | ✅ PASS | Returns stats |
+| `/api/analytics/dashboard` | ✅ PASS | Returns full dashboard |
+| `/api/analytics/learning-score` | ✅ PASS | Returns grade F + recommendation |
+| `/api/auth/me` | ❌ FAIL | 500 error for guest token |
+
+**Frontend Test Results**:
+- Landing page: ✅ HTML loads correctly (200 OK)
+- SPA routing: ✅ S3 returns index.html for all routes (404 status but content works)
+
+**Known Issues**:
+1. `/api/auth/me` returns 500 for guest token (Low severity)
+2. Blockchain verification not yet implemented (Phase 3 pending)
+3. IPFS/Base L2 integration not connected (Phase 3 pending)
+
+### Bug Fixes (2025-12-05) ✅
+
+**Deployed to test frontend**:
+
+| Bug | Fix | Status |
+|-----|-----|--------|
+| Dashboard not updating after login/logout | Added `useAuth` hook + re-fetch on `[user, isAuthenticated]` change | ✅ FIXED |
+| Shield/Lock icons blocking clicks on achievements | Added `pointer-events-none` to badge overlays | ✅ FIXED |
+
+**Files Modified**:
+- `frontend/src/pages/Home.tsx` - Line 115: Added `useAuth()` hook, Line 117-120: Effect now depends on auth state
+- `frontend/src/pages/AchievementsPage.tsx` - Lines 107, 114: Added `pointer-events-none` class
+
+**Phase 3 Blockchain Setup** (Ready when you have API keys):
+1. Get Pinata API keys from https://pinata.cloud (free)
+2. Create Base L2 wallet, fund with ~$1 ETH on Base
+3. Run: `eb setenv PINATA_API_KEY=xxx PINATA_SECRET_KEY=xxx BASE_PRIVATE_KEY=0xxx`
+
+**AI Grading Test**: Blocked - No OpenAI funds available. Tests will work once `OPENAI_API_KEY` is funded.
+
+**Checklist Updated**: `quiz-flashcard-app/random stuff/test-plan-checklist.md`
+- Added 18 detailed test results
+- Marked 20+ checkboxes as complete
+- Documented known issues and requirements
+
+### Production AI Tests (2025-12-05) ✅
+
+**Test File**: `quiz-flashcard-app/random stuff/uploaded notes.pdf`
+
+**Full End-to-End Tests Completed**:
+
+| Test | Result | Details |
+|------|--------|---------|
+| PDF Upload | ✅ PASS | Document ID=35, 561KB file |
+| Question Generation | ✅ PASS | 5 MCQ from PDF content (Poiseuille's Law, cardiac output, osteoblast, ECG, acid-base) |
+| Quiz Session | ✅ PASS | Session ID=1, 5 questions loaded |
+| Quiz Submit | ✅ PASS | 5/5 correct = 100%, explanations provided |
+| Flashcard Generation | ✅ PASS | 5 flashcards about medical terminology |
+| Document Organization | ✅ PASS | 10 chapters created (Medical Term, Cardio, Endocrine, GI, Musculoskeletal, Nervous, Renal, Respiratory, Reproductive, Integumentary) |
+| Achievement Check | ✅ PASS | Progress tracking works (e.g., "0/3 perfect scores") |
+
+**Sample Generated Question**:
+```
+Q: According to Poiseuille's Law, if a blood vessel's radius is reduced by half,
+   what happens to the resistance to blood flow?
+A) Resistance doubles
+B) Resistance quadruples
+C) Resistance increases 8-fold
+D) Resistance increases 16-fold ← CORRECT
+
+Explanation: Poiseuille's Law states that resistance is inversely proportional
+to radius to the fourth power (R ∝ 1/r⁴). If radius is halved, resistance
+increases by (1/0.5)⁴ = 2⁴ = 16 times.
+```
+
+**Note**: Guest users (id=-1) can use all features, but quiz results don't persist for achievement unlocking. Real users with Google OAuth login are required for achievement tracking.
+
+---
+
+### Blockchain-Verified Achievements (2025-12-04) - DEPLOYED TO TEST ✅
+
+**Hackathon**: Kiroween Hackathon - Frankenstein Track (Education + Web3)
+**Deadline**: Dec 5, 2025
+
+**Goal**: Add video game-style achievements with IPFS storage and Base L2 anchoring for verifiable proof of learning.
+
+#### Tech Stack
+- **Storage**: IPFS via Pinata (free tier: 500MB)
+- **Chain**: Base L2 (~$0.001/tx, cheapest EVM option)
+- **Wallet**: Server-side custodial (no user wallet setup needed)
+
+#### Test URLs (Working as of 2025-12-04 18:00)
+- **Backend API**: http://Studyforge-test-backend.eba-rufp4rir.us-west-1.elasticbeanstalk.com/api/achievements
+- **Frontend**: http://studyforge-frontend-test.s3-website-us-west-1.amazonaws.com/achievements
+- **CORS**: ✅ Test frontend URL added to allowed origins
+
+#### Implementation Progress
+
+| Step | File | Status |
+|------|------|--------|
+| 1 | `models/achievement.py` - Achievement, UserAchievement models | ✅ Complete |
+| 2 | `models/__init__.py` - Export new models | ✅ Complete |
+| 3 | `alembic/versions/016_add_achievements_tables.py` - Migration with 15 seeded achievements | ✅ Complete |
+| 4 | `schemas/achievement.py` - Pydantic schemas | ✅ Complete |
+| 5 | `schemas/__init__.py` - Export schemas | ✅ Complete |
+| 6 | `services/achievement_service.py` - Trigger logic, progress calculation | ✅ Complete |
+| 7 | `services/blockchain_service.py` - IPFS upload, Base L2 anchoring | ✅ Complete |
+| 8 | `routers/achievements.py` - API endpoints | ✅ Complete |
+| 9 | `routers/__init__.py` - Export router | ✅ Complete |
+| 10 | `main.py` - Include router | ✅ Complete |
+| 11 | `config/settings.py` - Add blockchain env vars | ✅ Complete |
+| 12 | `frontend/src/types/index.ts` - Achievement types | ✅ Complete |
+| 13 | `frontend/src/services/api.ts` - achievementsApi | ✅ Complete |
+| 14 | `frontend/src/pages/AchievementsPage.tsx` | ✅ Complete |
+| 15 | AchievementBadge component (inline in AchievementsPage) | ✅ Complete |
+| 16 | AchievementModal component (inline in AchievementsPage) | ✅ Complete |
+| 17 | `frontend/src/pages/Home.tsx` - Add nav button | ✅ Complete |
+| 18 | `frontend/src/App.tsx` - Add route | ✅ Complete |
+| 19 | Test on test server | ✅ Complete |
+| 20 | Deploy to production | ⬜ Pending (User Decision) |
+
+#### Bug Fixes During Deployment
+
+**Bug 1 - Import Error**:
+- **Issue**: `ImportError: cannot import name 'FlashcardReview' from 'models.flashcard'`
+- **Fix**: Changed import from `FlashcardReview` to `FlashcardProgress` in `services/achievement_service.py`
+- **Note**: Flashcard progress tracking uses sum of `times_reviewed` from `FlashcardProgress` table
+
+**Bug 2 - CORS Error (2025-12-04 18:00)**:
+- **Issue**: Test frontend blocked from accessing test backend API - `Access-Control-Allow-Origin` header missing
+- **Root Cause**: Test S3 URL not in CORS allowed origins list (`main.py` only had production URL)
+- **Fix**: Added test frontend URL to CORS origins unconditionally ([main.py:154-157](quiz-flashcard-app/backend-python/main.py#L154-L157))
+```python
+# Always allow test frontend (for development/testing)
+cors_origins_list.extend([
+    "http://studyforge-frontend-test.s3-website-us-west-1.amazonaws.com",
+])
+```
+- **Also Required**: Rebuilt frontend with `VITE_API_URL` pointing to test backend
+
+**Bug 3 - Guest User 500 Error (2025-12-04 18:13)**:
+- **Issue**: `/api/achievements/user` returning 500 Internal Server Error with guest token
+- **Root Cause**: Guest users have `id=-1`, but the service tried to query the database with that invalid user_id
+- **Fix**: Added guest user check in router to treat `id <= 0` the same as anonymous ([routers/achievements.py:64-65](quiz-flashcard-app/backend-python/routers/achievements.py#L64-L65))
+```python
+# Treat guest users (id=-1) and anonymous as the same - show locked achievements
+if not current_user or current_user.id <= 0:
+```
+
+**Bug 4 - Pydantic Schema Error (2025-12-04 18:11)**:
+- **Issue**: Anonymous user path was building dicts instead of Pydantic models
+- **Fix**: Changed dict comprehension to use `AchievementWithProgress()` constructor
+
+#### 15 Achievements (Seeded in Migration)
+
+| Category | Slug | Name | Trigger | Rarity |
+|----------|------|------|---------|--------|
+| Accuracy | `first_80_percent` | Rising Star | quiz >= 80% | Common |
+| Accuracy | `first_90_percent` | Honor Roll | quiz >= 90% | Rare |
+| Accuracy | `perfect_score` | Perfect Scholar | quiz == 100% | Epic |
+| Accuracy | `triple_perfect` | Flawless Trio | 3x perfect | Epic |
+| Accuracy | `accuracy_master` | Accuracy Master | 90%+ overall (50+ q) | Legendary |
+| Streak | `streak_7` | Week Warrior | 7 day streak | Common |
+| Streak | `streak_30` | Monthly Master | 30 day streak | Epic |
+| Streak | `streak_100` | Century Scholar | 100 day streak | Legendary |
+| Volume | `questions_100` | Question Explorer | 100 questions | Common |
+| Volume | `questions_500` | Quiz Champion | 500 questions | Rare |
+| Volume | `questions_1000` | Knowledge Seeker | 1000 questions | Epic |
+| Volume | `flashcard_100` | Card Collector | 100 flashcards | Common |
+| Mastery | `grade_b` | B Grade Scholar | Learning score 70+ | Common |
+| Mastery | `grade_a` | A Grade Scholar | Learning score 85+ | Rare |
+| Mastery | `grade_a_plus` | A+ Excellence | Learning score 95+ | Legendary |
+
+#### API Endpoints Created
+- `GET /api/achievements` - All achievement definitions
+- `GET /api/achievements/user` - User's achievements with progress
+- `GET /api/achievements/user/{id}` - Achievement detail with certificate
+- `POST /api/achievements/check` - Manually trigger checks
+- `POST /api/achievements/verify/{ipfs_hash}` - Verify on-chain
+
+#### Plan File
+`C:\Users\22317\.claude\plans\soft-sprouting-dewdrop.md`
+
+---
 
 ### Phase 4: SLM Integration Setup (2025-12-04) - TESTED ✅
 
@@ -532,29 +904,57 @@ Complete redesign using Swiss International Typographic Style:
 
 ## Deployment Status
 
-| Environment | Landing Page | Notes |
-|-------------|--------------|-------|
+| Environment | Status | URL |
+|-------------|--------|-----|
 | **Local** | ✅ Running | http://localhost:3000 |
-| **Test** | ⏳ Needs deploy | S3: studyforge-frontend-test |
-| **Production** | ⏳ Needs deploy | S3: studyforge-frontend |
+| **Test** | ✅ Deployed | http://studyforge-frontend-test.s3-website-us-west-1.amazonaws.com |
+| **Production** | ✅ Deployed (08:21) | http://studyforge-frontend.s3-website-us-west-1.amazonaws.com |
 
 ---
 
 ## Handoff Notes
 
-**What was just completed:**
-- Fixed CTA button visibility (removed `isVisible('cta-section')` conditional)
-- Removed unused `useScrollAnimation` hook
-- Cleaned up imports (removed `useState`, `useRef`, `useEffect`)
+**What was just completed (2025-12-05 08:25):**
+- ✅ Fixed Google OAuth login (wrong client ID in `.env.production.local`)
+- ✅ Fixed home page data counts to be user-specific instead of global
+- ✅ Fixed MCQ generation to distribute correct answers across A, B, C, D
+- ✅ **DEPLOYED TO PRODUCTION** - Backend (08:17) + Frontend (08:21)
+- ✅ All production tests passing
 
-**Commands to run:**
+**Uncommitted Changes:**
+- Multiple files modified and deployed but not committed to git
+- Backend files: `analytics_service.py`, `analytics.py`, `generation_agent.py`
+- Frontend files: `.env.production.local`, `.env`
+
+**Commands to run on next session:**
 ```bash
-# Verify frontend builds
-cd quiz-flashcard-app/frontend
-npm run build
-
-# Deploy to test S3
-aws s3 sync dist/ s3://studyforge-frontend-test --delete
+# Commit the bug fixes
+cd quiz-flashcard-app
+git add backend-python/services/analytics_service.py backend-python/routers/analytics.py backend-python/agents/generation_agent.py frontend/.env.production.local frontend/.env
+git commit -m "Fix: User-specific data counts, MCQ answer distribution, Google OAuth client ID"
+git push
 ```
 
-**No uncommitted work in progress** - All changes are complete and ready for commit.
+**Production URLs:**
+- Backend: http://studyforge-backend-v2.eba-rufp4rir.us-west-1.elasticbeanstalk.com
+- Frontend: http://studyforge-frontend.s3-website-us-west-1.amazonaws.com
+
+**Test URLs:**
+- Test Backend: http://Studyforge-test-backend.eba-rufp4rir.us-west-1.elasticbeanstalk.com
+- Test Frontend: http://studyforge-frontend-test.s3-website-us-west-1.amazonaws.com
+
+**Known Remaining Issues:**
+1. `/api/auth/me` returns 500 for guest token (Low severity - guest users work fine)
+2. Blockchain verification not yet implemented (Phase 3 - needs Pinata API keys)
+
+**All Systems Working (PRODUCTION):**
+- ✅ Google OAuth login
+- ✅ User-specific data isolation (logged-in users see their data, guests see guest data)
+- ✅ Achievements system (15 achievements, progress tracking)
+- ✅ MCQ generation with randomized correct answers
+- ✅ Quiz submission and scoring
+- ✅ Analytics dashboard
+
+**Next Steps:**
+1. Record hackathon demo video
+2. Commit and push all changes to git

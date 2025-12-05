@@ -31,6 +31,7 @@ from schemas.quiz import (
     QuizResultItem,
 )
 from services.quiz_service import quiz_service
+from services.achievement_service import AchievementService
 
 logger = structlog.get_logger()
 
@@ -315,6 +316,34 @@ async def submit_quiz(
             time_per_question=submit_data.time_per_question,
         )
         await db.commit()
+
+        # Check achievements after quiz completion (only for logged-in users)
+        # Guest users (user_id=None) can't have achievements stored due to FK constraint
+        if user_id:
+            try:
+                achievement_service = AchievementService(db)
+                quiz_percentage = results["percentage"]
+                question_count = results["total"]
+
+                # Check quiz score achievements (perfect score, 80%, 90%, etc.)
+                await achievement_service.check_quiz_achievements(
+                    user_id, quiz_percentage, question_count
+                )
+
+                # Check volume achievements (questions answered milestones)
+                await achievement_service.check_volume_achievements(user_id)
+
+                # Check streak achievements
+                await achievement_service.check_streak_achievements(user_id)
+
+                logger.info(
+                    "achievement_check_completed",
+                    user_id=user_id,
+                    quiz_percentage=quiz_percentage,
+                )
+            except Exception as e:
+                # Don't fail the quiz submission if achievement check fails
+                logger.error("achievement_check_failed", error=str(e), user_id=user_id)
 
         return SubmitQuizResponse(
             session_id=results["session_id"],

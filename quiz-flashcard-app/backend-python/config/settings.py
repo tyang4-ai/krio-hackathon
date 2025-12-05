@@ -81,6 +81,18 @@ class Settings(BaseSettings):
     # API Settings
     api_prefix: str = "/api"
 
+    # Blockchain (Achievements verification - Kiroween Hackathon)
+    # IPFS via Pinata (free tier: 500MB)
+    pinata_api_key: Optional[str] = None
+    pinata_secret_key: Optional[str] = None
+    pinata_gateway: str = "https://gateway.pinata.cloud/ipfs"
+
+    # Base L2 (cheapest EVM chain ~$0.001/tx)
+    # Using Base Sepolia testnet for hackathon demo (free test ETH)
+    base_rpc_url: str = "https://sepolia.base.org"
+    base_chain_id: int = 84532  # Base Sepolia testnet
+    base_private_key: Optional[str] = None  # Server-side custodial wallet
+
     def model_post_init(self, __context) -> None:
         """Post-init processing to fix database URL format."""
         # Convert Railway's postgresql:// to asyncpg format
